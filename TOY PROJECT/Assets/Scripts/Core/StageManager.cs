@@ -1,5 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class StageManager : MonoBehaviour
 {
@@ -14,51 +16,62 @@ public class StageManager : MonoBehaviour
     {
         StageData stage = stages[stageIndex];
         gridManager.GenerateGrid(stage);
+        SetupCamera(stage.width, stage.height);
         SpawnPlayer(stage);
         SpawnEnemies(stage);
         SpawnObstacles(stage);
         turnManager.StartPlayerTurn();
     }
 
-    void SpawnPlayer(StageData stage)
+    async void SpawnPlayer(StageData stage)
     {
-        string prefabName = GetPrefabName(stage.playerType);
-        GameObject playerPrefab = Resources.Load<GameObject>($"Prefabs/Units/{prefabName}");
-        if (playerPrefab == null)
+        string prefabKey = GetPrefabName(stage.playerType);
+        var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Units/{prefabKey}.prefab");
+        await handle.Task;
+        if (handle.Status != AsyncOperationStatus.Succeeded)
         {
-            Debug.LogError($"Player 프리팹을 찾을 수 없습니다: {prefabName}");
+            Debug.LogError($"Player 프리팹을 Addressable에서 찾을 수 없습니다: {prefabKey}");
             return;
         }
-        GameObject obj = Instantiate(playerPrefab, GridToWorld(stage.playerSpawn), Quaternion.identity);
+        GameObject obj = Instantiate(handle.Result, GridToWorld(stage.playerSpawn), Quaternion.identity);
         player = obj.GetComponent<PlayerUnit>();
         player.position = stage.playerSpawn;
         // UnitData 등 추가 세팅 필요시 여기에
     }
 
-    void SpawnEnemies(StageData stage)
+    async void SpawnEnemies(StageData stage)
     {
         foreach (var enemyData in stage.enemySpawns)
         {
-            string prefabName = GetPrefabName(enemyData.enemyType);
-            GameObject enemyPrefab = Resources.Load<GameObject>($"Prefabs/Units/{prefabName}");
-            if (enemyPrefab == null)
+            string prefabKey = GetPrefabName(enemyData.enemyType);
+            var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Units/{prefabKey}.prefab");
+            await handle.Task;
+            if (handle.Status != AsyncOperationStatus.Succeeded)
             {
-                Debug.LogError($"Enemy 프리팹을 찾을 수 없습니다: {prefabName}");
+                Debug.LogError($"Enemy 프리팹을 Addressable에서 찾을 수 없습니다: {prefabKey}");
                 continue;
             }
-            GameObject obj = Instantiate(enemyPrefab, GridToWorld(enemyData.spawnPos), Quaternion.identity);
+            GameObject obj = Instantiate(handle.Result, GridToWorld(enemyData.spawnPos), Quaternion.identity);
             EnemyUnit enemy = obj.GetComponent<EnemyUnit>();
+            Debug.Log($"적 유닛 생성: {enemyData.enemyType} at {enemyData.spawnPos}");
             enemy.position = enemyData.spawnPos;
             enemies.Add(enemy);
         }
     }
 
-    void SpawnObstacles(StageData stage)
+    async void SpawnObstacles(StageData stage)
     {
         foreach (var obsData in stage.obstacleSpawns)
         {
-            if (obsData.obstacleData == null || obsData.obstacleData.prefab == null) continue;
-            GameObject obj = Instantiate(obsData.obstacleData.prefab, GridToWorld(obsData.spawnPos), Quaternion.identity);
+            if (obsData.obstacleData == null || string.IsNullOrEmpty(obsData.obstacleData.obstacleName)) continue;
+            var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Obstacles/{obsData.obstacleData.obstacleName}.prefab");
+            await handle.Task;
+            if (handle.Status != AsyncOperationStatus.Succeeded)
+            {
+                Debug.LogError($"Obstacle 프리팹을 Addressable에서 찾을 수 없습니다: {obsData.obstacleData.obstacleName}");
+                continue;
+            }
+            GameObject obj = Instantiate(handle.Result, GridToWorld(obsData.spawnPos), Quaternion.identity);
             Obstacle obstacle = obj.GetComponent<Obstacle>();
             if (obstacle != null)
                 obstacle.data = obsData.obstacleData;
@@ -67,8 +80,8 @@ public class StageManager : MonoBehaviour
 
     Vector3 GridToWorld(Vector2Int gridPos)
     {
-        // 3D 전략 게임용: 타일 위치를 월드 좌표로 변환
-        return new Vector3(gridPos.x, 0, gridPos.y);
+        // 각 타일의 중앙에 위치하도록 변환
+        return new Vector3(gridPos.x + 0.5f, 0, gridPos.y + 0.5f);
     }
 
     string GetPrefabName(UnitType type)
@@ -78,8 +91,7 @@ public class StageManager : MonoBehaviour
         {
             case UnitType.Player_Zed: return "Player_Zed";
             case UnitType.Player_Lux: return "Player_Lux";
-            case UnitType.Enemy_Slime: return "Enemy_Slime";
-            case UnitType.Enemy_Ninja: return "Enemy_Ninja";
+            case UnitType.Enemy_Goose: return "Enemy_Goose";
             default: return null;
         }
     }
@@ -92,5 +104,34 @@ public class StageManager : MonoBehaviour
     public List<EnemyUnit> GetEnemies()
     {
         return enemies;
+    }
+
+    void SetupCamera(int width, int height)
+    {
+        Camera cam = Camera.main;
+        if (cam == null) return;
+        Vector3 center = new Vector3(width / 2f, 0, height / 2f);
+        float camHeight = Mathf.Max(width, height) * 1.2f;
+        cam.transform.position = center + new Vector3(0, camHeight, camHeight);
+        cam.transform.LookAt(center);
+        cam.orthographic = false;
+        cam.fieldOfView = 45f;
+        // CameraController 자동 세팅
+        var controller = cam.GetComponent<CameraController>();
+        if (controller != null)
+        {
+            if (controller.target == null)
+            {
+                var t = new GameObject("CameraTarget").transform;
+                t.position = center;
+                controller.target = t;
+            }
+            else
+            {
+                controller.target.position = center;
+            }
+            controller.distance = camHeight;
+            controller.height = camHeight;
+        }
     }
 } 

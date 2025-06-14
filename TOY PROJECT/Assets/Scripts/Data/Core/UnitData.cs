@@ -5,8 +5,7 @@ public enum UnitType
     None,
     Player_Zed,
     Player_Lux,
-    Enemy_Slime,
-    Enemy_Ninja,
+    Enemy_Goose,
 }
 
 [CreateAssetMenu(menuName = "Data/UnitData")]

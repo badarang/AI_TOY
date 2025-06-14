@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Default Local Group
+  m_EditorClassIdentifier: 
+  m_GroupName: Default Local Group
+  m_GUID: 1a0db8b6955de42d1a6c362ed55d98c1
+  m_SerializeEntries:
+  - m_GUID: 2eb54e727532f48f39cfc57016b016f3
+    m_Address: Prefabs/Obstacles/Obstacle_Pillar.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4c525d53b72814baf827dabde3e36095
+    m_Address: Prefabs/Units/Enemy_Goose.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: abde3b5da2f074872a14dcd2089a0130
+    m_Address: Prefabs/Units/Player_Zed.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f502b9d28126143bfabcce499dc9faa7
+    m_Address: Prefabs/Units/BaseUnitPrefab.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 7b37f813f35b542ed9bc83a7e85442e7, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 61b73dceb49d24440ab1601256277905, type: 2}
+    - {fileID: 11400000, guid: 4ce8f076ea9854b699c94061d8aa6b9a, type: 2}
