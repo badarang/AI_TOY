@@ -1,3 +1,4 @@
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 public abstract class SkillBase : MonoBehaviour
@@ -7,5 +8,6 @@ public abstract class SkillBase : MonoBehaviour
     public int cooldown;
     public int range;
 
+    [Button("Activate Skill")]
     public abstract void Activate(UnitBase caster, Vector2Int targetPos);
 } 

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4544cc851c9a5478794843bc1b8f1d2a, type: 3}
+  m_Name: Stage_1
+  m_EditorClassIdentifier: 
+  width: 7
+  height: 7
+  playerSpawn: {x: 3, y: 3}
+  playerType: 2
+  enemySpawns:
+  - enemyType: 4
+    spawnPos: {x: 1, y: 1}
+  - enemyType: 3
+    spawnPos: {x: 2, y: 4}
+  - enemyType: 4
+    spawnPos: {x: 5, y: 1}
+  - enemyType: 3
+    spawnPos: {x: 1, y: 5}
