@@ -2,11 +2,13 @@ using UnityEngine;
 
 public class GridManager : MonoBehaviour
 {
-    public int width;
-    public int height;
+    public int width { get; private set; }
+    public int height { get; private set; }
 
-    public void GenerateGrid(int w, int h)
+    public void GenerateGrid(StageData stageData)
     {
+        width = stageData.width;
+        height = stageData.height;
         // 격자 생성
     }
 

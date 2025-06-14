@@ -13,6 +13,7 @@ public class StageData : ScriptableObject
     public Vector2Int playerSpawn;
     public UnitType playerType;
     public EnemySpawnData[] enemySpawns = new EnemySpawnData[0];
+    public ObstacleSpawnData[] obstacleSpawns = new ObstacleSpawnData[0];
 }
 
 // 맵 에디터 클래스 추가
@@ -37,5 +38,12 @@ public class StageMapEditor
 public class EnemySpawnData
 {
     public UnitType enemyType;
+    public Vector2Int spawnPos;
+}
+
+[System.Serializable]
+public class ObstacleSpawnData
+{
+    public ObstacleData obstacleData;
     public Vector2Int spawnPos;
 }

@@ -13,9 +13,10 @@ public class StageManager : MonoBehaviour
     public void LoadStage(int stageIndex)
     {
         StageData stage = stages[stageIndex];
-        gridManager.GenerateGrid(stage.width, stage.height);
+        gridManager.GenerateGrid(stage);
         SpawnPlayer(stage);
         SpawnEnemies(stage);
+        SpawnObstacles(stage);
         turnManager.StartPlayerTurn();
     }
 
@@ -49,6 +50,18 @@ public class StageManager : MonoBehaviour
             EnemyUnit enemy = obj.GetComponent<EnemyUnit>();
             enemy.position = enemyData.spawnPos;
             enemies.Add(enemy);
+        }
+    }
+
+    void SpawnObstacles(StageData stage)
+    {
+        foreach (var obsData in stage.obstacleSpawns)
+        {
+            if (obsData.obstacleData == null || obsData.obstacleData.prefab == null) continue;
+            GameObject obj = Instantiate(obsData.obstacleData.prefab, GridToWorld(obsData.spawnPos), Quaternion.identity);
+            Obstacle obstacle = obj.GetComponent<Obstacle>();
+            if (obstacle != null)
+                obstacle.data = obsData.obstacleData;
         }
     }
 

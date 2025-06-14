@@ -42,7 +42,6 @@ public class StageDataEditor : OdinEditor
         GUILayout.Space(15);
 
         DrawUnitSettings(data);
-        GUILayout.Space(10);
 
         DrawAdvancedOptions(data);
 
@@ -54,7 +53,7 @@ public class StageDataEditor : OdinEditor
         }
     }
 
-    private void DrawHeader()
+    private new void DrawHeader()
     {
         EditorGUILayout.BeginVertical(CreateBoxStyle());
 
@@ -176,6 +175,7 @@ public class StageDataEditor : OdinEditor
                 Vector2Int pos = new Vector2Int(x, data.height - y - 1);
                 bool isPlayer = data.playerSpawn == pos;
                 var enemy = data.enemySpawns.FirstOrDefault(es => es.spawnPos == pos);
+                var obstacle = data.obstacleSpawns.FirstOrDefault(os => os.spawnPos == pos);
                 bool isHovered = hoveredCell == new Vector2Int(x, y);
 
                 float px = gridStartX + x * (CELL_SIZE + CELL_PADDING);
@@ -185,13 +185,14 @@ public class StageDataEditor : OdinEditor
                 Color cellBg = EditorGUIUtility.isProSkin ? new Color(0.25f, 0.25f, 0.25f, 1f) : new Color(0.97f, 0.97f, 0.99f, 1f);
                 if (isPlayer) cellBg = Color.Lerp(cellBg, PLAYER_COLOR, 0.10f);
                 else if (enemy != null) cellBg = Color.Lerp(cellBg, ENEMY_COLOR, 0.10f);
+                else if (obstacle != null) cellBg = Color.Lerp(cellBg, new Color(0.5f, 0.3f, 0.1f, 1f), 0.20f); // 장애물 색상
 
                 EditorGUI.DrawRect(cellRect, cellBg);
                 if (isHovered)
                     EditorGUI.DrawRect(cellRect, HOVER_COLOR);
 
                 DrawCellBorder(cellRect, borderCol, isPlayer, enemy != null);
-                RenderUnit(cellRect, isPlayer, enemy, data.playerType);
+                RenderUnit(cellRect, isPlayer, enemy, obstacle, data.playerType);
 
                 if (isHovered)
                 {
@@ -204,7 +205,7 @@ public class StageDataEditor : OdinEditor
                     GUI.Label(coordRect, $"{pos.x},{pos.y}", coordStyle);
                 }
 
-                HandleContextMenu(data, cellRect, pos, isPlayer, enemy, e);
+                HandleContextMenu(data, cellRect, pos, isPlayer, enemy, obstacle, e);
             }
         }
 
@@ -214,17 +215,14 @@ public class StageDataEditor : OdinEditor
     private void DrawCellBorder(Rect cellRect, Color borderCol, bool isPlayer, bool hasEnemy)
     {
         Color finalBorderCol = borderCol;
-        float borderWidth = 1f;
 
         if (isPlayer)
         {
             finalBorderCol = PLAYER_COLOR;
-            borderWidth = 2f;
         }
         else if (hasEnemy)
         {
             finalBorderCol = ENEMY_COLOR;
-            borderWidth = 2f;
         }
 
         Handles.BeginGUI();
@@ -285,7 +283,7 @@ public class StageDataEditor : OdinEditor
         return new Vector2Int(-1, -1);
     }
 
-    private void RenderUnit(Rect cellRect, bool isPlayer, EnemySpawnData enemy, UnitType playerType)
+    private void RenderUnit(Rect cellRect, bool isPlayer, EnemySpawnData enemy, ObstacleSpawnData obstacle, UnitType playerType)
     {
         if (isPlayer)
         {
@@ -294,6 +292,10 @@ public class StageDataEditor : OdinEditor
         else if (enemy != null)
         {
             RenderEnemyUnit(cellRect, enemy.enemyType);
+        }
+        else if (obstacle != null && obstacle.obstacleData != null)
+        {
+            RenderObstacleUnit(cellRect, obstacle.obstacleData);
         }
     }
 
@@ -339,6 +341,29 @@ public class StageDataEditor : OdinEditor
         {
             DrawUnitLabel(cellRect, GetShortName(typeName), ENEMY_COLOR, "👹");
         }
+    }
+
+    private void RenderObstacleUnit(Rect cellRect, ObstacleData obstacleData)
+    {
+        // 장애물 아이콘 또는 이모지 표시
+        var style = new GUIStyle(EditorStyles.boldLabel)
+        {
+            alignment = TextAnchor.MiddleCenter,
+            fontSize = 16,
+            fontStyle = FontStyle.Bold,
+            normal = { textColor = new Color(0.5f, 0.3f, 0.1f, 1f) }
+        };
+        var emojiRect = new Rect(cellRect.x, cellRect.y + 2, cellRect.width, cellRect.height - 4);
+        GUI.Label(emojiRect, "🌲", style);
+        // 장애물 이름도 작게 표시
+        var nameStyle = new GUIStyle(EditorStyles.miniLabel)
+        {
+            alignment = TextAnchor.LowerCenter,
+            fontSize = 8,
+            normal = { textColor = new Color(0.3f, 0.2f, 0.1f, 1f) }
+        };
+        var nameRect = new Rect(cellRect.x, cellRect.yMax - 12, cellRect.width, 12);
+        GUI.Label(nameRect, obstacleData.obstacleName, nameStyle);
     }
 
     private void DrawIconBackground(Rect iconRect, Color color)
@@ -395,7 +420,7 @@ public class StageDataEditor : OdinEditor
 
     private void DrawUnitSettings(StageData data)
     {
-        // Foldout Header 그룹 시작
+        // Foldout Header 그룹 시작 (여기만 사용)
         showUnitSettings = EditorGUILayout.BeginFoldoutHeaderGroup(showUnitSettings, "⚔️ Unit Settings");
         if (showUnitSettings)
         {
@@ -404,10 +429,11 @@ public class StageDataEditor : OdinEditor
             DrawPlayerSettings(data);
             GUILayout.Space(10);
             DrawEnemySettings(data);
+            GUILayout.Space(10);
+            DrawObstacleSettings(data);
 
             EditorGUILayout.EndVertical();
         }
-        // Foldout Header 그룹 종료
         EditorGUILayout.EndFoldoutHeaderGroup();
     }
 
@@ -444,6 +470,24 @@ public class StageDataEditor : OdinEditor
             var statsStyle = new GUIStyle(EditorStyles.helpBox) { fontSize = 10 };
             var enemyTypes = data.enemySpawns.GroupBy(e => e.enemyType).Select(g => $"{g.Key}: {g.Count()}");
             GUILayout.Label($"Total Enemies: {data.enemySpawns.Length} ({string.Join(", ", enemyTypes)})", statsStyle);
+        }
+    }
+
+    private void DrawObstacleSettings(StageData data)
+    {
+        var headerStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 12 };
+        GUILayout.Label("🌲 Obstacle Configuration", headerStyle);
+
+        serializedObject.Update();
+        var obstacleSpawnsProp = serializedObject.FindProperty("obstacleSpawns");
+        EditorGUILayout.PropertyField(obstacleSpawnsProp, new GUIContent("Obstacle Spawns"), true);
+        serializedObject.ApplyModifiedProperties();
+
+        if (data.obstacleSpawns != null && data.obstacleSpawns.Length > 0)
+        {
+            EditorGUILayout.Space(5);
+            var statsStyle = new GUIStyle(EditorStyles.helpBox) { fontSize = 10 };
+            GUILayout.Label($"Total Obstacles: {data.obstacleSpawns.Length}", statsStyle);
         }
     }
 
@@ -518,14 +562,15 @@ public class StageDataEditor : OdinEditor
         }
     }
 
-    private void HandleContextMenu(StageData data, Rect cellRect, Vector2Int pos, bool isPlayer, EnemySpawnData enemy, Event e)
+    private void HandleContextMenu(StageData data, Rect cellRect, Vector2Int pos, bool isPlayer, EnemySpawnData enemy, ObstacleSpawnData obstacle, Event e)
     {
         if (e.type == EventType.ContextClick && cellRect.Contains(e.mousePosition))
         {
             contextMenuPos = pos;
             GenericMenu menu = new GenericMenu();
 
-            if (!isPlayer)
+            // 플레이어
+            if (!isPlayer && !data.enemySpawns.Any(es => es.spawnPos == pos) && !data.obstacleSpawns.Any(os => os.spawnPos == pos))
             {
                 menu.AddItem(new GUIContent("👤 Add Player Here"), false, () =>
                 {
@@ -536,12 +581,13 @@ public class StageDataEditor : OdinEditor
             }
             else
             {
-                menu.AddDisabledItem(new GUIContent("👤 Player Already Here"));
+                menu.AddDisabledItem(new GUIContent("👤 Player Already Here or Occupied"));
             }
 
             menu.AddSeparator("");
 
-            if (enemy == null)
+            // 적
+            if (enemy == null && !isPlayer && !data.obstacleSpawns.Any(os => os.spawnPos == pos))
             {
                 var enemyTypes = System.Enum.GetValues(typeof(UnitType)).Cast<UnitType>()
                     .Where(t => t.ToString().StartsWith("Enemy_")).ToArray();
@@ -559,7 +605,7 @@ public class StageDataEditor : OdinEditor
                     });
                 }
             }
-            else
+            else if (enemy != null)
             {
                 menu.AddItem(new GUIContent($"🗑️ Remove {enemy.enemyType}"), false, () =>
                 {
@@ -567,6 +613,54 @@ public class StageDataEditor : OdinEditor
                     data.enemySpawns = data.enemySpawns.Where(e => e.spawnPos != contextMenuPos).ToArray();
                     EditorUtility.SetDirty(data);
                 });
+            }
+            else
+            {
+                menu.AddDisabledItem(new GUIContent("👹 Enemy Slot Occupied"));
+            }
+
+            // 장애물
+            var obsIdx = Array.FindIndex(data.obstacleSpawns, o => o.spawnPos == contextMenuPos);
+            if (obsIdx < 0 && !isPlayer && !data.enemySpawns.Any(es => es.spawnPos == pos))
+            {
+                // 현재 위치에 장애물이 없으면 추가 메뉴
+                var guids = AssetDatabase.FindAssets("t:ObstacleData");
+                if (guids.Length > 0)
+                {
+                    foreach (var guid in guids)
+                    {
+                        var path = AssetDatabase.GUIDToAssetPath(guid);
+                        var obsData = AssetDatabase.LoadAssetAtPath<ObstacleData>(path);
+                        if (obsData == null) continue;
+                        menu.AddItem(new GUIContent($"🌲 Add Obstacle/{obsData.obstacleName}"), false, () =>
+                        {
+                            Undo.RecordObject(data, $"Add Obstacle {obsData.obstacleName}");
+                            var list = data.obstacleSpawns.ToList();
+                            list.Add(new ObstacleSpawnData { obstacleData = obsData, spawnPos = contextMenuPos });
+                            data.obstacleSpawns = list.ToArray();
+                            EditorUtility.SetDirty(data);
+                        });
+                    }
+                }
+                else
+                {
+                    menu.AddDisabledItem(new GUIContent("🌲 No ObstacleData found"));
+                }
+            }
+            else if (obsIdx >= 0)
+            {
+                // 이미 장애물이 있으면 삭제 메뉴
+                var obsName = data.obstacleSpawns[obsIdx].obstacleData != null ? data.obstacleSpawns[obsIdx].obstacleData.obstacleName : "Obstacle";
+                menu.AddItem(new GUIContent($"🗑️ Remove Obstacle ({obsName})"), false, () =>
+                {
+                    Undo.RecordObject(data, "Remove Obstacle");
+                    data.obstacleSpawns = data.obstacleSpawns.Where((o, i) => i != obsIdx).ToArray();
+                    EditorUtility.SetDirty(data);
+                });
+            }
+            else
+            {
+                menu.AddDisabledItem(new GUIContent("🌲 Obstacle Slot Occupied"));
             }
 
             menu.ShowAsContext();
