@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.InputSystem;
@@ -57,6 +58,7 @@ public class GridManager : MonoBehaviour
     // 클릭 이벤트 처리
     private void OnClickPerformed(InputAction.CallbackContext context)
     {
+        DebugPrinter.DebugColor(DebugType.Input, "Clicked");
         if (hoveredCell.HasValue)
         {
             TrySelectUnitAtCell(hoveredCell.Value.x, hoveredCell.Value.y);
