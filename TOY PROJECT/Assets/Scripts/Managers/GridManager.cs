@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.InputSystem;
 
 public class GridManager : MonoBehaviour
 {
@@ -15,6 +16,52 @@ public class GridManager : MonoBehaviour
     public Material highlightMat;
     private GameObject highlightQuad;
     private Material defaultHighlightMat;
+
+    // New Input System 관련 변수들
+    private PlayerInputActions inputActions;
+    private Camera mainCamera;
+
+    void Awake()
+    {
+        // PlayerInputActions 인스턴스 생성
+        inputActions = new PlayerInputActions();
+        mainCamera = Camera.main;
+    }
+
+    void OnEnable()
+    {
+        if (inputActions != null)
+        {
+            inputActions.Gameplay.Click.performed += OnClickPerformed;
+            inputActions.Enable();
+        }
+    }
+
+    void OnDisable()
+    {
+        if (inputActions != null)
+        {
+            inputActions.Gameplay.Click.performed -= OnClickPerformed;
+            inputActions.Disable();
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (inputActions != null)
+        {
+            inputActions.Dispose();
+        }
+    }
+
+    // 클릭 이벤트 처리
+    private void OnClickPerformed(InputAction.CallbackContext context)
+    {
+        if (hoveredCell.HasValue)
+        {
+            TrySelectUnitAtCell(hoveredCell.Value.x, hoveredCell.Value.y);
+        }
+    }
 
     public void GenerateGrid(StageData stageData)
     {
@@ -40,8 +87,11 @@ public class GridManager : MonoBehaviour
 
     void Update()
     {
-        // 마우스 위치에서 격자 셀 계산
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        // New Input System을 사용하여 입력 위치 가져오기
+        Vector2 inputPosition = GetInputPosition();
+        
+        // 입력 위치에서 격자 셀 계산
+        Ray ray = mainCamera.ScreenPointToRay(inputPosition);
         if (Physics.Raycast(ray, out RaycastHit hit, 100f, ~0))
         {
             Vector3 point = hit.point;
@@ -49,25 +99,47 @@ public class GridManager : MonoBehaviour
             int z = Mathf.FloorToInt(point.z);
             if (x >= 0 && x < width && z >= 0 && z < height)
             {
-                hoveredCell = new Vector2Int(x, z);
-                ShowHighlight(x, z);
-                // 클릭 시 유닛 선택
-                if (Input.GetMouseButtonDown(0))
+                // 새로운 셀에 호버했을 때만 하이라이트 업데이트
+                if (!hoveredCell.HasValue || hoveredCell.Value != new Vector2Int(x, z))
                 {
-                    TrySelectUnitAtCell(x, z);
+                    hoveredCell = new Vector2Int(x, z);
+                    ShowHighlight(x, z);
                 }
             }
             else
+            {
+                if (hoveredCell.HasValue)
+                {
+                    hoveredCell = null;
+                    HideHighlight();
+                }
+            }
+        }
+        else
+        {
+            if (hoveredCell.HasValue)
             {
                 hoveredCell = null;
                 HideHighlight();
             }
         }
-        else
+    }
+
+    // 크로스 플랫폼 입력 위치 가져오기
+    private Vector2 GetInputPosition()
+    {
+        // New Input System 사용
+        if (inputActions != null)
         {
-            hoveredCell = null;
-            HideHighlight();
+            Vector2 pointValue = inputActions.Gameplay.Point.ReadValue<Vector2>();
+            if (pointValue != Vector2.zero)
+            {
+                return pointValue;
+            }
         }
+
+        // 폴백: 기존 Input.mousePosition 사용
+        return Input.mousePosition;
     }
 
     void ShowHighlight(int x, int z)

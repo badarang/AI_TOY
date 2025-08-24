@@ -1,9 +1,10 @@
 using UnityEngine;
 using DG.Tweening;
+using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
 {
-    public Transform target; // 회전 중심(맵 중앙)
+    public Transform target;
     public float distance = 10f;
     public float height = 10f;
     public float dragSensitivity = 0.4f;
@@ -12,48 +13,102 @@ public class CameraController : MonoBehaviour
     public float returnDuration = 0.4f;
     public float punchStrength = 10f;
 
+    private float currentYAngle = 0f;
     private bool isDragging = false;
     private Vector3 lastMousePos;
-    private float currentYAngle = 0f; // 현재 Y 회전 각도를 직접 관리
     private float startYAngle;
     private float dragDelta;
 
-    void Start()
+    // New Input System 관련 변수들
+    private PlayerInputActions inputActions;
+    private Camera mainCamera;
+
+    void Awake()
     {
-        if (target == null)
-            target = new GameObject("CameraTarget").transform;
+        // PlayerInputActions 인스턴스 생성
+        inputActions = new PlayerInputActions();
+        mainCamera = Camera.main;
         
-        // 초기 각도 설정
-        currentYAngle = 0f;
+        if (target == null)
+        {
+            // target이 설정되지 않은 경우 자동으로 생성
+            GameObject targetObj = new GameObject("CameraTarget");
+            target = targetObj.transform;
+            
+            // 카메라가 있는 위치를 기준으로 target 위치 설정
+            if (mainCamera != null)
+            {
+                target.position = mainCamera.transform.position + mainCamera.transform.forward * 5f;
+            }
+            else
+            {
+                target.position = Vector3.zero;
+            }
+        }
+        
         UpdateCameraPosition(currentYAngle);
     }
 
-    void Update()
+    void OnEnable()
     {
-        // 마우스 클릭(좌클릭) 시작
-        if (Input.GetMouseButtonDown(0))
+        if (inputActions != null)
         {
-            if (!IsPointerOverGridOrUI())
-            {
-                isDragging = true;
-                lastMousePos = Input.mousePosition;
-                startYAngle = currentYAngle; // eulerAngles 대신 직접 관리하는 각도 사용
-                dragDelta = 0f;
-            }
+            inputActions.Gameplay.Click.started += OnClickStarted;
+            inputActions.Gameplay.Click.performed += OnClickPerformed;
+            inputActions.Gameplay.Click.canceled += OnClickCanceled;
+            inputActions.Enable();
         }
+    }
 
-        // 드래그 중
-        if (isDragging && Input.GetMouseButton(0))
+    void OnDisable()
+    {
+        if (inputActions != null)
         {
-            Vector3 delta = Input.mousePosition - lastMousePos;
+            inputActions.Gameplay.Click.started -= OnClickStarted;
+            inputActions.Gameplay.Click.performed -= OnClickPerformed;
+            inputActions.Gameplay.Click.canceled -= OnClickCanceled;
+            inputActions.Disable();
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (inputActions != null)
+        {
+            inputActions.Dispose();
+        }
+    }
+
+    // 클릭 시작
+    private void OnClickStarted(InputAction.CallbackContext context)
+    {
+        if (!IsPointerOverGridOrUI())
+        {
+            isDragging = true;
+            lastMousePos = GetInputPosition();
+            startYAngle = currentYAngle;
+            dragDelta = 0f;
+        }
+    }
+
+    // 클릭 중 (드래그)
+    private void OnClickPerformed(InputAction.CallbackContext context)
+    {
+        if (isDragging)
+        {
+            Vector2 currentPos = GetInputPosition();
+            Vector2 delta = currentPos - (Vector2)lastMousePos;
             dragDelta += delta.x * dragSensitivity;
             currentYAngle = startYAngle + dragDelta;
             UpdateCameraPosition(currentYAngle);
-            lastMousePos = Input.mousePosition;
+            lastMousePos = currentPos;
         }
+    }
 
-        // 드래그 끝
-        if (isDragging && Input.GetMouseButtonUp(0))
+    // 클릭 끝
+    private void OnClickCanceled(InputAction.CallbackContext context)
+    {
+        if (isDragging)
         {
             isDragging = false;
             float finalDelta = currentYAngle - startYAngle;
@@ -69,6 +124,23 @@ public class CameraController : MonoBehaviour
                 AnimateToAngle(snappedY);
             }
         }
+    }
+
+    // 크로스 플랫폼 입력 위치 가져오기
+    private Vector2 GetInputPosition()
+    {
+        // New Input System 사용
+        if (inputActions != null)
+        {
+            Vector2 pointValue = inputActions.Gameplay.Point.ReadValue<Vector2>();
+            if (pointValue != Vector2.zero)
+            {
+                return pointValue;
+            }
+        }
+
+        // 폴백: 기존 Input.mousePosition 사용
+        return Input.mousePosition;
     }
 
     void UpdateCameraPosition(float yAngle)
