@@ -97,7 +97,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fde8a08e19b7f4ff7b7f4f9772735f37, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hp: 0
-  ap: 0
+  factionData: {fileID: 11400000, guid: 1ea562037e7754f44af710ef9d89828b, type: 2}
+  hp: 3
+  ap: 1
   position: {x: 0, y: 0}
   skills: []

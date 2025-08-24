@@ -10,7 +10,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1206813403242570013, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       propertyPath: m_Layer
-      value: 0
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 4667360603751412220, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       propertyPath: m_LocalPosition.x
@@ -54,7 +54,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6659261805086680202, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       propertyPath: m_Layer
-      value: 0
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 7518791335084594423, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       propertyPath: m_Name
@@ -62,11 +62,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7518791335084594423, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       propertyPath: m_Layer
-      value: 0
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 8082963735377076064, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       propertyPath: m_Layer
-      value: 0
+      value: 6
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
@@ -97,8 +97,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 11077ff4f2266466f9c8040df4b92ea6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hp: 0
-  ap: 0
+  factionData: {fileID: 11400000, guid: 9e963a79be8964c29a46a65e5a812f0f, type: 2}
+  hp: 1
+  ap: 1
   position: {x: 0, y: 0}
 --- !u!4 &7896321439564049630 stripped
 Transform:
@@ -175,7 +176,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 9c9daf63c14fa42b5b13ebede6327fdf, type: 3}
       propertyPath: m_Layer
-      value: 0
+      value: 6
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

@@ -24,9 +24,9 @@ public class DebugPrinter : MonoBehaviour
             case DebugType.System:
                 return "00BFFF";
             case DebugType.Input:
-                return "473819";
-            case DebugType.Unit:
                 return "F49303";
+            case DebugType.Unit:
+                return "32CD32";
             default:
                 return "FFFFFF";
         }
