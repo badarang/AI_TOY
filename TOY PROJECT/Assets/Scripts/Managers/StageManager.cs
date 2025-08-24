@@ -36,7 +36,8 @@ public class StageManager : MonoBehaviour
         GameObject obj = Instantiate(handle.Result, GridToWorld(stage.playerSpawn), Quaternion.identity);
         player = obj.GetComponent<PlayerUnit>();
         player.position = stage.playerSpawn;
-        // UnitData 등 추가 세팅 필요시 여기에
+
+        gridManager.RegisterUnit(player, stage.playerSpawn);
     }
 
     async void SpawnEnemies(StageData stage)
@@ -53,9 +54,11 @@ public class StageManager : MonoBehaviour
             }
             GameObject obj = Instantiate(handle.Result, GridToWorld(enemyData.spawnPos), Quaternion.identity);
             EnemyUnit enemy = obj.GetComponent<EnemyUnit>();
-            Debug.Log($"적 유닛 생성: {enemyData.enemyType} at {enemyData.spawnPos}");
+            DebugPrinter.DebugColor(DebugType.Unit, $"적 유닛 생성: {enemyData.enemyType} at {enemyData.spawnPos}");
             enemy.position = enemyData.spawnPos;
             enemies.Add(enemy);
+
+            gridManager.RegisterUnit(enemy, enemyData.spawnPos);
         }
     }
 
@@ -73,6 +76,8 @@ public class StageManager : MonoBehaviour
             }
             GameObject obj = Instantiate(handle.Result, GridToWorld(obsData.spawnPos), Quaternion.identity);
             Obstacle obstacle = obj.GetComponent<Obstacle>();
+            DebugPrinter.DebugColor(DebugType.Unit, $"장애물 생성: {obsData.obstacleData} at {obsData.spawnPos}");
+
             if (obstacle != null)
                 obstacle.data = obsData.obstacleData;
         }
@@ -80,13 +85,11 @@ public class StageManager : MonoBehaviour
 
     Vector3 GridToWorld(Vector2Int gridPos)
     {
-        // 각 타일의 중앙에 위치하도록 변환
         return new Vector3(gridPos.x + 0.5f, 0, gridPos.y + 0.5f);
     }
 
     string GetPrefabName(UnitType type)
     {
-        // Enum에 따라 프리팹 이름 매칭 (예시)
         switch (type)
         {
             case UnitType.Player_Zed: return "Player_Zed";
@@ -134,4 +137,4 @@ public class StageManager : MonoBehaviour
             controller.height = camHeight;
         }
     }
-} 
+}

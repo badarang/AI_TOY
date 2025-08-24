@@ -5,121 +5,69 @@ using UnityEngine.InputSystem;
 
 public class GridManager : MonoBehaviour
 {
-    public int width { get; private set; }
-    public int height { get; private set; }
+    [Header("Grid Settings")]
+    private int width { get; set; }
+    private int height { get; set; }
+    public LayerMask unitLayer;
+
+    [Header("Datas")]
+    private Dictionary<Vector2Int, UnitBase> unitPositions = new Dictionary<Vector2Int, UnitBase>();
 
     private List<GameObject> gridLines = new List<GameObject>();
     private Vector2Int? hoveredCell = null;
     private Vector2Int? selectedCell = null;
     private UnitBase selectedUnit = null;
 
-    public LayerMask unitLayer;
     public Material highlightMat;
     private GameObject highlightQuad;
     private Material defaultHighlightMat;
 
-    // New Input System 관련 변수들
-    private PlayerInputActions inputActions;
-    private Camera mainCamera;
-
-    void Awake()
+    void Start()
     {
-        // PlayerInputActions 인스턴스 생성
-        inputActions = new PlayerInputActions();
-        mainCamera = Camera.main;
-    }
-
-    void OnEnable()
-    {
-        if (inputActions != null)
+        if (Core.Instance?.InputManager != null)
         {
-            inputActions.Gameplay.Click.performed += OnClickPerformed;
-            inputActions.Enable();
+            Core.Instance.InputManager.OnClick += HandleClick;
         }
     }
 
-    void OnDisable()
+    void Update()
     {
-        if (inputActions != null)
-        {
-            inputActions.Gameplay.Click.performed -= OnClickPerformed;
-            inputActions.Disable();
-        }
+        UpdateCellHover();
     }
 
     void OnDestroy()
     {
-        if (inputActions != null)
+        if (Core.Instance?.InputManager != null)
         {
-            inputActions.Dispose();
+            Core.Instance.InputManager.OnClick -= HandleClick;
         }
     }
-    void Update()
+
+    private void HandleClick(Vector2 clickPosition)
     {
-        // 카메라가 없으면 실행하지 않음
-        if (mainCamera == null)
+        Ray ray = Camera.main.ScreenPointToRay(clickPosition);
+        Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
+
+        if (groundPlane.Raycast(ray, out float distance))
         {
-            Debug.LogWarning("GridManager: mainCamera is null!");
-            return;
-        }
+            Vector3 hitPoint = ray.GetPoint(distance);
+            int x = Mathf.FloorToInt(hitPoint.x);
+            int z = Mathf.FloorToInt(hitPoint.z);
 
-        Vector2 pointValue = GetPointValue();
-        
-        // 월드 좌표로 직접 Ray 생성
-        Vector3 worldPos = mainCamera.ScreenToWorldPoint(new Vector3(pointValue.x, pointValue.y, mainCamera.nearClipPlane));
-        Ray ray = new Ray(mainCamera.transform.position, (worldPos - mainCamera.transform.position).normalized);
-
-        DebugPrinter.DebugColor(DebugType.Input, $"{pointValue.x}, {pointValue.y}");
-
-        // 디버깅용 Ray 그리기 (Scene 뷰에서 확인 가능)
-        Debug.DrawRay(ray.origin, ray.direction * 100f, Color.red);
-
-        // 단일 Raycast로 통일 (거리 제한 없음)
-        if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, ~0))
-        {
-            Debug.Log($"Hit: {hit.collider.gameObject.name} at {hit.point}");
-            
-            Vector3 point = hit.point;
-            int x = Mathf.FloorToInt(point.x);
-            int z = Mathf.FloorToInt(point.z);
-            
-            // 격자 범위 내에 있는지 확인
             if (x >= 0 && x < width && z >= 0 && z < height)
             {
-                // 새로운 셀에 호버했을 때만 하이라이트 업데이트
-                if (!hoveredCell.HasValue || hoveredCell.Value != new Vector2Int(x, z))
-                {
-                    hoveredCell = new Vector2Int(x, z);
-                    ShowHighlight(x, z);
-                }
+                TrySelectUnitAtCell(x, z);
             }
             else
             {
-                if (hoveredCell.HasValue)
-                {
-                    hoveredCell = null;
-                    HideHighlight();
-                }
+                // 그리드 밖을 클릭하면 deselect
+                ClearSelection();
             }
         }
         else
         {
-            // Raycast가 실패한 경우 하이라이트 숨기기
-            if (hoveredCell.HasValue)
-            {
-                hoveredCell = null;
-                HideHighlight();
-            }
-        }
-    }
-
-    // 클릭 이벤트 처리
-    private void OnClickPerformed(InputAction.CallbackContext context)
-    {
-        DebugPrinter.DebugColor(DebugType.Input, $"{inputActions.Gameplay.Point.ReadValue<Vector2>().x}, {inputActions.Gameplay.Point.ReadValue<Vector2>().y} Clicked");
-        if (hoveredCell.HasValue)
-        {
-            TrySelectUnitAtCell(hoveredCell.Value.x, hoveredCell.Value.y);
+            // Ray가 ground plane과 교차하지 않으면 deselect
+            ClearSelection();
         }
     }
 
@@ -133,38 +81,72 @@ public class GridManager : MonoBehaviour
         selectedUnit = null;
         if (highlightQuad != null) Destroy(highlightQuad);
 
-        // 카메라 위치를 고려하여 격자 Y 위치 조정
-        float gridY = 0.01f; // 격자 높이
-        
-        // 세로선
         for (int x = 0; x <= width; x++)
         {
-            CreateGridLine(new Vector3(x, gridY, 0), new Vector3(x, gridY, height));
+            CreateGridLine(new Vector3(x, 0.01f, 0), new Vector3(x, 0.01f, height));
         }
-        // 가로선
         for (int z = 0; z <= height; z++)
         {
-            CreateGridLine(new Vector3(0, gridY, z), new Vector3(width, gridY, z));
+            CreateGridLine(new Vector3(0, 0.01f, z), new Vector3(width, 0.01f, z));
         }
-        
-        Debug.Log($"Grid generated at Y={gridY}, size: {width}x{height}");
     }
 
-
-    // 크로스 플랫폼 입력 위치 가져오기
-    private Vector2 GetPointValue()
+    private void UpdateCellHover()
     {
-        if (inputActions != null)
+        Vector2 inputPosition = GetInputPosition();
+        if (inputPosition == Vector2.zero) return;
+
+        Ray ray = Camera.main.ScreenPointToRay(inputPosition);
+        Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
+
+        if (groundPlane.Raycast(ray, out float distance))
         {
-            Vector2 pointValue = inputActions.Gameplay.Point.ReadValue<Vector2>();
-            if (pointValue != Vector2.zero)
+            Vector3 hitPoint = ray.GetPoint(distance);
+            int x = Mathf.FloorToInt(hitPoint.x);
+            int z = Mathf.FloorToInt(hitPoint.z);
+
+            if (x >= 0 && x < width && z >= 0 && z < height)
             {
-                return pointValue;
+                Vector2Int cellPos = new Vector2Int(x, z);
+
+                if (unitPositions.ContainsKey(cellPos) && unitPositions[cellPos] != null)
+                {
+                    Vector2Int newHoveredCell = cellPos;
+
+                    if (hoveredCell != newHoveredCell)
+                    {
+                        hoveredCell = newHoveredCell;
+                    }
+
+                    ShowHighlight(x, z);
+                }
+                else
+                {
+                    if (hoveredCell.HasValue)
+                    {
+                        hoveredCell = null;
+                        HideHighlight();
+                    }
+                }
+            }
+            else
+            {
+                if (hoveredCell.HasValue)
+                {
+                    hoveredCell = null;
+                    HideHighlight();
+                }
             }
         }
+    }
 
-        Vector2 fallbackPosition = Input.mousePosition;
-        return fallbackPosition;
+    private Vector2 GetInputPosition()
+    {
+        if (Core.Instance?.InputManager != null)
+        {
+            return Core.Instance.InputManager.CurrentInputPosition;
+        }
+        return Vector2.zero;
     }
 
     void ShowHighlight(int x, int z)
@@ -172,84 +154,66 @@ public class GridManager : MonoBehaviour
         if (highlightQuad == null)
         {
             highlightQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            highlightQuad.name = "GridHighlight";
             highlightQuad.transform.localScale = new Vector3(1, 1, 1);
             highlightQuad.transform.rotation = Quaternion.Euler(90, 0, 0);
             highlightQuad.GetComponent<Collider>().enabled = false;
             defaultHighlightMat = highlightQuad.GetComponent<Renderer>().material;
-            
-            // 디버깅: 하이라이트 쿼드 생성 확인
-            Debug.Log("Highlight quad created");
         }
-        
-        // 격자 높이에 맞춰 하이라이트 위치 조정
-        float gridY = 0.01f;
-        highlightQuad.transform.position = new Vector3(x + 0.5f, gridY + 0.01f, z + 0.5f);
+
+        highlightQuad.transform.position = new Vector3(x + 0.5f, 0.02f, z + 0.5f);
         highlightQuad.SetActive(true);
-        
+
         var rend = highlightQuad.GetComponent<Renderer>();
         if (highlightMat != null)
-        {
             rend.material = highlightMat;
-            Debug.Log($"Using custom highlight material at position ({x}, {z})");
-        }
         else
-        {
-            // 기본 파란색 반투명 재질 생성
-            Material defaultMat = new Material(Shader.Find("Standard"));
-            defaultMat.color = new Color(0.3f, 0.6f, 1f, 0.3f);
-            defaultMat.SetFloat("_Mode", 3); // Transparent mode
-            defaultMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            defaultMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            defaultMat.SetInt("_ZWrite", 0);
-            defaultMat.DisableKeyword("_ALPHATEST_ON");
-            defaultMat.EnableKeyword("_ALPHABLEND_ON");
-            defaultMat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-            defaultMat.renderQueue = 3000;
-            
-            rend.material = defaultMat;
-            Debug.Log($"Using default blue highlight material at position ({x}, {z})");
-        }
+            rend.material.color = new Color(0.3f, 0.6f, 1f, 0.3f);
     }
 
     void HideHighlight()
     {
         if (highlightQuad != null)
+        {
             highlightQuad.SetActive(false);
+        }
     }
 
     void TrySelectUnitAtCell(int x, int z)
     {
-        // 격자 높이에 맞춰 유닛 검색 위치 조정
-        float gridY = 0.01f;
-        Vector3 cellCenter = new Vector3(x + 0.5f, gridY + 0.5f, z + 0.5f);
-        Collider[] hits = Physics.OverlapSphere(cellCenter, 0.3f, unitLayer);
-        if (hits.Length > 0)
+        Vector2Int cellPos = new Vector2Int(x, z);
+
+        if (unitPositions.ContainsKey(cellPos) && unitPositions[cellPos] != null)
         {
-            Debug.Log($"Cell ({x}, {z}) has {hits.Length} units.");
-            UnitBase unit = hits[0].GetComponent<UnitBase>();
-            if (unit != null && !(unit is EnemyUnit))
+            UnitBase unit = unitPositions[cellPos];
+
+            if (!(unit is EnemyUnit))
             {
-                if (selectedUnit != null)
-                    selectedUnit.Deselect();
-                selectedUnit = unit;
-                selectedUnit.Select();
-                selectedCell = new Vector2Int(x, z);
+                // 이미 선택된 유닛을 다시 클릭하면 deselect
+                if (selectedUnit == unit)
+                {
+                    ClearSelection();
+                }
+                else
+                {
+                    // 다른 유닛을 선택
+                    if (selectedUnit != null)
+                        selectedUnit.Deselect();
+                    selectedUnit = unit;
+                    selectedUnit.Select();
+                    selectedCell = cellPos;
+                }
             }
             else
             {
-                // EnemyUnit이거나 Unit이 아니면 선택 해제
-                if (selectedUnit != null)
-                    selectedUnit.Deselect();
-                selectedUnit = null;
-                selectedCell = null;
+                // 적 유닛을 클릭하면 deselect
+                ClearSelection();
             }
         }
         else
         {
-            if (selectedUnit != null)
-                selectedUnit.Deselect();
-            selectedUnit = null;
-            selectedCell = null;
+            // 빈 칸을 클릭하면 deselect
+            ClearSelection();
         }
     }
 
@@ -278,9 +242,62 @@ public class GridManager : MonoBehaviour
         gridLines.Clear();
     }
 
-    public bool IsMovable(Vector2Int pos)
+    public void RegisterUnit(UnitBase unit, Vector2Int gridPos)
     {
-        return true;
+        unitPositions[gridPos] = unit;
+        unit.position = gridPos;
+    }
+
+    public void UnregisterUnit(Vector2Int gridPos)
+    {
+        if (unitPositions.ContainsKey(gridPos))
+        {
+            unitPositions.Remove(gridPos);
+        }
+    }
+
+    public void MoveUnit(Vector2Int from, Vector2Int to)
+    {
+        if (unitPositions.ContainsKey(from))
+        {
+            UnitBase unit = unitPositions[from];
+            unitPositions.Remove(from);
+            unitPositions[to] = unit;
+            unit.position = to;
+        }
+    }
+
+    public UnitBase GetUnitAt(Vector2Int gridPos)
+    {
+        return unitPositions.ContainsKey(gridPos) ? unitPositions[gridPos] : null;
+    }
+
+    public bool HasUnitAt(Vector2Int gridPos)
+    {
+        return unitPositions.ContainsKey(gridPos) && unitPositions[gridPos] != null;
+    }
+
+    public UnitBase GetSelectedUnit()
+    {
+        return selectedUnit;
+    }
+
+    public Vector2Int? GetSelectedCell()
+    {
+        return selectedCell;
+    }
+
+    public Vector2Int? GetHoveredCell()
+    {
+        return hoveredCell;
+    }
+
+    public void ClearSelection()
+    {
+        if (selectedUnit != null)
+            selectedUnit.Deselect();
+        selectedUnit = null;
+        selectedCell = null;
     }
 
     private void OnDrawGizmos()
@@ -295,4 +312,4 @@ public class GridManager : MonoBehaviour
             Gizmos.DrawLine(new Vector3(0, 0, z), new Vector3(width, 0, z));
         }
     }
-} 
+}

@@ -16,6 +16,18 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 6
       objectReference: {fileID: 0}
+    - target: {fileID: 2771475969433993733, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
+      propertyPath: m_Height
+      value: 1.39
+      objectReference: {fileID: 0}
+    - target: {fileID: 2771475969433993733, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
+      propertyPath: m_Radius
+      value: 0.3482194
+      objectReference: {fileID: 0}
+    - target: {fileID: 2771475969433993733, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
+      propertyPath: m_Center.z
+      value: 0.1517806
+      objectReference: {fileID: 0}
     - target: {fileID: 4667360603751412220, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -55,6 +67,26 @@ PrefabInstance:
     - target: {fileID: 4667360603751412220, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5012534859445924867, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.453
+      objectReference: {fileID: 0}
+    - target: {fileID: 5156589044427367926, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 5156589044427367926, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 5156589044427367926, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 5156589044427367926, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6659261805086680202, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       propertyPath: m_Layer
