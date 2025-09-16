@@ -26,7 +26,7 @@ MonoBehaviour:
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: abde3b5da2f074872a14dcd2089a0130
-    m_Address: Prefabs/Units/Player_Zed.prefab
+    m_Address: Prefabs/Units/Player_Hikai.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

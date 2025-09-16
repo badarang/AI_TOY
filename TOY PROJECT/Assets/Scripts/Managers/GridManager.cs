@@ -5,6 +5,19 @@ using UnityEngine.InputSystem;
 
 public class GridManager : MonoBehaviour
 {
+    public static GridManager Instance { get; private set; }
+
+    void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            Instance = this;
+        }
+    }
     [Header("Grid Settings")]
     private int width { get; set; }
     private int height { get; set; }

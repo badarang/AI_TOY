@@ -13,7 +13,7 @@ public enum UnitType
 public class UnitData : ScriptableObject
 {
     public UnitType unitType;
-    public string unitName;
+    public UnitMeta unitMeta;
     public int maxHp;
     public int maxAp;
     public SkillData[] skills;

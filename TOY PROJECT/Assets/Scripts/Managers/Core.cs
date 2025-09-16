@@ -6,14 +6,16 @@ public class Core : MonoBehaviour
 
     [Header("Managers")]
     [SerializeField] private InputManager inputManager;
-    [SerializeField] private GridManager gridManager;
     [SerializeField] private TurnManager turnManager;
+    [SerializeField] private UIManager uiManager;
+    [SerializeField] private GridManager gridManager;
 
 
     // 프로퍼티로 접근
     public InputManager InputManager => inputManager;
-    public GridManager GridManager => gridManager;
     public TurnManager TurnManager => turnManager;
+    public UIManager UIManager => uiManager;
+    public GridManager GridManager => gridManager;
 
     void Awake()
     {
@@ -37,8 +39,9 @@ public class Core : MonoBehaviour
     {
         // Inspector에서 할당하지 않았다면 자동으로 찾거나 생성
         if (inputManager == null) inputManager = FindObjectOfType<InputManager>();
-        if (gridManager == null) gridManager = FindObjectOfType<GridManager>();
         if (turnManager == null) turnManager = FindObjectOfType<TurnManager>();
+        if (uiManager == null) uiManager = FindObjectOfType<UIManager>();
+        if (gridManager == null) gridManager = FindObjectOfType<GridManager>();
     }
 
     // 게임 종료시 정리

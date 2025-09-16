@@ -21,20 +21,20 @@ public class InputManager : MonoBehaviour
     private PlayerInputActions inputActions;
     
     private TurnManager turnManager;
-    private GridManager gridManager;
+    private UIManager uiManager;
 
     void Awake()
     {
         inputActions = new PlayerInputActions();
-        if (Core.Instance != null)
-        {
-            turnManager = Core.Instance.TurnManager;
-            gridManager = Core.Instance.GridManager;
-        }
     }
 
     void Start()
     {
+        if (Core.Instance != null)
+        {
+            turnManager = Core.Instance.TurnManager;
+            uiManager = Core.Instance.UIManager;
+        }
         SetupInputEvents();
     }
 
@@ -133,11 +133,11 @@ public class InputManager : MonoBehaviour
         Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
         if (!groundPlane.Raycast(ray, out float distance))
         {
-            // Clicked outside the grid, deselect if a unit is selected
             if (turnManager.CurrentPlayerState == TurnManager.PlayerTurnState.UnitSelected)
             {
-                gridManager.ClearSelection();
+                GridManager.Instance.ClearSelection();
                 turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
+                uiManager.UpdateSkillPanel(); // Update UI on deselect
             }
             return;
         }
@@ -159,57 +159,56 @@ public class InputManager : MonoBehaviour
 
     private void HandleUnitSelection(Vector2Int cell)
     {
-        UnitBase unit = gridManager.GetUnitAt(cell);
+        GridManager.Instance.ClearSelection(); // Clear previous selection first
+        
+        UnitBase unit = GridManager.Instance.GetUnitAt(cell);
         if (unit != null && unit is PlayerUnit)
         {
-            gridManager.TrySelectUnitAtCell(cell); // Use the existing selection logic
+            GridManager.Instance.TrySelectUnitAtCell(cell);
             
-            UnitBase selectedUnit = gridManager.GetSelectedUnit();
-            if (selectedUnit != null && selectedUnit.unitData != null)
+            UnitBase selectedUnit = GridManager.Instance.GetSelectedUnit();
+            if (selectedUnit != null)
             {
-                List<Vector2Int> movableTiles = gridManager.FindMovableTiles(cell, selectedUnit.unitData.movementPattern);
-                gridManager.HighlightMovableTiles(movableTiles);
                 turnManager.SetPlayerState(TurnManager.PlayerTurnState.UnitSelected);
+                if (selectedUnit.unitData != null)
+                {
+                    List<Vector2Int> movableTiles = GridManager.Instance.FindMovableTiles(cell, selectedUnit.unitData.movementPattern);
+                    GridManager.Instance.HighlightMovableTiles(movableTiles);
+                }
             }
         }
-        else
-        {
-            // Clicked on empty cell or enemy, clear selection
-            gridManager.ClearSelection();
-        }
+        // Whether a unit was selected or not, update the panel
+        uiManager.UpdateSkillPanel();
     }
 
     private void HandleMovementSelection(Vector2Int cell)
     {
-        UnitBase selectedUnit = gridManager.GetSelectedUnit();
+        UnitBase selectedUnit = GridManager.Instance.GetSelectedUnit();
         if (selectedUnit == null) return;
 
-        if (gridManager.IsMovableTile(cell))
+        if (GridManager.Instance.IsMovableTile(cell))
         {
             selectedUnit.Move(cell);
-            gridManager.ClearMovableHighlights();
+            GridManager.Instance.ClearMovableHighlights();
             turnManager.SetPlayerState(TurnManager.PlayerTurnState.PerformingAction);
+            uiManager.UpdateSkillPanel(); // Clear panel after move
             
-            // For now, end turn after moving. This can be changed later.
-            // Using a coroutine to wait a bit before ending the turn.
             StartCoroutine(EndTurnAfterDelay(1.0f));
         }
         else
         {
-            // Clicked somewhere else (not a valid move tile)
-            // If the click is on the same unit, do nothing. If it's another player unit, switch selection.
-            UnitBase clickedUnit = gridManager.GetUnitAt(cell);
+            UnitBase clickedUnit = GridManager.Instance.GetUnitAt(cell);
             if (clickedUnit != null && clickedUnit is PlayerUnit && clickedUnit != selectedUnit)
             {
                 // Switch selection to another player unit
-                gridManager.ClearSelection();
-                HandleUnitSelection(cell);
+                HandleUnitSelection(cell); // This will clear old selection and start new one
             }
             else
             {
                 // Clicked on empty space, enemy, or the same unit again -> Deselect
-                gridManager.ClearSelection();
+                GridManager.Instance.ClearSelection();
                 turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
+                uiManager.UpdateSkillPanel(); // Update UI on deselect
             }
         }
     }

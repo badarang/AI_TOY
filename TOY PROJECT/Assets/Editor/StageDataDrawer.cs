@@ -363,7 +363,7 @@ public class StageDataEditor : OdinEditor
             normal = { textColor = new Color(0.3f, 0.2f, 0.1f, 1f) }
         };
         var nameRect = new Rect(cellRect.x, cellRect.yMax - 12, cellRect.width, 12);
-        GUI.Label(nameRect, obstacleData.obstacleName, nameStyle);
+        GUI.Label(nameRect, obstacleData.unitMeta.nameKey, nameStyle);
     }
 
     private void DrawIconBackground(Rect iconRect, Color color)
@@ -632,9 +632,9 @@ public class StageDataEditor : OdinEditor
                         var path = AssetDatabase.GUIDToAssetPath(guid);
                         var obsData = AssetDatabase.LoadAssetAtPath<ObstacleData>(path);
                         if (obsData == null) continue;
-                        menu.AddItem(new GUIContent($"🌲 Add Obstacle/{obsData.obstacleName}"), false, () =>
+                        menu.AddItem(new GUIContent($"🌲 Add Obstacle/{obsData.unitMeta.nameKey}"), false, () =>
                         {
-                            Undo.RecordObject(data, $"Add Obstacle {obsData.obstacleName}");
+                            Undo.RecordObject(data, $"Add Obstacle {obsData.unitMeta.nameKey}");
                             var list = data.obstacleSpawns.ToList();
                             list.Add(new ObstacleSpawnData { obstacleData = obsData, spawnPos = contextMenuPos });
                             data.obstacleSpawns = list.ToArray();
@@ -650,7 +650,7 @@ public class StageDataEditor : OdinEditor
             else if (obsIdx >= 0)
             {
                 // 이미 장애물이 있으면 삭제 메뉴
-                var obsName = data.obstacleSpawns[obsIdx].obstacleData != null ? data.obstacleSpawns[obsIdx].obstacleData.obstacleName : "Obstacle";
+                var obsName = data.obstacleSpawns[obsIdx].obstacleData != null ? data.obstacleSpawns[obsIdx].obstacleData.unitMeta.nameKey : "Obstacle";
                 menu.AddItem(new GUIContent($"🗑️ Remove Obstacle ({obsName})"), false, () =>
                 {
                     Undo.RecordObject(data, "Remove Obstacle");

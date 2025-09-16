@@ -66,12 +66,12 @@ public class StageManager : MonoBehaviour
     {
         foreach (var obsData in stage.obstacleSpawns)
         {
-            if (obsData.obstacleData == null || string.IsNullOrEmpty(obsData.obstacleData.obstacleName)) continue;
-            var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Obstacles/{obsData.obstacleData.obstacleName}.prefab");
+            if (obsData.obstacleData == null || string.IsNullOrEmpty(obsData.obstacleData.unitMeta.nameKey)) continue;
+            var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Obstacles/{obsData.obstacleData.unitMeta.nameKey}.prefab");
             await handle.Task;
             if (handle.Status != AsyncOperationStatus.Succeeded)
             {
-                Debug.LogError($"Obstacle 프리팹을 Addressable에서 찾을 수 없습니다: {obsData.obstacleData.obstacleName}");
+                Debug.LogError($"Obstacle 프리팹을 Addressable에서 찾을 수 없습니다: {obsData.obstacleData.unitMeta.nameKey}");
                 continue;
             }
             GameObject obj = Instantiate(handle.Result, GridToWorld(obsData.spawnPos), Quaternion.identity);
