@@ -368,7 +368,7 @@ Camera:
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 60
-  orthographic: 0
+  orthographic: 1
   orthographic size: 5
   m_Depth: -1
   m_CullingMask:
@@ -790,7 +790,7 @@ MonoBehaviour:
   unitLayer:
     serializedVersion: 2
     m_Bits: 64
-  highlightMat: {fileID: 0}
+  highlightMat: {fileID: 10306, guid: 0000000000000000f000000000000000, type: 0}
 --- !u!4 &1927667683
 Transform:
   m_ObjectHideFlags: 0

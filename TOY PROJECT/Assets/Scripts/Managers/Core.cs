@@ -6,10 +6,14 @@ public class Core : MonoBehaviour
 
     [Header("Managers")]
     [SerializeField] private InputManager inputManager;
+    [SerializeField] private GridManager gridManager;
+    [SerializeField] private TurnManager turnManager;
 
 
     // 프로퍼티로 접근
     public InputManager InputManager => inputManager;
+    public GridManager GridManager => gridManager;
+    public TurnManager TurnManager => turnManager;
 
     void Awake()
     {
@@ -31,35 +35,10 @@ public class Core : MonoBehaviour
 
     private void SetupManagers()
     {
-        SetupInputManager();
-        // 다른 매니저들도 여기서 설정
-    }
-
-    private void SetupInputManager()
-    {
         // Inspector에서 할당하지 않았다면 자동으로 찾거나 생성
-        if (inputManager == null)
-        {
-            // 1. 자식 오브젝트에서 InputManager 찾기
-            inputManager = GetComponentInChildren<InputManager>();
-
-            // 2. 없다면 새로 생성
-            if (inputManager == null)
-            {
-                GameObject inputManagerObj = new GameObject("InputManager");
-                inputManagerObj.transform.SetParent(transform);
-                inputManager = inputManagerObj.AddComponent<InputManager>();
-                Debug.Log("Core: InputManager created automatically");
-            }
-            else
-            {
-                Debug.Log("Core: InputManager found in children");
-            }
-        }
-        else
-        {
-            Debug.Log("Core: InputManager assigned in Inspector");
-        }
+        if (inputManager == null) inputManager = FindObjectOfType<InputManager>();
+        if (gridManager == null) gridManager = FindObjectOfType<GridManager>();
+        if (turnManager == null) turnManager = FindObjectOfType<TurnManager>();
     }
 
     // 게임 종료시 정리

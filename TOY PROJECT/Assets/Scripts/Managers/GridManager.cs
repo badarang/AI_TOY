@@ -22,53 +22,9 @@ public class GridManager : MonoBehaviour
     private GameObject highlightQuad;
     private Material defaultHighlightMat;
 
-    void Start()
-    {
-        if (Core.Instance?.InputManager != null)
-        {
-            Core.Instance.InputManager.OnClick += HandleClick;
-        }
-    }
-
     void Update()
     {
         UpdateCellHover();
-    }
-
-    void OnDestroy()
-    {
-        if (Core.Instance?.InputManager != null)
-        {
-            Core.Instance.InputManager.OnClick -= HandleClick;
-        }
-    }
-
-    private void HandleClick(Vector2 clickPosition)
-    {
-        Ray ray = Camera.main.ScreenPointToRay(clickPosition);
-        Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
-
-        if (groundPlane.Raycast(ray, out float distance))
-        {
-            Vector3 hitPoint = ray.GetPoint(distance);
-            int x = Mathf.FloorToInt(hitPoint.x);
-            int z = Mathf.FloorToInt(hitPoint.z);
-
-            if (x >= 0 && x < width && z >= 0 && z < height)
-            {
-                TrySelectUnitAtCell(x, z);
-            }
-            else
-            {
-                // 그리드 밖을 클릭하면 deselect
-                ClearSelection();
-            }
-        }
-        else
-        {
-            // Ray가 ground plane과 교차하지 않으면 deselect
-            ClearSelection();
-        }
     }
 
     public void GenerateGrid(StageData stageData)
@@ -179,15 +135,13 @@ public class GridManager : MonoBehaviour
         }
     }
 
-    void TrySelectUnitAtCell(int x, int z)
+    public void TrySelectUnitAtCell(Vector2Int cellPos)
     {
-        Vector2Int cellPos = new Vector2Int(x, z);
-
         if (unitPositions.ContainsKey(cellPos) && unitPositions[cellPos] != null)
         {
             UnitBase unit = unitPositions[cellPos];
 
-            if (!(unit is EnemyUnit))
+            if (unit is PlayerUnit)
             {
                 // 이미 선택된 유닛을 다시 클릭하면 deselect
                 if (selectedUnit == unit)
@@ -196,7 +150,7 @@ public class GridManager : MonoBehaviour
                 }
                 else
                 {
-                    // 다른 유닛을 선택
+                    // 다른 플레이어 유닛을 선택
                     if (selectedUnit != null)
                         selectedUnit.Deselect();
                     selectedUnit = unit;
@@ -206,7 +160,7 @@ public class GridManager : MonoBehaviour
             }
             else
             {
-                // 적 유닛을 클릭하면 deselect
+                // 적 유닛이나 빈 칸을 클릭하면 deselect
                 ClearSelection();
             }
         }
@@ -298,6 +252,82 @@ public class GridManager : MonoBehaviour
             selectedUnit.Deselect();
         selectedUnit = null;
         selectedCell = null;
+        ClearMovableHighlights();
+    }
+
+    [Header("Movable Tile Highlight")]
+    public Material movableTileMaterial;
+    private List<GameObject> movableTileHighlights = new List<GameObject>();
+    private List<Vector2Int> _currentMovableTiles = new List<Vector2Int>();
+
+    public List<Vector2Int> FindMovableTiles(Vector2Int startPos, List<Vector2Int> movementPattern)
+    {
+        var movableTiles = new List<Vector2Int>();
+        if (movementPattern == null) return movableTiles;
+
+        foreach (var offset in movementPattern)
+        {
+            Vector2Int destination = startPos + offset;
+
+            // Check bounds
+            if (destination.x < 0 || destination.x >= width || destination.y < 0 || destination.y >= height)
+            {
+                continue;
+            }
+
+            // Check if occupied by another unit or obstacle
+            // Note: This assumes obstacles are also registered as units.
+            if (HasUnitAt(destination))
+            {
+                continue;
+            }
+
+            movableTiles.Add(destination);
+        }
+        return movableTiles;
+    }
+
+    public void HighlightMovableTiles(List<Vector2Int> tilesToHighlight)
+    {
+        ClearMovableHighlights();
+        _currentMovableTiles = tilesToHighlight;
+
+        foreach (var tile in tilesToHighlight)
+        {
+            GameObject highlight = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            highlight.name = $"MovableHighlight_{tile.x}_{tile.y}";
+            highlight.transform.position = new Vector3(tile.x + 0.5f, 0.03f, tile.y + 0.5f);
+            highlight.transform.rotation = Quaternion.Euler(90, 0, 0);
+            highlight.GetComponent<Collider>().enabled = false;
+            
+            var rend = highlight.GetComponent<Renderer>();
+            if (movableTileMaterial != null)
+            {
+                rend.material = movableTileMaterial;
+            }
+            else
+            {
+                // Default material
+                rend.material.color = new Color(0.1f, 0.5f, 1f, 0.4f);
+            }
+            
+            movableTileHighlights.Add(highlight);
+        }
+    }
+
+    public void ClearMovableHighlights()
+    {
+        foreach (var highlight in movableTileHighlights)
+        {
+            Destroy(highlight);
+        }
+        movableTileHighlights.Clear();
+        _currentMovableTiles.Clear();
+    }
+
+    public bool IsMovableTile(Vector2Int tile)
+    {
+        return _currentMovableTiles.Contains(tile);
     }
 
     private void OnDrawGizmos()

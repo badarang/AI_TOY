@@ -92,8 +92,8 @@ public class StageManager : MonoBehaviour
     {
         switch (type)
         {
-            case UnitType.Player_Zed: return "Player_Zed";
-            case UnitType.Player_Lux: return "Player_Lux";
+            case UnitType.Player_Hikai: return "Player_Hikai";
+            case UnitType.Player_Vrixa: return "Player_Vrixa";
             case UnitType.Enemy_Goose: return "Enemy_Goose";
             default: return null;
         }
@@ -113,16 +113,18 @@ public class StageManager : MonoBehaviour
     {
         Camera cam = Camera.main;
         if (cam == null) return;
+
         Vector3 center = new Vector3(width / 2f, 0, height / 2f);
-        float camHeight = Mathf.Max(width, height) * 1.2f;
-        cam.transform.position = center + new Vector3(0, camHeight, camHeight);
-        cam.transform.LookAt(center);
-        cam.orthographic = false;
-        cam.fieldOfView = 45f;
-        // CameraController 자동 세팅
+        float maxDim = Mathf.Max(width, height);
+
+        // Ensure camera is orthographic
+        cam.orthographic = true;
+        
+        // Get the controller and configure it
         var controller = cam.GetComponent<CameraController>();
         if (controller != null)
         {
+            // Set the target for the controller to the center of the stage
             if (controller.target == null)
             {
                 var t = new GameObject("CameraTarget").transform;
@@ -133,8 +135,12 @@ public class StageManager : MonoBehaviour
             {
                 controller.target.position = center;
             }
-            controller.distance = camHeight;
-            controller.height = camHeight;
+
+            // Update controller properties to frame the stage correctly
+            float cameraDistanceAndHeight = maxDim * 1.2f;
+            controller.distance = cameraDistanceAndHeight;
+            controller.height = cameraDistanceAndHeight;
+            controller.orthographicSize = maxDim * 0.75f; // Adjust this multiplier for best fit
         }
     }
 }

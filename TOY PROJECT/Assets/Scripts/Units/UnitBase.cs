@@ -4,6 +4,7 @@ using UnityEngine.UI;
 
 public abstract class UnitBase : MonoBehaviour
 {
+    public UnitData unitData;
     public FactionData factionData;
     public int hp;
     public int ap; // 행동력

@@ -1,10 +1,11 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public enum UnitType
 {
     None,
-    Player_Zed,
-    Player_Lux,
+    Player_Hikai,
+    Player_Vrixa,
     Enemy_Goose,
 }
 
@@ -16,4 +17,5 @@ public class UnitData : ScriptableObject
     public int maxHp;
     public int maxAp;
     public SkillData[] skills;
+    public List<Vector2Int> movementPattern;
 } 
