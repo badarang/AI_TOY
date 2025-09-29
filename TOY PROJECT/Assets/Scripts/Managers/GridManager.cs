@@ -22,6 +22,7 @@ public class GridManager : MonoBehaviour
     private int width { get; set; }
     private int height { get; set; }
     public LayerMask unitLayer;
+    public Material gridLineMaterial;
 
     [Header("Datas")]
     private Dictionary<Vector2Int, UnitBase> unitPositions = new Dictionary<Vector2Int, UnitBase>();
@@ -187,7 +188,14 @@ public class GridManager : MonoBehaviour
         lr.SetPosition(1, end);
         lr.startWidth = 0.03f;
         lr.endWidth = 0.03f;
-        lr.material = new Material(Shader.Find("Sprites/Default"));
+        if (gridLineMaterial != null)
+        {
+            lr.material = gridLineMaterial;
+        }
+        else
+        {
+            Debug.LogError("GridLineMaterial is not set in the GridManager Inspector!");
+        }
         lr.startColor = lr.endColor = Color.gray;
         lr.useWorldSpace = true;
         gridLines.Add(lineObj);

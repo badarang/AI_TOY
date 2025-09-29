@@ -6,7 +6,7 @@ public class DamageBehavior : SkillBehavior
 {
     public int damage = 10;
 
-    public override void Execute(SkillContext context)
+    public override float Execute(SkillContext context)
     {
         UnitBase target = Core.Instance.GridManager.GetUnitAt(context.TargetPosition);
         if (target != null)
@@ -14,5 +14,6 @@ public class DamageBehavior : SkillBehavior
             Debug.Log($"{target.name}에게 {damage}의 피해를 입혔습니다!");
             target.TakeDamage(damage);
         }
+        return 0f; // 즉시 끝나는 행동이므로 0을 반환합니다.
     }
 }

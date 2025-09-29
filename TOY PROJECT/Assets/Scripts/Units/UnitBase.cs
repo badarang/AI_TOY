@@ -28,25 +28,25 @@ public class UnitBase : MonoBehaviour
         }
     }
 
-    public virtual void UseSkill(int skillIndex, Vector2Int targetPos)
+    public virtual float UseSkill(int skillIndex, Vector2Int targetPos)
     {
         if (skillIndex < 0 || skillIndex >= unitData.skills.Length)
         {
             Debug.LogError("Invalid skill index.");
-            return;
+            return 0f;
         }
 
         var skill = unitData.skills[skillIndex];
         if (_skillCooldowns[skillIndex] > 0)
         {
             Debug.LogWarning($"Skill {skill.skillMeta.nameKey} is on cooldown for {_skillCooldowns[skillIndex]} more turns.");
-            return;
+            return 0f;
         }
 
         if (ap < skill.apCost)
         {
             Debug.LogWarning("Not enough AP to use this skill.");
-            return;
+            return 0f;
         }
 
         Debug.Log($"Using skill '{skill.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {skill.apCost}");
@@ -55,10 +55,11 @@ public class UnitBase : MonoBehaviour
 
         Debug.Log($"{name} used {skill.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
 
+        float totalDuration = 0f;
         var context = new SkillContext(this, targetPos);
         foreach (var behavior in skill.initialBehaviors)
         {
-            behavior.Execute(context);
+            totalDuration += behavior.Execute(context);
         }
 
         if (skill.subTargetBehaviors != null && skill.subTargetBehaviors.Length > 0)
@@ -66,8 +67,9 @@ public class UnitBase : MonoBehaviour
             Core.Instance.TurnManager.PausedSkillData = skill;
             Core.Instance.TurnManager.PausedSkillContext = context;
             Core.Instance.TurnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingSkillSubTarget);
-            // The skill execution will be resumed by the InputManager
         }
+
+        return totalDuration;
     }
 
     public int GetMoveSkillIndex()
@@ -160,10 +162,10 @@ public class UnitBase : MonoBehaviour
         {
             var skill = unitData.skills[i];
 
-            // Check if skill is on cooldown
             if (_skillCooldowns[i] > 0) continue;
+            if (ap < skill.apCost) continue;
 
-            // Attack Range Highlighting
+            // Find potential attack targets
             if (skill.range > 0)
             {
                 foreach (var potentialTarget in allUnits)
@@ -172,40 +174,27 @@ public class UnitBase : MonoBehaviour
                     int distance = Mathf.Abs(position.x - potentialTarget.position.x) + Mathf.Abs(position.y - potentialTarget.position.y);
                     if (distance <= skill.range)
                     {
-                        if (!potentialTargets.Contains(potentialTarget))
-                        {
-                            potentialTargets.Add(potentialTarget);
-                        }
+                        if (!potentialTargets.Contains(potentialTarget)) potentialTargets.Add(potentialTarget);
                     }
                 }
             }
 
-            // Movement Pattern Highlighting
+            // Find movable tiles
             if (skill.movementPattern != null && skill.movementPattern.Count > 0)
             {
                 foreach (var offset in skill.movementPattern)
                 {
                     Vector2Int destination = position + offset;
-                    if (!gridManager.IsValidTile(destination)) continue;
-
-                    UnitBase unitOnTile = gridManager.GetUnitAt(destination);
-                    if (unitOnTile != null)
+                    if (gridManager.IsValidTile(destination) && !gridManager.HasUnitAt(destination))
                     {
-                        if (unitOnTile.factionData != this.factionData && !potentialTargets.Contains(unitOnTile))
-                        {
-                            potentialTargets.Add(unitOnTile); // Add enemy as a potential target
-                        }
-                    }
-                    else
-                    {
-                        if (!movableTiles.Contains(destination))
-                        {
-                            movableTiles.Add(destination);
-                        }
+                        if (!movableTiles.Contains(destination)) movableTiles.Add(destination);
                     }
                 }
             }
         }
+
+        // Prioritize targets: if a tile is both movable and has a target, only show it as a target.
+        movableTiles.RemoveAll(tile => potentialTargets.Any(target => target.position == tile));
 
         gridManager.HighlightMovableTiles(movableTiles);
         gridManager.HighlightTargets(potentialTargets);
@@ -225,4 +214,4 @@ public class UnitBase : MonoBehaviour
 
         OnDeselected?.Invoke();
     }
-} 
+}

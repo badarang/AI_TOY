@@ -1,14 +1,16 @@
-using UnityEngine;
-
+// /Assets/Scripts/Skills/MoveBehavior.cs
 using UnityEngine;
 using DG.Tweening;
 
 [CreateAssetMenu(menuName = "SkillBehaviors/MoveBehavior")]
 public class MoveBehavior : SkillBehavior
 {
-    public override void Execute(SkillContext context)
+    public float animationDuration = 0.4f;
+
+    public override float Execute(SkillContext context)
     {
-        UnitBase caster = context.Caster;
+        var caster = context.Caster;
+
         Vector2Int startPos = caster.position;
         Vector2Int targetPos = context.TargetPosition;
 
@@ -17,20 +19,10 @@ public class MoveBehavior : SkillBehavior
 
         // 2. Play visual tween
         Vector3 targetWorldPos = new Vector3(targetPos.x + 0.5f, 0, targetPos.y + 0.5f);
-        caster.transform.DOJump(targetWorldPos, 0.5f, 1, 0.4f).OnComplete(() =>
-        {
-            // 3. Refresh action highlights after move is complete
-            if (caster.ap > 0)
-            {
-                caster.ShowAvailableActions();
-            }
-            else
-            {
-                Core.Instance.GridManager.ClearSelection();
-                // TODO: Link with TurnManager to end turn
-            }
-        });
+        caster.transform.DOJump(targetWorldPos, 0.5f, 1, animationDuration);
 
         Debug.Log($"{caster.name} moved to {targetPos}");
+
+        return animationDuration; // 애니메이션 시간을 반환합니다.
     }
 }

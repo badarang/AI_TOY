@@ -4,7 +4,7 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "SkillBehaviors/MoveToTargetOriginBehavior")]
 public class MoveToTargetOriginBehavior : SkillBehavior
 {
-    public override void Execute(SkillContext context)
+    public override float Execute(SkillContext context)
     {
         bool hitWall = context.blackboard.TryGetValue(BlackboardKeys.PushedUnitHitWall, out object val) && (bool)val;
 
@@ -14,5 +14,6 @@ public class MoveToTargetOriginBehavior : SkillBehavior
             Core.Instance.GridManager.MoveUnit(context.Caster.position, context.TargetPosition);
             Debug.Log($"{context.Caster.name}이(가) 적의 원래 위치로 이동합니다.");
         }
+        return 0f;
     }
 }

@@ -183,6 +183,8 @@ public class InputManager : MonoBehaviour
         UnitBase selectedUnit = GridManager.Instance.GetSelectedUnit();
         if (selectedUnit == null) return;
 
+        float skillDuration = 0f;
+
         // 1. Check for Attack Target
         UnitBase targetUnit = GridManager.Instance.GetTargetAt(cell);
         if (targetUnit != null)
@@ -192,10 +194,8 @@ public class InputManager : MonoBehaviour
             {
                 if (selectedUnit.unitData.skills[i].range > 0)
                 {
-                    selectedUnit.UseSkill(i, cell);
-                    GridManager.Instance.ClearSelection();
-                    turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
-                    uiManager.UpdateSkillPanel();
+                    skillDuration = selectedUnit.UseSkill(i, cell);
+                    StartCoroutine(PostActionUpdateCoroutine(selectedUnit, skillDuration));
                     return; // Action taken
                 }
             }
@@ -211,10 +211,8 @@ public class InputManager : MonoBehaviour
                 var skill = selectedUnit.unitData.skills[i];
                 if (skill.movementPattern != null && skill.movementPattern.Count > 0)
                 {
-                    selectedUnit.UseSkill(i, cell);
-                    GridManager.Instance.ClearSelection();
-                    turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
-                    uiManager.UpdateSkillPanel();
+                    skillDuration = selectedUnit.UseSkill(i, cell);
+                    StartCoroutine(PostActionUpdateCoroutine(selectedUnit, skillDuration));
                     return; // Action taken
                 }
             }
@@ -231,6 +229,24 @@ public class InputManager : MonoBehaviour
         
         // 4. If nothing else, cancel selection
         CancelSkillState();
+    }
+
+    private System.Collections.IEnumerator PostActionUpdateCoroutine(UnitBase unit, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        if (unit == null) yield break; // Unit might have died during the action
+
+        if (unit.ap > 0)
+        {
+            unit.ShowAvailableActions();
+        }
+        else
+        {
+            GridManager.Instance.ClearSelection();
+            turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
+            uiManager.UpdateSkillPanel();
+        }
     }
 
     private void HandleSkillSubTargetSelection(Vector2Int cell)
