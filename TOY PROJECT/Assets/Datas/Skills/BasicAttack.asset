@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3279dc2c16e0b46639b600e83faa2e3d, type: 3}
-  m_Name: Hakai_Skill1
+  m_Name: BasicAttack
   m_EditorClassIdentifier: 
   unitMeta:
     nameKey: 
@@ -18,8 +18,7 @@ MonoBehaviour:
   apCost: 1
   cooldown: 1
   range: 1
+  movementPattern: []
   initialBehaviors:
-  - {fileID: 11400000, guid: 2c3789722acfe41d5a28ce50e7f47628, type: 2}
-  - {fileID: 11400000, guid: c9ff6631cd8884bfbb29a6a65a8f75b8, type: 2}
-  subTargetBehaviors:
-  - {fileID: 11400000, guid: e0f6d6fd6cdac4213ab86ef951602eb7, type: 2}
+  - {fileID: 11400000, guid: 9476e2a57a6a946849955c67e62fd196, type: 2}
+  subTargetBehaviors: []

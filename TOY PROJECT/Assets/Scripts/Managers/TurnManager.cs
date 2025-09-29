@@ -24,12 +24,10 @@ public class TurnManager : MonoBehaviour
         CurrentTurn = Turn.Player;
         CurrentPlayerState = PlayerTurnState.AwaitingUnitSelection;
         
-        // 플레이어 AP 회복
         var player = stageManager.GetPlayer();
-        if (player != null && player.unitData != null)
+        if (player != null)
         {
-            player.ap = Mathf.Min(player.ap + 1, player.unitData.maxAp);
-            Debug.Log($"{player.name} AP recovered. Current AP: {player.ap}");
+            player.OnTurnStart();
         }
 
         OnPlayerTurnStart?.Invoke();
@@ -44,10 +42,9 @@ public class TurnManager : MonoBehaviour
         var enemies = stageManager.GetEnemies();
         foreach (var enemy in enemies)
         {
-            if (enemy != null && enemy.unitData != null)
+            if (enemy != null)
             {
-                enemy.ap = Mathf.Min(enemy.ap + 1, enemy.unitData.maxAp);
-                Debug.Log($"{enemy.name} AP recovered. Current AP: {enemy.ap}");
+                enemy.OnTurnStart();
             }
         }
 

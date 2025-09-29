@@ -29,6 +29,11 @@ public class PierceOnKillBehavior : SkillBehavior
         }
 
         Debug.Log($"Enemy killed. Piercing to {pierceDestination}.");
-        context.Caster.Move(pierceDestination);
+        var caster = context.Caster;
+        int moveSkillIndex = caster.GetMoveSkillIndex();
+        if (moveSkillIndex != -1)
+        {
+            caster.UseSkill(moveSkillIndex, pierceDestination);
+        }
     }
 }

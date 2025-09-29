@@ -17,12 +17,4 @@ public class UnitData : ScriptableObject
     public int maxHp;
     public int maxAp;
     public SkillData[] skills;
-
-    public List<Vector2Int> movementPattern = new List<Vector2Int>
-    {
-        new Vector2Int(1, 1),
-        new Vector2Int(-1, -1),
-        new Vector2Int(1, -1),
-        new Vector2Int(-1, -1)
-    };
 }

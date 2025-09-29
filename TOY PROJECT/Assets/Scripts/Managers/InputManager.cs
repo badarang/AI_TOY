@@ -172,12 +172,7 @@ public class InputManager : MonoBehaviour
             if (selectedUnit != null)
             {
                 turnManager.SetPlayerState(TurnManager.PlayerTurnState.UnitSelected);
-                if (selectedUnit.unitData != null)
-                {
-                    // TODO: 향후 스킬 사거리 표시 등과 통합 필요
-                    List<Vector2Int> movableTiles = GridManager.Instance.FindMovableTiles(cell, selectedUnit.unitData.movementPattern);
-                    GridManager.Instance.HighlightMovableTiles(movableTiles);
-                }
+                selectedUnit.ShowAvailableActions();
             }
         }
         uiManager.UpdateSkillPanel();
@@ -188,39 +183,48 @@ public class InputManager : MonoBehaviour
         UnitBase selectedUnit = GridManager.Instance.GetSelectedUnit();
         if (selectedUnit == null) return;
 
-        // 이동 가능 범위 클릭 시
+        // 1. Check for Attack Target
+        UnitBase targetUnit = GridManager.Instance.GetTargetAt(cell);
+        if (targetUnit != null)
+        {
+            // Find first attack skill and use it
+            for (int i = 0; i < selectedUnit.unitData.skills.Length; i++)
+            {
+                if (selectedUnit.unitData.skills[i].range > 0)
+                {
+                    selectedUnit.UseSkill(i, cell);
+                    return; // Action taken
+                }
+            }
+            return; // No attack skill found
+        }
+
+        // 2. Check for Move
         if (GridManager.Instance.IsMovableTile(cell))
         {
-            GridManager.Instance.ClearAllHighlights();
-            
-            // 임시 로직: 0번 스킬이 있으면 스킬 사용, 없으면 기본 이동
-            var playerUnit = selectedUnit as PlayerUnit;
-            if (playerUnit != null && playerUnit.HasSkills)
+            // Find the first move skill and use it
+            for (int i = 0; i < selectedUnit.unitData.skills.Length; i++)
             {
-                // 0번 스킬 사용
-                playerUnit.UseSkill(0, cell);
+                var skill = selectedUnit.unitData.skills[i];
+                if (skill.movementPattern != null && skill.movementPattern.Count > 0)
+                {
+                    selectedUnit.UseSkill(i, cell);
+                    return; // Action taken
+                }
             }
-            else
-            {
-                // 스킬이 없으면 기본 이동
-                selectedUnit.Move(cell);
-                turnManager.SetPlayerState(TurnManager.PlayerTurnState.PerformingAction);
-                StartCoroutine(EndTurnAfterDelay(1.0f));
-            }
-            uiManager.UpdateSkillPanel();
+            return; // No move skill found
         }
-        else
+
+        // 3. Check for clicking another friendly unit to switch selection
+        UnitBase clickedUnit = GridManager.Instance.GetUnitAt(cell);
+        if (clickedUnit != null && clickedUnit is PlayerUnit && clickedUnit != selectedUnit)
         {
-            UnitBase clickedUnit = GridManager.Instance.GetUnitAt(cell);
-            if (clickedUnit != null && clickedUnit is PlayerUnit && clickedUnit != selectedUnit)
-            {
-                HandleUnitSelection(cell);
-            }
-            else
-            {
-                CancelSkillState();
-            }
+            HandleUnitSelection(cell); // Reselect to the new unit
+            return;
         }
+        
+        // 4. If nothing else, cancel selection
+        CancelSkillState();
     }
 
     private void HandleSkillSubTargetSelection(Vector2Int cell)

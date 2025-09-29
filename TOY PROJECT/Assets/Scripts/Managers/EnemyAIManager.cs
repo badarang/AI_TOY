@@ -65,12 +65,16 @@ public class EnemyAIManager : MonoBehaviour
         if (path != null && path.Count > 0)
         {
             Vector2Int targetPos = path[0];
-            Debug.Log($"{enemy.name} moves towards {player.name} to {targetPos}.");
-            enemy.Move(targetPos);
+            int moveSkillIndex = enemy.GetMoveSkillIndex();
+            if (moveSkillIndex != -1)
+            {
+                Debug.Log($"[AI ACTION] {enemy.name} moving to {targetPos} using skill index {moveSkillIndex}");
+                enemy.UseSkill(moveSkillIndex, targetPos);
+            }
         }
         else
         {
-            Debug.Log($"{enemy.name} can't find a path to the player.");
+            Debug.Log($"[AI DECISION] {enemy.name} can't find a path to the player.");
         }
     }
 }

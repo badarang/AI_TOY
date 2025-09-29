@@ -20,10 +20,6 @@ public class SkillBase : MonoBehaviour
     {
         if (skillData == null) { Debug.LogError("SkillData is not assigned!", this); return; }
 
-        if (caster.ap < skillData.apCost) { Debug.Log($"{caster.name} has not enough AP."); return; }
-        caster.ap -= skillData.apCost;
-        Debug.Log($"{caster.name} used {skillData.name}. AP Cost: {skillData.apCost}, Remaining: {caster.ap}");
-
         var context = new SkillContext(caster, targetPos);
 
         // TurnManager에 현재 스킬 정보 저장 (일시정지 대비)
@@ -38,12 +34,12 @@ public class SkillBase : MonoBehaviour
             }
         }
         
-        // 만약 subTargetBehaviors가 없다면, 즉시 턴 종료 로직으로 연결
+        // 만약 subTargetBehaviors가 없다면, 스킬 사용은 여기서 종료
         if (skillData.subTargetBehaviors == null || skillData.subTargetBehaviors.Length == 0)
         {
             Core.Instance.TurnManager.PausedSkill = null;
             Core.Instance.TurnManager.PausedSkillContext = null;
-            Core.Instance.TurnManager.EndTurn();
+            // 턴 종료는 PlayerUnit.UseSkill에서 처리하므로 여기서는 호출하지 않음
         }
     }
 

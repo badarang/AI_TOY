@@ -44,18 +44,6 @@ public class PlayerUnit : UnitBase
         }
     }
 
-    public override void Move(Vector2Int targetPos)
-    {
-        if (Core.Instance?.GridManager == null) return;
-
-        Vector2Int startPos = this.position;
-        
-        Core.Instance.GridManager.MoveUnit(startPos, targetPos);
-
-        Vector3 targetWorldPos = new Vector3(targetPos.x + 0.5f, 0, targetPos.y + 0.5f);
-        transform.DOJump(targetWorldPos, 0.5f, 1, 0.4f);
-    }
-
     public override void UseSkill(int skillIndex, Vector2Int targetPos)
     {
         if (skillIndex < 0 || skillIndex >= runtimeSkills.Count || runtimeSkills[skillIndex] == null)
@@ -64,7 +52,35 @@ public class PlayerUnit : UnitBase
             return;
         }
 
+        var skillData = runtimeSkills[skillIndex].skillData;
+        if (ap < skillData.apCost)
+        {
+            Debug.Log($"{name} has not enough AP for {skillData.name}.");
+            return;
+        }
+
+        ap -= skillData.apCost;
+        Debug.Log($"{name} used {skillData.name}. AP Cost: {skillData.apCost}, Remaining: {ap}");
+
         runtimeSkills[skillIndex].Activate(this, targetPos);
+
+        // 이동 스킬인지 확인
+        bool isMoveSkill = skillData.movementPattern != null && skillData.movementPattern.Count > 0;
+
+        // 이동 스킬이 아닐 경우에만 즉시 상태를 갱신합니다.
+        // (이동 스킬은 MoveBehavior의 OnComplete 콜백에서 상태를 갱신합니다.)
+        if (!isMoveSkill)
+        {
+            if (ap > 0)
+            {
+                ShowAvailableActions();
+            }
+            else
+            {
+                Core.Instance.GridManager.ClearSelection();
+                // TODO: 턴 매니저와 연동하여 턴 종료 처리 필요
+            }
+        }
     }
 
     public void DistributeSkills()

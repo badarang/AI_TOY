@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 using System.Collections.Generic;
-using UnityEngine.InputSystem;
+using System.Linq;
 
 public class GridManager : MonoBehaviour
 {
@@ -232,6 +232,11 @@ public class GridManager : MonoBehaviour
         return unitPositions.ContainsKey(gridPos) ? unitPositions[gridPos] : null;
     }
 
+    public List<UnitBase> GetAllUnits()
+    {
+        return unitPositions.Values.ToList();
+    }
+
     public bool HasUnitAt(Vector2Int gridPos)
     {
         return unitPositions.ContainsKey(gridPos) && unitPositions[gridPos] != null;
@@ -264,6 +269,7 @@ public class GridManager : MonoBehaviour
     [Header("Target Highlight")]
     public Material executableTargetMaterial;
     private List<GameObject> targetHighlights = new List<GameObject>();
+    private List<UnitBase> _currentTargets = new List<UnitBase>();
 
     public List<Vector2Int> FindMovableTiles(Vector2Int startPos, List<Vector2Int> movementPattern)
     {
@@ -311,6 +317,8 @@ public class GridManager : MonoBehaviour
     public void HighlightTargets(List<UnitBase> targets)
     {
         ClearTargetHighlights();
+        _currentTargets = targets;
+
         foreach (var unit in targets)
         {
             Vector2Int tile = unit.position;
@@ -332,6 +340,12 @@ public class GridManager : MonoBehaviour
     {
         foreach (var highlight in targetHighlights) { Destroy(highlight); }
         targetHighlights.Clear();
+        _currentTargets.Clear();
+    }
+
+    public UnitBase GetTargetAt(Vector2Int tile)
+    {
+        return _currentTargets.FirstOrDefault(t => t.position == tile);
     }
 
     public bool IsMovableTile(Vector2Int tile) { return _currentMovableTiles.Contains(tile); }
