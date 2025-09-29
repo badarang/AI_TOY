@@ -16,13 +16,17 @@ public class SkillContext
     public List<UnitBase> KilledUnits { get; set; }
     public List<UnitBase> HighlightedTargets { get; set; }
 
+    // 어떤 데이터든 저장할 수 있는 범용 블랙보드입니다.
+    public Dictionary<BlackboardKeys, object> blackboard { get; private set; }
+
     public SkillContext(UnitBase caster, Vector2Int targetPosition)
-    { 
+    {
         Caster = caster;
         CasterOriginalPosition = caster.position;
         TargetPosition = targetPosition;
         DamagedUnits = new List<UnitBase>();
         KilledUnits = new List<UnitBase>();
         HighlightedTargets = new List<UnitBase>();
+        blackboard = new Dictionary<BlackboardKeys, object>(); // 블랙보드 초기화
     }
 }

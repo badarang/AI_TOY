@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3279dc2c16e0b46639b600e83faa2e3d, type: 3}
+  m_Name: PushAttack
+  m_EditorClassIdentifier: 
+  skillMeta:
+    nameKey: 
+    descKey: 
+    apCost: 0
+    cooldown: 0
+    range: 0
+  apCost: 1
+  cooldown: 1
+  range: 1
+  movementPattern: []
+  initialBehaviors:
+  - {fileID: 11400000, guid: 9476e2a57a6a946849955c67e62fd196, type: 2}
+  - {fileID: 11400000, guid: f13b212816ba84d4fa381e186cae11cd, type: 2}
+  subTargetBehaviors: []

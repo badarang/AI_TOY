@@ -16,7 +16,7 @@ MonoBehaviour:
   unitMeta:
     nameKey: 
     descKey: 
-  maxHp: 1
+  maxHp: 2
   maxAp: 1
   skills:
   - {fileID: 11400000, guid: fef211ce88e034811883169c02f6c1db, type: 2}
