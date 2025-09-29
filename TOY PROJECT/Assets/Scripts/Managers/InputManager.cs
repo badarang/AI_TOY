@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 
 public class InputManager : MonoBehaviour
 {
@@ -178,15 +179,22 @@ public class InputManager : MonoBehaviour
         uiManager.UpdateSkillPanel();
     }
 
-    private void HandleMovementSelection(Vector2Int cell)
+    private async void HandleMovementSelection(Vector2Int cell)
     {
+        DebugPrinter.DebugColor(DebugType.Input, $"HandleMovementSelection: cell {cell} 클릭됨");
         UnitBase selectedUnit = GridManager.Instance.GetSelectedUnit();
-        if (selectedUnit == null) return;
+        if (selectedUnit == null)
+        {
+            DebugPrinter.DebugColor(DebugType.Input, "HandleMovementSelection: 선택된 유닛이 없어 종료됨");
+            return;
+        }
+        DebugPrinter.DebugColor(DebugType.Input, $"HandleMovementSelection: 현재 선택된 유닛 = {selectedUnit.name}");
 
         float skillDuration = 0f;
 
         // 1. Check for Attack Target
         UnitBase targetUnit = GridManager.Instance.GetTargetAt(cell);
+        DebugPrinter.DebugColor(DebugType.Input, $"HandleMovementSelection: GetTargetAt({cell}) 결과 = {(targetUnit != null ? targetUnit.name : "null")}");
         if (targetUnit != null)
         {
             // Find first attack skill and use it
@@ -195,7 +203,7 @@ public class InputManager : MonoBehaviour
                 if (selectedUnit.unitData.skills[i].range > 0)
                 {
                     skillDuration = selectedUnit.UseSkill(i, cell);
-                    StartCoroutine(PostActionUpdateCoroutine(selectedUnit, skillDuration));
+                    await PostActionUpdate(selectedUnit, skillDuration);
                     return; // Action taken
                 }
             }
@@ -212,7 +220,7 @@ public class InputManager : MonoBehaviour
                 if (skill.movementPattern != null && skill.movementPattern.Count > 0)
                 {
                     skillDuration = selectedUnit.UseSkill(i, cell);
-                    StartCoroutine(PostActionUpdateCoroutine(selectedUnit, skillDuration));
+                    await PostActionUpdate(selectedUnit, skillDuration);
                     return; // Action taken
                 }
             }
@@ -231,25 +239,7 @@ public class InputManager : MonoBehaviour
         CancelSkillState();
     }
 
-    private System.Collections.IEnumerator PostActionUpdateCoroutine(UnitBase unit, float delay)
-    {
-        yield return new WaitForSeconds(delay);
-
-        if (unit == null) yield break; // Unit might have died during the action
-
-        if (unit.ap > 0)
-        {
-            unit.ShowAvailableActions();
-        }
-        else
-        {
-            GridManager.Instance.ClearSelection();
-            turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
-            uiManager.UpdateSkillPanel();
-        }
-    }
-
-    private void HandleSkillSubTargetSelection(Vector2Int cell)
+    private async void HandleSkillSubTargetSelection(Vector2Int cell)
     {
         var pausedSkillData = turnManager.PausedSkillData;
         var context = turnManager.PausedSkillContext;
@@ -263,7 +253,7 @@ public class InputManager : MonoBehaviour
         {
             GridManager.Instance.ClearAllHighlights();
             context.SubTargetUnit = clickedUnit;
-            StartCoroutine(ExecuteSubSkillsCoroutine(pausedSkillData, context));
+            await ExecuteSubSkills(pausedSkillData, context);
         }
         else
         {
@@ -271,7 +261,7 @@ public class InputManager : MonoBehaviour
         }
     }
 
-    private System.Collections.IEnumerator ExecuteSubSkillsCoroutine(SkillData skillData, SkillContext context)
+    private async UniTask ExecuteSubSkills(SkillData skillData, SkillContext context)
     {
         if (skillData.subTargetBehaviors != null)
         {
@@ -279,8 +269,8 @@ public class InputManager : MonoBehaviour
             {
                 if (behavior != null) 
                 {
-                    behavior.Execute(context);
-                    yield return new WaitForSeconds(0.5f); // Wait half a second between each sub-skill
+                    float duration = behavior.Execute(context);
+                    await UniTask.Delay(TimeSpan.FromSeconds(duration));
                 }
             }
         }
@@ -293,9 +283,27 @@ public class InputManager : MonoBehaviour
         uiManager.UpdateSkillPanel();
     }
 
+    private async UniTask PostActionUpdate(UnitBase unit, float delay)
+    {
+        await UniTask.Delay(TimeSpan.FromSeconds(delay));
+
+        if (unit == null) return; // Unit might have died during the action
+
+        if (unit.ap > 0)
+        {
+            unit.ShowAvailableActions();
+        }
+        else
+        {
+            GridManager.Instance.ClearSelection();
+            turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
+            uiManager.UpdateSkillPanel();
+        }
+    }
+
     private void CancelSkillState()
     {
-        Debug.Log("Selection cancelled.");
+        DebugPrinter.DebugColor(DebugType.Input, "Selection cancelled.");
         GridManager.Instance.ClearAllHighlights();
         
         turnManager.PausedSkill = null;
@@ -305,9 +313,9 @@ public class InputManager : MonoBehaviour
         uiManager.UpdateSkillPanel();
     }
 
-    private System.Collections.IEnumerator EndTurnAfterDelay(float delay)
+    private async UniTask EndTurnAfterDelay(float delay)
     {
-        yield return new WaitForSeconds(delay);
+        await UniTask.Delay(TimeSpan.FromSeconds(delay));
         turnManager.EndTurn();
     }
 }

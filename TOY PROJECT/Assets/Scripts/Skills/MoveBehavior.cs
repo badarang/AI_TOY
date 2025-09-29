@@ -18,10 +18,10 @@ public class MoveBehavior : SkillBehavior
         Core.Instance.GridManager.MoveUnit(startPos, targetPos);
 
         // 2. Play visual tween
-        Vector3 targetWorldPos = new Vector3(targetPos.x + 0.5f, 0, targetPos.y + 0.5f);
+        Vector3 targetWorldPos = new Vector3(targetPos.x + 0.5f, caster.transform.position.y, targetPos.y + 0.5f);
         caster.transform.DOJump(targetWorldPos, 0.5f, 1, animationDuration);
 
-        Debug.Log($"{caster.name} moved to {targetPos}");
+        DebugPrinter.DebugColor(DebugType.Unit, $"{caster.name} moved to {targetPos}");
 
         return animationDuration; // 애니메이션 시간을 반환합니다.
     }

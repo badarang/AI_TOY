@@ -49,11 +49,11 @@ public class UnitBase : MonoBehaviour
             return 0f;
         }
 
-        Debug.Log($"Using skill '{skill.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {skill.apCost}");
+        DebugPrinter.DebugColor(DebugType.Unit, $"Using skill '{skill.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {skill.apCost}");
         ap -= skill.apCost;
         _skillCooldowns[skillIndex] = skill.cooldown;
 
-        Debug.Log($"{name} used {skill.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
+        DebugPrinter.DebugColor(DebugType.Unit, $"{name} used {skill.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
 
         float totalDuration = 0f;
         var context = new SkillContext(this, targetPos);
@@ -88,7 +88,7 @@ public class UnitBase : MonoBehaviour
     public virtual void TakeDamage(int amount)
     {
         hp -= amount;
-        Debug.Log($"{name} took {amount} damage, remaining HP: {hp}");
+        DebugPrinter.DebugColor(DebugType.Unit, $"{name} took {amount} damage, remaining HP: {hp}");
 
         if (hp <= 0)
         {
@@ -99,14 +99,14 @@ public class UnitBase : MonoBehaviour
 
     protected virtual void Die()
     {
-        Debug.Log($"{name} has died.");
+        DebugPrinter.DebugColor(DebugType.Unit, $"{name} has died.");
         Core.Instance.GridManager.UnregisterUnit(position);
         Destroy(gameObject);
     }
 
     public virtual void OnTurnStart()
     {
-        Debug.Log($"{name}'s turn starts, AP reset.");
+        DebugPrinter.DebugColor(DebugType.Unit, $"{name}'s turn starts, AP reset.");
         ap = unitData.maxAp;
         ReduceSkillCooldowns();
     }
@@ -162,10 +162,9 @@ public class UnitBase : MonoBehaviour
         {
             var skill = unitData.skills[i];
 
-            if (_skillCooldowns[i] > 0) continue;
-            if (ap < skill.apCost) continue;
+            if (_skillCooldowns[i] > 0 || ap < skill.apCost) continue;
 
-            // Find potential attack targets
+            // Find potential attack targets from skill range
             if (skill.range > 0)
             {
                 foreach (var potentialTarget in allUnits)
@@ -179,13 +178,23 @@ public class UnitBase : MonoBehaviour
                 }
             }
 
-            // Find movable tiles
+            // Find movable tiles AND enemies on move path
             if (skill.movementPattern != null && skill.movementPattern.Count > 0)
             {
                 foreach (var offset in skill.movementPattern)
                 {
                     Vector2Int destination = position + offset;
-                    if (gridManager.IsValidTile(destination) && !gridManager.HasUnitAt(destination))
+                    if (!gridManager.IsValidTile(destination)) continue;
+                    
+                    UnitBase unitOnTile = gridManager.GetUnitAt(destination);
+                    if (unitOnTile != null) // If a unit is on the destination tile
+                    {
+                        if (unitOnTile.factionData != this.factionData && !potentialTargets.Contains(unitOnTile))
+                        {
+                            potentialTargets.Add(unitOnTile); // Add enemy as a potential target
+                        }
+                    }
+                    else // If the tile is empty
                     {
                         if (!movableTiles.Contains(destination)) movableTiles.Add(destination);
                     }
@@ -194,7 +203,7 @@ public class UnitBase : MonoBehaviour
         }
 
         // Prioritize targets: if a tile is both movable and has a target, only show it as a target.
-        movableTiles.RemoveAll(tile => potentialTargets.Any(target => target.position == tile));
+        // This logic is implicitly handled now because an occupied tile is never added to movableTiles.
 
         gridManager.HighlightMovableTiles(movableTiles);
         gridManager.HighlightTargets(potentialTargets);

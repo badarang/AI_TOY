@@ -247,7 +247,16 @@ public class GridManager : MonoBehaviour
 
     public bool HasUnitAt(Vector2Int gridPos)
     {
-        return unitPositions.ContainsKey(gridPos) && unitPositions[gridPos] != null;
+        bool hasUnit = unitPositions.ContainsKey(gridPos) && unitPositions[gridPos] != null;
+        if (hasUnit)
+        {
+            DebugPrinter.DebugColor(DebugType.System, $"GridManager.HasUnitAt({gridPos}): 유닛 있음 -> {unitPositions[gridPos].name}");
+        }
+        else
+        {
+            DebugPrinter.DebugColor(DebugType.System, $"GridManager.HasUnitAt({gridPos}): 유닛 없음");
+        }
+        return hasUnit;
     }
 
     public UnitBase GetSelectedUnit() { return selectedUnit; }

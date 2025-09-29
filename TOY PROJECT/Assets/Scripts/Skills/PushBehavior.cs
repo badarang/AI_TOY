@@ -23,16 +23,21 @@ public class PushBehavior : SkillBehavior
 
         if (!Core.Instance.GridManager.IsValidTile(destination) || Core.Instance.GridManager.HasUnitAt(destination))
         {
-            Debug.Log("PushBehavior: 벽 또는 유닛 충돌. PushedUnitHitWall = true");
+            DebugPrinter.DebugColor(DebugType.Unit, "PushBehavior: 벽 또는 유닛 충돌. PushedUnitHitWall = true");
             context.blackboard[BlackboardKeys.PushedUnitHitWall] = true;
-            Debug.Log($"{target.name}이(가) 벽 또는 다른 유닛에 부딪혔습니다!");
+            DebugPrinter.DebugColor(DebugType.Unit, $"{target.name}이(가) 벽 또는 다른 유닛에 부딪혔습니다!");
         }
         else
         {
-            Debug.Log("PushBehavior: 충돌 없음. PushedUnitHitWall = false");
+            DebugPrinter.DebugColor(DebugType.Unit, "PushBehavior: 충돌 없음. PushedUnitHitWall = false");
             context.blackboard[BlackboardKeys.PushedUnitHitWall] = false;
             Core.Instance.GridManager.MoveUnit(target.position, destination);
-            Debug.Log($"{target.name}을(를) {destination}으로 밀어냈습니다.");
+
+            // 밀려난 대상의 비주얼 위치도 동기화합니다.
+            Vector3 targetWorldPos = new Vector3(destination.x + 0.5f, target.transform.position.y, destination.y + 0.5f);
+            target.transform.position = targetWorldPos;
+
+            DebugPrinter.DebugColor(DebugType.Unit, $"{target.name}을(를) {destination}으로 밀어냈습니다.");
         }
         return 0f;
     }
