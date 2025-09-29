@@ -4,7 +4,7 @@ using UnityEngine;
 using System.Linq;
 using UnityEngine.UI;
 
-public abstract class UnitBase : MonoBehaviour
+public class UnitBase : MonoBehaviour
 {
     public UnitData unitData;
     public FactionData factionData;
@@ -13,6 +13,7 @@ public abstract class UnitBase : MonoBehaviour
     public Vector2Int position;
     private Action OnSelected;
     private Action OnDeselected;
+    private List<int> _skillCooldowns = new List<int>();
 
     protected virtual void Awake()
     {
@@ -20,10 +21,54 @@ public abstract class UnitBase : MonoBehaviour
         {
             hp = unitData.maxHp;
             ap = unitData.maxAp;
+            for (int i = 0; i < unitData.skills.Length; i++)
+            {
+                _skillCooldowns.Add(0);
+            }
         }
     }
 
-    public abstract void UseSkill(int skillIndex, Vector2Int targetPos);
+    public virtual void UseSkill(int skillIndex, Vector2Int targetPos)
+    {
+        if (skillIndex < 0 || skillIndex >= unitData.skills.Length)
+        {
+            Debug.LogError("Invalid skill index.");
+            return;
+        }
+
+        var skill = unitData.skills[skillIndex];
+        if (_skillCooldowns[skillIndex] > 0)
+        {
+            Debug.LogWarning($"Skill {skill.skillMeta.nameKey} is on cooldown for {_skillCooldowns[skillIndex]} more turns.");
+            return;
+        }
+
+        if (ap < skill.apCost)
+        {
+            Debug.LogWarning("Not enough AP to use this skill.");
+            return;
+        }
+
+        Debug.Log($"Using skill '{skill.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {skill.apCost}");
+        ap -= skill.apCost;
+        _skillCooldowns[skillIndex] = skill.cooldown;
+
+        Debug.Log($"{name} used {skill.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
+
+        var context = new SkillContext(this, targetPos);
+        foreach (var behavior in skill.initialBehaviors)
+        {
+            behavior.Execute(context);
+        }
+
+        if (skill.subTargetBehaviors != null && skill.subTargetBehaviors.Length > 0)
+        {
+            Core.Instance.TurnManager.PausedSkillData = skill;
+            Core.Instance.TurnManager.PausedSkillContext = context;
+            Core.Instance.TurnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingSkillSubTarget);
+            // The skill execution will be resumed by the InputManager
+        }
+    }
 
     public int GetMoveSkillIndex()
     {
@@ -61,6 +106,18 @@ public abstract class UnitBase : MonoBehaviour
     {
         Debug.Log($"{name}'s turn starts, AP reset.");
         ap = unitData.maxAp;
+        ReduceSkillCooldowns();
+    }
+
+    public virtual void ReduceSkillCooldowns()
+    {
+        for (int i = 0; i < _skillCooldowns.Count; i++)
+        {
+            if (_skillCooldowns[i] > 0)
+            {
+                _skillCooldowns[i]--;
+            }
+        }
     }
 
     public virtual void OnEnable()
@@ -90,7 +147,6 @@ public abstract class UnitBase : MonoBehaviour
         var gridManager = Core.Instance?.GridManager;
         if (gridManager == null) return;
 
-        // Clear previous highlights
         gridManager.ClearMovableHighlights();
         gridManager.ClearTargetHighlights();
 
@@ -100,15 +156,19 @@ public abstract class UnitBase : MonoBehaviour
         var potentialTargets = new List<UnitBase>();
         var movableTiles = new List<Vector2Int>();
 
-        // Iterate through all skills to find possible actions
-        foreach (var skill in unitData.skills)
+        for (int i = 0; i < unitData.skills.Length; i++)
         {
-            // Check for Attack capabilities
+            var skill = unitData.skills[i];
+
+            // Check if skill is on cooldown
+            if (_skillCooldowns[i] > 0) continue;
+
+            // Attack Range Highlighting
             if (skill.range > 0)
             {
                 foreach (var potentialTarget in allUnits)
                 {
-                    if (potentialTarget == this || potentialTarget.factionData == this.factionData) continue;
+                    if (potentialTarget.factionData == this.factionData) continue;
                     int distance = Mathf.Abs(position.x - potentialTarget.position.x) + Mathf.Abs(position.y - potentialTarget.position.y);
                     if (distance <= skill.range)
                     {
@@ -120,15 +180,28 @@ public abstract class UnitBase : MonoBehaviour
                 }
             }
 
-            // Check for Movement capabilities
+            // Movement Pattern Highlighting
             if (skill.movementPattern != null && skill.movementPattern.Count > 0)
             {
-                var tiles = gridManager.FindMovableTiles(position, skill.movementPattern);
-                foreach (var tile in tiles)
+                foreach (var offset in skill.movementPattern)
                 {
-                    if (!movableTiles.Contains(tile))
+                    Vector2Int destination = position + offset;
+                    if (!gridManager.IsValidTile(destination)) continue;
+
+                    UnitBase unitOnTile = gridManager.GetUnitAt(destination);
+                    if (unitOnTile != null)
                     {
-                        movableTiles.Add(tile);
+                        if (unitOnTile.factionData != this.factionData && !potentialTargets.Contains(unitOnTile))
+                        {
+                            potentialTargets.Add(unitOnTile); // Add enemy as a potential target
+                        }
+                    }
+                    else
+                    {
+                        if (!movableTiles.Contains(destination))
+                        {
+                            movableTiles.Add(destination);
+                        }
                     }
                 }
             }

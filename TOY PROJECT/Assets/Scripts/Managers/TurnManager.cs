@@ -14,6 +14,7 @@ public class TurnManager : MonoBehaviour
     public PlayerTurnState CurrentPlayerState { get; private set; }
 
     public SkillBase PausedSkill { get; set; }
+    public SkillData PausedSkillData { get; set; }
     public SkillContext PausedSkillContext { get; set; }
 
     public UIManager uiManager;

@@ -22,11 +22,11 @@ public class SkillPanelUI : MonoBehaviour
             GameObject skillButton = Instantiate(skillButtonPrefab, skillButtonContainer);
             Text skillNameText = skillButton.GetComponentInChildren<Text>();
 
-            if (skillNameText != null && skillData.unitMeta != null)
+            if (skillNameText != null && skillData.skillMeta != null)
             {
                 // Here you would use the localization package to get the display name
                 // For now, we'll just display the key itself.
-                string displayName = $"[{skillData.unitMeta.nameKey}]";
+                string displayName = $"[{skillData.skillMeta.nameKey}]";
                 skillNameText.text = displayName;
 
                 // TODO: Add button listener to use the skill

@@ -4,6 +4,7 @@ using UnityEngine;
 public class SkillBase : MonoBehaviour
 {
     public SkillData skillData;
+    public int currentCooldown = 0;
 
     [Button("Activate Skill (Test)")]
     private void ActivateForTest()

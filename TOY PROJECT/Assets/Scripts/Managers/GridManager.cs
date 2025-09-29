@@ -350,6 +350,11 @@ public class GridManager : MonoBehaviour
 
     public bool IsMovableTile(Vector2Int tile) { return _currentMovableTiles.Contains(tile); }
 
+    public bool IsValidTile(Vector2Int tile)
+    {
+        return tile.x >= 0 && tile.x < width && tile.y >= 0 && tile.y < height;
+    }
+
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.gray;

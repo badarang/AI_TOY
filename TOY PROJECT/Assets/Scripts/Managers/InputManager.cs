@@ -193,6 +193,9 @@ public class InputManager : MonoBehaviour
                 if (selectedUnit.unitData.skills[i].range > 0)
                 {
                     selectedUnit.UseSkill(i, cell);
+                    GridManager.Instance.ClearSelection();
+                    turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
+                    uiManager.UpdateSkillPanel();
                     return; // Action taken
                 }
             }
@@ -209,6 +212,9 @@ public class InputManager : MonoBehaviour
                 if (skill.movementPattern != null && skill.movementPattern.Count > 0)
                 {
                     selectedUnit.UseSkill(i, cell);
+                    GridManager.Instance.ClearSelection();
+                    turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
+                    uiManager.UpdateSkillPanel();
                     return; // Action taken
                 }
             }
@@ -229,22 +235,46 @@ public class InputManager : MonoBehaviour
 
     private void HandleSkillSubTargetSelection(Vector2Int cell)
     {
-        var pausedSkill = turnManager.PausedSkill;
+        var pausedSkillData = turnManager.PausedSkillData;
         var context = turnManager.PausedSkillContext;
 
-        if (pausedSkill == null || context == null) return;
+        if (pausedSkillData == null || context == null) return;
 
         UnitBase clickedUnit = GridManager.Instance.GetUnitAt(cell);
 
-        if (clickedUnit != null && context.HighlightedTargets.Contains(clickedUnit))
+        // TODO: Add validation to check if the clicked unit is a valid sub-target
+        if (clickedUnit != null)
         {
             GridManager.Instance.ClearAllHighlights();
-            pausedSkill.ActivateSubTarget(clickedUnit);
+            context.SubTargetUnit = clickedUnit;
+            StartCoroutine(ExecuteSubSkillsCoroutine(pausedSkillData, context));
         }
         else
         {
             CancelSkillState();
         }
+    }
+
+    private System.Collections.IEnumerator ExecuteSubSkillsCoroutine(SkillData skillData, SkillContext context)
+    {
+        if (skillData.subTargetBehaviors != null)
+        {
+            foreach (var behavior in skillData.subTargetBehaviors)
+            {
+                if (behavior != null) 
+                {
+                    behavior.Execute(context);
+                    yield return new WaitForSeconds(0.5f); // Wait half a second between each sub-skill
+                }
+            }
+        }
+
+        // Clean up and reset state after all sub-skills are done
+        turnManager.PausedSkill = null;
+        turnManager.PausedSkillData = null;
+        turnManager.PausedSkillContext = null;
+        turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
+        uiManager.UpdateSkillPanel();
     }
 
     private void CancelSkillState()
@@ -253,6 +283,7 @@ public class InputManager : MonoBehaviour
         GridManager.Instance.ClearAllHighlights();
         
         turnManager.PausedSkill = null;
+        turnManager.PausedSkillData = null;
         turnManager.PausedSkillContext = null;
         turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
         uiManager.UpdateSkillPanel();
