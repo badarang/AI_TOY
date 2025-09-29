@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 443c829bc32154139addb7190b5ce1b5, type: 3}
-  m_Name: Hikai
+  m_Name: Goose
   m_EditorClassIdentifier: 
-  unitType: 1
+  unitType: 3
   unitMeta:
     nameKey: 
     descKey: 
-  maxHp: 3
-  maxAp: 2
+  maxHp: 0
+  maxAp: 0
   skills:
-  - {fileID: 11400000, guid: fef211ce88e034811883169c02f6c1db, type: 2}
+  - {fileID: 11400000, guid: 1c7d22ab512844bd0b55f847ce030862, type: 2}
   movementPattern:
   - {x: 1, y: 1}
+  - {x: 1, y: -1}
   - {x: -1, y: 1}
   - {x: -1, y: -1}
-  - {x: 1, y: -1}

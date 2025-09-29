@@ -94,7 +94,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7518791335084594423, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       propertyPath: m_Name
-      value: Player_Zed
+      value: Player_Hikai
       objectReference: {fileID: 0}
     - target: {fileID: 7518791335084594423, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       propertyPath: m_Layer
@@ -129,6 +129,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fde8a08e19b7f4ff7b7f4f9772735f37, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  unitData: {fileID: 11400000, guid: 37a987c9b83b7475dbbb5c74c1c30dd8, type: 2}
   factionData: {fileID: 11400000, guid: 1ea562037e7754f44af710ef9d89828b, type: 2}
   hp: 3
   ap: 1

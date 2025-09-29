@@ -12,8 +12,36 @@ public abstract class UnitBase : MonoBehaviour
     private Action OnSelected;
     private Action OnDeselected;
 
+    protected virtual void Awake()
+    {
+        if (unitData != null)
+        {
+            hp = unitData.maxHp;
+            ap = unitData.maxAp;
+        }
+    }
+
     public abstract void Move(Vector2Int targetPos);
     public abstract void UseSkill(int skillIndex, Vector2Int targetPos);
+
+    public virtual void TakeDamage(int amount)
+    {
+        hp -= amount;
+        Debug.Log($"{name} took {amount} damage, remaining HP: {hp}");
+
+        if (hp <= 0)
+        {
+            hp = 0;
+            Die();
+        }
+    }
+
+    protected virtual void Die()
+    {
+        Debug.Log($"{name} has died.");
+        Core.Instance.GridManager.UnregisterUnit(position);
+        Destroy(gameObject);
+    }
 
     public virtual void OnEnable()
     {

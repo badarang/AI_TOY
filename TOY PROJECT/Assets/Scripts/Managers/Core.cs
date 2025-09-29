@@ -5,28 +5,30 @@ public class Core : MonoBehaviour
     public static Core Instance { get; private set; }
 
     [Header("Managers")]
-    [SerializeField] private InputManager inputManager;
-    [SerializeField] private TurnManager turnManager;
-    [SerializeField] private UIManager uiManager;
+    // 의존성이 적은 순서대로 정렬
     [SerializeField] private GridManager gridManager;
+    [SerializeField] private StageManager stageManager;
+    [SerializeField] private UIManager uiManager;
+    [SerializeField] private TurnManager turnManager;
+    [SerializeField] private EnemyAIManager enemyAIManager;
+    [SerializeField] private InputManager inputManager;
 
-
-    // 프로퍼티로 접근
-    public InputManager InputManager => inputManager;
-    public TurnManager TurnManager => turnManager;
-    public UIManager UIManager => uiManager;
+    // 프로퍼티도 위와 동일한 순서로 정렬
     public GridManager GridManager => gridManager;
+    public StageManager StageManager => stageManager;
+    public UIManager UIManager => uiManager;
+    public TurnManager TurnManager => turnManager;
+    public EnemyAIManager EnemyAIManager => enemyAIManager;
+    public InputManager InputManager => inputManager;
 
     void Awake()
     {
-        // 싱글톤 패턴 - 씬 전환시에도 유지
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-
-            SetupManagers();
-            Debug.Log("Core: Instance created and managers setup complete");
+            // SetupManagers()는 Inspector에서 모두 할당하는 것을 가정하고 제거
+            Debug.Log("Core: Instance created.");
         }
         else
         {
@@ -35,27 +37,8 @@ public class Core : MonoBehaviour
         }
     }
 
-    private void SetupManagers()
-    {
-        // Inspector에서 할당하지 않았다면 자동으로 찾거나 생성
-        if (inputManager == null) inputManager = FindObjectOfType<InputManager>();
-        if (turnManager == null) turnManager = FindObjectOfType<TurnManager>();
-        if (uiManager == null) uiManager = FindObjectOfType<UIManager>();
-        if (gridManager == null) gridManager = FindObjectOfType<GridManager>();
-    }
-
-    // 게임 종료시 정리
     void OnApplicationQuit()
     {
         Instance = null;
-    }
-
-    // 에디터에서 플레이 모드 종료시 정리
-    void OnApplicationPause(bool pauseStatus)
-    {
-        if (pauseStatus && Application.isEditor)
-        {
-            Instance = null;
-        }
     }
 }

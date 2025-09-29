@@ -415,11 +415,7 @@ MonoBehaviour:
   target: {fileID: 0}
   distance: 10
   height: 10
-  rotationSensitivity: 0.4
-  snapAngle: 90
-  snapThreshold: 45
-  returnDuration: 0.4
-  punchStrength: 10
+  orthographicSize: 10
 --- !u!1 &1303889922
 GameObject:
   m_ObjectHideFlags: 0
@@ -529,6 +525,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   turnOrderUI: {fileID: 1749004297}
+  skillPanelUI: {fileID: 0}
 --- !u!4 &1318030913
 Transform:
   m_ObjectHideFlags: 0
@@ -544,6 +541,50 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1709622473}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1630999827
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1630999828}
+  - component: {fileID: 1630999829}
+  m_Layer: 0
+  m_Name: EnemyAIManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1630999828
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1630999827}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1709622473}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1630999829
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1630999827}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 82997f74775554d81989d8d4d69687d5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1709622472
 GameObject:
   m_ObjectHideFlags: 0
@@ -575,10 +616,11 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2108394054}
-  - {fileID: 1753340078}
-  - {fileID: 877073172}
-  - {fileID: 1318030913}
   - {fileID: 1927667683}
+  - {fileID: 1753340078}
+  - {fileID: 1318030913}
+  - {fileID: 877073172}
+  - {fileID: 1630999828}
   - {fileID: 461280523}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -594,6 +636,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 23db530e47c5641d7ae55595ad4baffc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  gridManager: {fileID: 1927667682}
+  stageManager: {fileID: 1753340077}
+  uiManager: {fileID: 1318030912}
+  turnManager: {fileID: 877073171}
+  enemyAIManager: {fileID: 1630999829}
   inputManager: {fileID: 461280524}
 --- !u!1 &1749004296
 GameObject:
@@ -791,6 +838,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   highlightMat: {fileID: 10306, guid: 0000000000000000f000000000000000, type: 0}
+  movableTileMaterial: {fileID: 0}
+  executableTargetMaterial: {fileID: 0}
 --- !u!4 &1927667683
 Transform:
   m_ObjectHideFlags: 0

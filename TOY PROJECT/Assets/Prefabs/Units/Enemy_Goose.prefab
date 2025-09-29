@@ -105,6 +105,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 11077ff4f2266466f9c8040df4b92ea6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  unitData: {fileID: 11400000, guid: 8139dccf9c56f47e28300aac92025046, type: 2}
   factionData: {fileID: 11400000, guid: 9e963a79be8964c29a46a65e5a812f0f, type: 2}
   hp: 1
   ap: 1

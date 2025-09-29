@@ -9,11 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3279dc2c16e0b46639b600e83faa2e3d, type: 3}
-  m_Name: New Skill Data
+  m_Script: {fileID: 11500000, guid: 5efbfb9e55b92447096f5d0efb16c7d8, type: 3}
+  m_Name: DamageAndPierce
   m_EditorClassIdentifier: 
-  skillName: Phantom Stab
-  description: 
-  apCost: 0
-  cooldown: 0
-  range: 0
+  damage: 1

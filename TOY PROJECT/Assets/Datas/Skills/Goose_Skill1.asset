@@ -9,19 +9,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 443c829bc32154139addb7190b5ce1b5, type: 3}
-  m_Name: Hikai
+  m_Script: {fileID: 11500000, guid: 3279dc2c16e0b46639b600e83faa2e3d, type: 3}
+  m_Name: Goose_Skill1
   m_EditorClassIdentifier: 
-  unitType: 1
   unitMeta:
     nameKey: 
     descKey: 
-  maxHp: 3
-  maxAp: 2
-  skills:
-  - {fileID: 11400000, guid: fef211ce88e034811883169c02f6c1db, type: 2}
-  movementPattern:
-  - {x: 1, y: 1}
-  - {x: -1, y: 1}
-  - {x: -1, y: -1}
-  - {x: 1, y: -1}
+  apCost: 1
+  cooldown: 1
+  range: 1
+  initialBehaviors:
+  - {fileID: 11400000, guid: 9476e2a57a6a946849955c67e62fd196, type: 2}
+  subTargetBehaviors: []

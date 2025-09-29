@@ -10,8 +10,11 @@ public class TurnManager : MonoBehaviour
     public enum Turn { Player, Enemy }
     public Turn CurrentTurn { get; private set; }
 
-    public enum PlayerTurnState { AwaitingUnitSelection, UnitSelected, PerformingAction }
+    public enum PlayerTurnState { AwaitingUnitSelection, UnitSelected, PerformingAction, AwaitingSkillSubTarget }
     public PlayerTurnState CurrentPlayerState { get; private set; }
+
+    public SkillBase PausedSkill { get; set; }
+    public SkillContext PausedSkillContext { get; set; }
 
     public UIManager uiManager;
     public StageManager stageManager;
@@ -20,17 +23,36 @@ public class TurnManager : MonoBehaviour
     {
         CurrentTurn = Turn.Player;
         CurrentPlayerState = PlayerTurnState.AwaitingUnitSelection;
+        
+        // 플레이어 AP 회복
+        var player = stageManager.GetPlayer();
+        if (player != null && player.unitData != null)
+        {
+            player.ap = Mathf.Min(player.ap + 1, player.unitData.maxAp);
+            Debug.Log($"{player.name} AP recovered. Current AP: {player.ap}");
+        }
+
         OnPlayerTurnStart?.Invoke();
         uiManager?.UpdateTurnOrder();
-        // 플레이어 행동력 리셋 등 추가 가능
     }
 
     public void StartEnemyTurn()
     {
         CurrentTurn = Turn.Enemy;
+
+        // 모든 적 AP 회복
+        var enemies = stageManager.GetEnemies();
+        foreach (var enemy in enemies)
+        {
+            if (enemy != null && enemy.unitData != null)
+            {
+                enemy.ap = Mathf.Min(enemy.ap + 1, enemy.unitData.maxAp);
+                Debug.Log($"{enemy.name} AP recovered. Current AP: {enemy.ap}");
+            }
+        }
+
         OnEnemyTurnStart?.Invoke();
         uiManager?.UpdateTurnOrder();
-        // 적 AI 행동 시작
         StartCoroutine(EnemyTurnRoutine());
     }
 
@@ -54,13 +76,7 @@ public class TurnManager : MonoBehaviour
 
     private IEnumerator EnemyTurnRoutine()
     {
-        // 간단한 적 턴 예시: 모든 적이 한 번씩 행동
-        foreach (var enemy in stageManager.GetEnemies())
-        {
-            enemy.UseSkill(0, stageManager.GetPlayer().position); // 예시: 플레이어를 타겟
-            yield return new WaitForSeconds(0.5f); // 행동 간 딜레이
-        }
-        yield return new WaitForSeconds(0.5f);
+        yield return Core.Instance.EnemyAIManager.ExecuteEnemyTurns();
         EndTurn();
     }
 }

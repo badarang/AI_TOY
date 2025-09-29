@@ -132,12 +132,10 @@ public class InputManager : MonoBehaviour
         Ray ray = Camera.main.ScreenPointToRay(CurrentInputPosition);
         Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
         if (!groundPlane.Raycast(ray, out float distance))
-        {
-            if (turnManager.CurrentPlayerState == TurnManager.PlayerTurnState.UnitSelected)
+        { 
+            if (turnManager.CurrentPlayerState == TurnManager.PlayerTurnState.UnitSelected || turnManager.CurrentPlayerState == TurnManager.PlayerTurnState.AwaitingSkillSubTarget)
             {
-                GridManager.Instance.ClearSelection();
-                turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
-                uiManager.UpdateSkillPanel(); // Update UI on deselect
+                CancelSkillState();
             }
             return;
         }
@@ -154,12 +152,16 @@ public class InputManager : MonoBehaviour
             case TurnManager.PlayerTurnState.UnitSelected:
                 HandleMovementSelection(cell);
                 break;
+            
+            case TurnManager.PlayerTurnState.AwaitingSkillSubTarget:
+                HandleSkillSubTargetSelection(cell);
+                break;
         }
     }
 
     private void HandleUnitSelection(Vector2Int cell)
     {
-        GridManager.Instance.ClearSelection(); // Clear previous selection first
+        GridManager.Instance.ClearAllHighlights();
         
         UnitBase unit = GridManager.Instance.GetUnitAt(cell);
         if (unit != null && unit is PlayerUnit)
@@ -172,12 +174,12 @@ public class InputManager : MonoBehaviour
                 turnManager.SetPlayerState(TurnManager.PlayerTurnState.UnitSelected);
                 if (selectedUnit.unitData != null)
                 {
+                    // TODO: 향후 스킬 사거리 표시 등과 통합 필요
                     List<Vector2Int> movableTiles = GridManager.Instance.FindMovableTiles(cell, selectedUnit.unitData.movementPattern);
                     GridManager.Instance.HighlightMovableTiles(movableTiles);
                 }
             }
         }
-        // Whether a unit was selected or not, update the panel
         uiManager.UpdateSkillPanel();
     }
 
@@ -186,31 +188,70 @@ public class InputManager : MonoBehaviour
         UnitBase selectedUnit = GridManager.Instance.GetSelectedUnit();
         if (selectedUnit == null) return;
 
+        // 이동 가능 범위 클릭 시
         if (GridManager.Instance.IsMovableTile(cell))
         {
-            selectedUnit.Move(cell);
-            GridManager.Instance.ClearMovableHighlights();
-            turnManager.SetPlayerState(TurnManager.PlayerTurnState.PerformingAction);
-            uiManager.UpdateSkillPanel(); // Clear panel after move
+            GridManager.Instance.ClearAllHighlights();
             
-            StartCoroutine(EndTurnAfterDelay(1.0f));
+            // 임시 로직: 0번 스킬이 있으면 스킬 사용, 없으면 기본 이동
+            var playerUnit = selectedUnit as PlayerUnit;
+            if (playerUnit != null && playerUnit.HasSkills)
+            {
+                // 0번 스킬 사용
+                playerUnit.UseSkill(0, cell);
+            }
+            else
+            {
+                // 스킬이 없으면 기본 이동
+                selectedUnit.Move(cell);
+                turnManager.SetPlayerState(TurnManager.PlayerTurnState.PerformingAction);
+                StartCoroutine(EndTurnAfterDelay(1.0f));
+            }
+            uiManager.UpdateSkillPanel();
         }
         else
         {
             UnitBase clickedUnit = GridManager.Instance.GetUnitAt(cell);
             if (clickedUnit != null && clickedUnit is PlayerUnit && clickedUnit != selectedUnit)
             {
-                // Switch selection to another player unit
-                HandleUnitSelection(cell); // This will clear old selection and start new one
+                HandleUnitSelection(cell);
             }
             else
             {
-                // Clicked on empty space, enemy, or the same unit again -> Deselect
-                GridManager.Instance.ClearSelection();
-                turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
-                uiManager.UpdateSkillPanel(); // Update UI on deselect
+                CancelSkillState();
             }
         }
+    }
+
+    private void HandleSkillSubTargetSelection(Vector2Int cell)
+    {
+        var pausedSkill = turnManager.PausedSkill;
+        var context = turnManager.PausedSkillContext;
+
+        if (pausedSkill == null || context == null) return;
+
+        UnitBase clickedUnit = GridManager.Instance.GetUnitAt(cell);
+
+        if (clickedUnit != null && context.HighlightedTargets.Contains(clickedUnit))
+        {
+            GridManager.Instance.ClearAllHighlights();
+            pausedSkill.ActivateSubTarget(clickedUnit);
+        }
+        else
+        {
+            CancelSkillState();
+        }
+    }
+
+    private void CancelSkillState()
+    {
+        Debug.Log("Selection cancelled.");
+        GridManager.Instance.ClearAllHighlights();
+        
+        turnManager.PausedSkill = null;
+        turnManager.PausedSkillContext = null;
+        turnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingUnitSelection);
+        uiManager.UpdateSkillPanel();
     }
 
     private System.Collections.IEnumerator EndTurnAfterDelay(float delay)
