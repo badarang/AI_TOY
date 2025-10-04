@@ -51,7 +51,15 @@ public class UnitBase : MonoBehaviour
 
         DebugPrinter.DebugColor(DebugType.Unit, $"Using skill '{skill.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {skill.apCost}");
         ap -= skill.apCost;
-        _skillCooldowns[skillIndex] = skill.cooldown;
+        
+        if (skill.cooldown == 0 && skill.apCost > 0)
+        {
+            _skillCooldowns[skillIndex] = 1;
+        }
+        else
+        {
+            _skillCooldowns[skillIndex] = skill.cooldown;
+        }
 
         DebugPrinter.DebugColor(DebugType.Unit, $"{name} used {skill.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
 
