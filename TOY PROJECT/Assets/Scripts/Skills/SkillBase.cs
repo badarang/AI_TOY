@@ -1,69 +1,41 @@
-using Sirenix.OdinInspector;
 using UnityEngine;
 
-public class SkillBase : MonoBehaviour
+// SkillData와 SkillBehavior의 도입으로, 이 클래스는 더 이상 적극적으로 사용되지 않는 레거시 클래스가 될 예정입니다.
+// 점진적인 리팩토링을 위해 임시로 유지됩니다.
+public abstract class SkillBase : MonoBehaviour
 {
-    public SkillData skillData;
-    public int currentCooldown = 0;
+    public SkillData skillData; // 모든 스킬은 이제 SkillData를 참조해야 합니다.
 
-    [Button("Activate Skill (Test)")]
-    private void ActivateForTest()
-    {
-        var player = FindObjectOfType<PlayerUnit>();
-        if (player != null)
-        { Activate(player, player.position + new Vector2Int(0, 1)); }
-        else
-        { Debug.LogError("Test failed. No PlayerUnit found in scene."); }
-    }
-
-    // 1단계: 스킬 최초 발동
-    public virtual void Activate(UnitBase caster, Vector2Int targetPos)
+    protected virtual void Awake()
     {
         if (skillData == null) { Debug.LogError("SkillData is not assigned!", this); return; }
+    }
 
-        var context = new SkillContext(caster, targetPos);
+    // 스킬 사용의 주 로직은 이제 UnitBase.UseSkill()로 이전되었습니다.
+    // 이 Execute 메소드는 특정 시나리오(예: 서브 타겟팅)에서만 제한적으로 사용될 수 있습니다.
+    public virtual float Execute(SkillContext context)
+    {
+        float totalDuration = 0f;
 
-        // TurnManager에 현재 스킬 정보 저장 (일시정지 대비)
-        Core.Instance.TurnManager.PausedSkill = this;
-        Core.Instance.TurnManager.PausedSkillContext = context;
-
+        // Initial Behaviors 실행
         if (skillData.initialBehaviors != null)
         {
             foreach (var behavior in skillData.initialBehaviors)
             {
-                if (behavior != null) behavior.Execute(context);
-            }
-        }
-        
-        // 만약 subTargetBehaviors가 없다면, 스킬 사용은 여기서 종료
-        if (skillData.subTargetBehaviors == null || skillData.subTargetBehaviors.Length == 0)
-        {
-            Core.Instance.TurnManager.PausedSkill = null;
-            Core.Instance.TurnManager.PausedSkillContext = null;
-            // 턴 종료는 PlayerUnit.UseSkill에서 처리하므로 여기서는 호출하지 않음
-        }
-    }
-
-    // 2단계: 추가 대상 선택 후 발동
-    public virtual void ActivateSubTarget(UnitBase targetUnit)
-    {
-        var context = Core.Instance.TurnManager.PausedSkillContext;
-        if (context == null) { Debug.LogError("No paused skill context found!"); return; }
-
-        // 컨텍스트에 2단계 타겟 정보 추가 (이 필드는 SkillContext에 추가 필요)
-        context.SubTargetUnit = targetUnit;
-
-        if (skillData.subTargetBehaviors != null)
-        {
-            foreach (var behavior in skillData.subTargetBehaviors)
-            {
-                if (behavior != null) behavior.Execute(context);
+                if (behavior != null) totalDuration += behavior.Execute(context);
             }
         }
 
-        // 모든 스킬 단계가 끝났으므로 정보 초기화 및 턴 종료
-        Core.Instance.TurnManager.PausedSkill = null;
-        Core.Instance.TurnManager.PausedSkillContext = null;
-        Core.Instance.TurnManager.EndTurn();
+        // Sub-Targeting 로직 (TurnManager가 직접 처리)
+        if (skillData.subTargetBehaviors != null && skillData.subTargetBehaviors.Length > 0)
+        {
+            // TurnManager가 이 상태를 관리하므로, SkillBase에서 직접 상태를 설정하는 코드를 제거합니다.
+            // Core.Instance.TurnManager.PausedSkillData = skillData;
+            // Core.Instance.TurnManager.PausedSkillContext = context;
+            // Core.Instance.TurnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingSkillSubTarget);
+            Debug.Log("Sub-targeting skill used. TurnManager will handle the state.");
+        }
+
+        return totalDuration;
     }
-} 
+}
