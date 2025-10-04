@@ -1,9 +1,20 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum SkillType
+{
+    None,
+    Attack,
+    Move,
+    Buff,
+    Debuff,
+    Etc
+}
+
 [CreateAssetMenu(menuName = "Data/SkillData")]
 public class SkillData : ScriptableObject
 {
+    public SkillType skillType;
     public SkillMeta skillMeta; // 스킬 이름, 설명, 아이콘 등
     public int apCost;
     public int cooldown;

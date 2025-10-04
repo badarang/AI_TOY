@@ -12,6 +12,8 @@ public class SkillContext
     public UnitBase SubTargetUnit { get; set; }
 
     // Behavior 사이의 데이터 전달을 위해 사용
+    public UnitBase TargetUnit { get; set; }
+    public bool? PushedUnitHitWall { get; set; }
     public List<UnitBase> DamagedUnits { get; set; }
     public List<UnitBase> KilledUnits { get; set; }
     public List<UnitBase> HighlightedTargets { get; set; }

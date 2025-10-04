@@ -85,7 +85,7 @@ public class UnitBase : MonoBehaviour
         for (int i = 0; i < unitData.skills.Length; i++)
         {
             var skill = unitData.skills[i];
-            if (skill.movementPattern != null && skill.movementPattern.Count > 0)
+            if (skill.skillType == SkillType.Move)
             {
                 return i;
             }
@@ -173,7 +173,7 @@ public class UnitBase : MonoBehaviour
             if (_skillCooldowns[i] > 0 || ap < skill.apCost) continue;
 
             // Find potential attack targets from skill range
-            if (skill.range > 0)
+            if (skill.skillType == SkillType.Attack)
             {
                 foreach (var potentialTarget in allUnits)
                 {
@@ -187,7 +187,7 @@ public class UnitBase : MonoBehaviour
             }
 
             // Find movable tiles AND enemies on move path
-            if (skill.movementPattern != null && skill.movementPattern.Count > 0)
+            if (skill.skillType == SkillType.Move)
             {
                 foreach (var offset in skill.movementPattern)
                 {
