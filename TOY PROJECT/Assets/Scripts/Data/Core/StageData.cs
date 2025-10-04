@@ -12,11 +12,24 @@ public class StageData : ScriptableObject
     public int height = 7;
     public Vector2Int playerSpawn;
     public UnitType playerType;
-    public EnemySpawnData[] enemySpawns = new EnemySpawnData[0];
+    
+    [Title("웨이브 설정")]
+    public EnemyWave[] waves = new EnemyWave[0]; // 여러 웨이브의 적 정보를 담도록 변경
+    
+    [Title("장애물 설정")]
     public ObstacleSpawnData[] obstacleSpawns = new ObstacleSpawnData[0];
 }
 
-// 맵 에디터 클래스 추가
+// 한 웨이브에 등장할 적들의 목록을 정의하는 클래스
+[System.Serializable]
+public class EnemyWave
+{
+    public string waveName; // 에디터에서 웨이브를 구분하기 위한 이름 (예: "1라운드: 거위 부대")
+    public EnemySpawnData[] enemySpawns;
+}
+
+
+// 맵 에디터 클래스 (기존 코드 유지)
 [System.Serializable]
 public class StageMapEditor
 {

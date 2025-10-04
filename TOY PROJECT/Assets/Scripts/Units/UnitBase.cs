@@ -109,6 +109,13 @@ public class UnitBase : MonoBehaviour
     {
         DebugPrinter.DebugColor(DebugType.Unit, $"{name} has died.");
         Core.Instance.GridManager.UnregisterUnit(position);
+
+        // Check if the dying unit is an enemy and unregister it from the StageManager
+        if (this is EnemyUnit enemyUnit)
+        {
+            Core.Instance.StageManager.UnregisterEnemy(enemyUnit);
+        }
+
         Destroy(gameObject);
     }
 

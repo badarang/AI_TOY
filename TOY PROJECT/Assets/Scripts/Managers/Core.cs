@@ -10,6 +10,7 @@ public class Core : MonoBehaviour
     [SerializeField] private StageManager stageManager;
     [SerializeField] private UIManager uiManager;
     [SerializeField] private TurnManager turnManager;
+    [SerializeField] private RewardManager rewardManager; // RewardManager 추가
     [SerializeField] private EnemyAIManager enemyAIManager;
     [SerializeField] private InputManager inputManager;
 
@@ -18,6 +19,7 @@ public class Core : MonoBehaviour
     public StageManager StageManager => stageManager;
     public UIManager UIManager => uiManager;
     public TurnManager TurnManager => turnManager;
+    public RewardManager RewardManager => rewardManager; // RewardManager 프로퍼티 추가
     public EnemyAIManager EnemyAIManager => enemyAIManager;
     public InputManager InputManager => inputManager;
 

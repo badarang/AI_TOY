@@ -1,31 +1,61 @@
 using UnityEngine;
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 
 public class TurnManager : MonoBehaviour
 {
+    // Events
     public event Action OnPlayerTurnStart;
     public event Action OnEnemyTurnStart;
 
+    // Game State
     public enum Turn { Player, Enemy }
     public Turn CurrentTurn { get; private set; }
-
-    public enum PlayerTurnState { AwaitingUnitSelection, UnitSelected, PerformingAction, AwaitingSkillSubTarget }
+    public enum PlayerTurnState { AwaitingUnitSelection, UnitSelected, PerformingAction, AwaitingSkillSubTarget, RewardPhase }
     public PlayerTurnState CurrentPlayerState { get; private set; }
 
-    public SkillBase PausedSkill { get; set; }
+    // Wave & Turn Limit System
+    [Header("Wave & Turn System")]
+    [SerializeField] private int waveTurnLimit = 5;
+    private int currentWave = 1;
+    private int turnInWave = 0;
+
+    // Paused Skill State
     public SkillData PausedSkillData { get; set; }
     public SkillContext PausedSkillContext { get; set; }
 
-    public UIManager uiManager;
-    public StageManager stageManager;
+    // Manager References
+    private UIManager uiManager;
+    private StageManager stageManager;
+    private RewardManager rewardManager;
+    private GridManager gridManager;
+
+    void Start()
+    {
+        uiManager = Core.Instance.UIManager;
+        stageManager = Core.Instance.StageManager;
+        rewardManager = Core.Instance.RewardManager;
+        gridManager = Core.Instance.GridManager;
+        
+        // 게임 시작 시 첫 웨이브를 시작하도록 호출 (예시)
+        // 실제로는 게임 시작 로직을 관리하는 다른 매니저(예: GameManager)가 호출해야 합니다.
+        StartFirstWave();
+    }
+
+    public void StartFirstWave()
+    {
+        currentWave = 1;
+        turnInWave = 0;
+        stageManager.SpawnWave(currentWave); // StageManager에 SpawnWave(waveIndex) 구현 필요
+        StartPlayerTurn();
+    }
 
     public void StartPlayerTurn()
     {
         CurrentTurn = Turn.Player;
-        CurrentPlayerState = PlayerTurnState.AwaitingUnitSelection;
+        turnInWave++;
+        SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
         
         var player = stageManager.GetPlayer();
         if (player != null)
@@ -34,69 +64,101 @@ public class TurnManager : MonoBehaviour
         }
 
         OnPlayerTurnStart?.Invoke();
-        uiManager?.UpdateTurnOrder();
+        uiManager.UpdateTurnUI(turnInWave, waveTurnLimit); // UIManager에 턴 UI 업데이트 구현 필요
     }
 
     public void StartEnemyTurn()
     {
         CurrentTurn = Turn.Enemy;
+        SetPlayerState(PlayerTurnState.PerformingAction);
 
-        // 모든 적 AP 회복
         var enemies = stageManager.GetEnemies();
         foreach (var enemy in enemies)
         {
-            if (enemy != null)
-            {
-                enemy.OnTurnStart();
-            }
+            if (enemy != null) enemy.OnTurnStart();
         }
 
         OnEnemyTurnStart?.Invoke();
-        uiManager?.UpdateTurnOrder();
         StartCoroutine(EnemyTurnRoutine());
     }
 
     public void EndTurn()
     {
+        if (CurrentPlayerState == PlayerTurnState.RewardPhase) return;
+
         if (CurrentTurn == Turn.Player)
         {
             StartEnemyTurn();
         }
-        else
+        else // Enemy turn is ending
         {
+            if (turnInWave >= waveTurnLimit)
+            {
+                Debug.Log("방송 시간 초과! 패널티 라운드에 돌입합니다!");
+                currentWave++;
+                stageManager.SpawnWave(currentWave); // 적 누적
+                turnInWave = 0; // 턴 카운터 리셋
+                // TODO: uiManager.ShowPenaltyAnnouncement();
+            }
             StartPlayerTurn();
         }
     }
 
+    private IEnumerator EnemyTurnRoutine()
+    {
+        yield return Core.Instance.EnemyAIManager.ExecuteEnemyTurns();
+        if (CheckForWaveClear()) yield break;
+        EndTurn();
+    }
+
+    private bool CheckForWaveClear()
+    {
+        if (stageManager.GetEnemies().Count == 0)
+        {
+            EnterRewardPhase();
+            return true;
+        }
+        return false;
+    }
+
+    private void EnterRewardPhase()
+    {
+        Debug.Log($"라운드 {currentWave} 클리어! 스폰서 보급품이 도착했습니다!");
+        SetPlayerState(PlayerTurnState.RewardPhase);
+        turnInWave = 0;
+        
+        rewardManager.AddFans(100); // 예시: 웨이브 클리어 시 팬 100명 추가
+
+        var rewards = rewardManager.GenerateRewards();
+        uiManager.ShowRewardScreen(rewards); // UIManager에 보상 화면 표시 구현 필요
+    }
+
+    public void FinalizeRewardSelection()
+    {
+        // UI에서 보상 선택을 완료했을 때 호출됩니다.
+        Debug.Log("보상 선택 완료. 다음 라운드를 준비합니다.");
+        currentWave++;
+        stageManager.SpawnWave(currentWave);
+        StartPlayerTurn();
+    }
+    
     public void SetPlayerState(PlayerTurnState newState)
     {
         CurrentPlayerState = newState;
         Debug.Log($"Player state changed to: {newState}");
     }
 
-    private IEnumerator EnemyTurnRoutine()
-    {
-        yield return Core.Instance.EnemyAIManager.ExecuteEnemyTurns();
-        EndTurn();
-    }
-    
-    // --- Logic moved from InputManager ---
+    // --- Input Handling --- (기존 로직 유지 및 수정)
 
     public void HandleCellClick(Vector2Int cell)
     {
+        if (CurrentPlayerState == PlayerTurnState.RewardPhase) return;
+
         switch (CurrentPlayerState)
         {
-            case PlayerTurnState.AwaitingUnitSelection:
-                HandleUnitSelection(cell);
-                break;
-
-            case PlayerTurnState.UnitSelected:
-                HandleActionSelection(cell);
-                break;
-            
-            case PlayerTurnState.AwaitingSkillSubTarget:
-                HandleSkillSubTargetSelection(cell);
-                break;
+            case PlayerTurnState.AwaitingUnitSelection: HandleUnitSelection(cell); break;
+            case PlayerTurnState.UnitSelected: HandleActionSelection(cell); break;
+            case PlayerTurnState.AwaitingSkillSubTarget: HandleSkillSubTargetSelection(cell); break;
         }
     }
 
@@ -110,14 +172,12 @@ public class TurnManager : MonoBehaviour
 
     private void HandleUnitSelection(Vector2Int cell)
     {
-        GridManager.Instance.ClearAllHighlights();
-        
-        UnitBase unit = GridManager.Instance.GetUnitAt(cell);
+        gridManager.ClearAllHighlights();
+        UnitBase unit = gridManager.GetUnitAt(cell);
         if (unit != null && unit is PlayerUnit)
         {
-            GridManager.Instance.TrySelectUnitAtCell(cell);
-            
-            UnitBase selectedUnit = GridManager.Instance.GetSelectedUnit();
+            gridManager.TrySelectUnitAtCell(cell);
+            UnitBase selectedUnit = gridManager.GetSelectedUnit();
             if (selectedUnit != null)
             {
                 SetPlayerState(PlayerTurnState.UnitSelected);
@@ -129,79 +189,58 @@ public class TurnManager : MonoBehaviour
 
     private async void HandleActionSelection(Vector2Int cell)
     {
-        DebugPrinter.DebugColor(DebugType.Input, $"HandleActionSelection: cell {cell} 클릭됨");
-        UnitBase selectedUnit = GridManager.Instance.GetSelectedUnit();
-        if (selectedUnit == null)
-        {
-            DebugPrinter.DebugColor(DebugType.Input, "HandleActionSelection: 선택된 유닛이 없어 종료됨");
-            return;
-        }
-        DebugPrinter.DebugColor(DebugType.Input, $"HandleActionSelection: 현재 선택된 유닛 = {selectedUnit.name}");
+        UnitBase selectedUnit = gridManager.GetSelectedUnit();
+        if (selectedUnit == null) return;
 
         float skillDuration = 0f;
-
-        // 1. Check for Attack Target
-        UnitBase targetUnit = GridManager.Instance.GetTargetAt(cell);
-        DebugPrinter.DebugColor(DebugType.Input, $"HandleActionSelection: GetTargetAt({cell}) 결과 = {(targetUnit != null ? targetUnit.name : "null")}");
+        UnitBase targetUnit = gridManager.GetTargetAt(cell);
         if (targetUnit != null)
         {
-            // Find first attack skill and use it
             for (int i = 0; i < selectedUnit.unitData.skills.Length; i++)
             {
                 if (selectedUnit.unitData.skills[i].skillType == SkillType.Attack)
                 {
                     skillDuration = selectedUnit.UseSkill(i, cell);
                     await PostActionUpdate(selectedUnit, skillDuration);
-                    return; // Action taken
+                    return;
                 }
             }
-            return; // No attack skill found
+            return;
         }
 
-        // 2. Check for Move
-        if (GridManager.Instance.IsMovableTile(cell))
+        if (gridManager.IsMovableTile(cell))
         {
-            // Find the first move skill and use it
             for (int i = 0; i < selectedUnit.unitData.skills.Length; i++)
             {
-                var skill = selectedUnit.unitData.skills[i];
-                if (skill.skillType == SkillType.Move)
+                if (selectedUnit.unitData.skills[i].skillType == SkillType.Move)
                 {
                     skillDuration = selectedUnit.UseSkill(i, cell);
                     await PostActionUpdate(selectedUnit, skillDuration);
-                    return; // Action taken
+                    return;
                 }
             }
-            return; // No move skill found
+            return;
         }
 
-        // 3. Check for clicking another friendly unit to switch selection
-        UnitBase clickedUnit = GridManager.Instance.GetUnitAt(cell);
+        UnitBase clickedUnit = gridManager.GetUnitAt(cell);
         if (clickedUnit != null && clickedUnit is PlayerUnit && clickedUnit != selectedUnit)
         {
-            HandleUnitSelection(cell); // Reselect to the new unit
+            HandleUnitSelection(cell);
             return;
         }
         
-        // 4. If nothing else, cancel selection
         CancelActionState();
     }
 
     private async void HandleSkillSubTargetSelection(Vector2Int cell)
     {
-        var pausedSkillData = PausedSkillData;
-        var context = PausedSkillContext;
-
-        if (pausedSkillData == null || context == null) return;
-
-        UnitBase clickedUnit = GridManager.Instance.GetUnitAt(cell);
-
-        // TODO: Add validation to check if the clicked unit is a valid sub-target
+        if (PausedSkillData == null || PausedSkillContext == null) return;
+        UnitBase clickedUnit = gridManager.GetUnitAt(cell);
         if (clickedUnit != null)
         {
-            GridManager.Instance.ClearAllHighlights();
-            context.SubTargetUnit = clickedUnit;
-            await ExecuteSubSkills(pausedSkillData, context);
+            gridManager.ClearAllHighlights();
+            PausedSkillContext.SubTargetUnit = clickedUnit;
+            await ExecuteSubSkills(PausedSkillData, PausedSkillContext);
         }
         else
         {
@@ -222,9 +261,6 @@ public class TurnManager : MonoBehaviour
                 }
             }
         }
-
-        // Clean up and reset state after all sub-skills are done
-        PausedSkill = null;
         PausedSkillData = null;
         PausedSkillContext = null;
         SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
@@ -234,8 +270,8 @@ public class TurnManager : MonoBehaviour
     private async UniTask PostActionUpdate(UnitBase unit, float delay)
     {
         await UniTask.Delay(TimeSpan.FromSeconds(delay));
-
-        if (unit == null) return; // Unit might have died during the action
+        if (CheckForWaveClear()) return;
+        if (unit == null) return;
 
         if (unit.ap > 0)
         {
@@ -243,7 +279,7 @@ public class TurnManager : MonoBehaviour
         }
         else
         {
-            GridManager.Instance.ClearSelection();
+            gridManager.ClearSelection();
             SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
             uiManager.UpdateSkillPanel();
         }
@@ -251,10 +287,7 @@ public class TurnManager : MonoBehaviour
 
     private void CancelActionState()
     {
-        DebugPrinter.DebugColor(DebugType.Input, "Selection cancelled.");
-        GridManager.Instance.ClearAllHighlights();
-        
-        PausedSkill = null;
+        gridManager.ClearAllHighlights();
         PausedSkillData = null;
         PausedSkillContext = null;
         SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
