@@ -53,11 +53,14 @@ public class UnitInfoUI : MonoBehaviour
         UpdateSkillList();
     }
 
-    private void UpdateSkillList()
+private void UpdateSkillList()
     {
         foreach (var item in skillInfoItems)
         {
-            Destroy(item);
+            if (item != null)
+            {
+                Core.Instance.PoolManager.ReturnToPool(item);
+            }
         }
         skillInfoItems.Clear();
 
@@ -66,7 +69,7 @@ public class UnitInfoUI : MonoBehaviour
         for (int i = 0; i < currentUnit.unitData.skills.Length; i++)
         {
             var skill = currentUnit.unitData.skills[i];
-            GameObject skillItem = Instantiate(skillInfoPrefab, skillsContainer);
+            GameObject skillItem = Core.Instance.PoolManager.SpawnFromPool("SkillInfo", skillsContainer, false);
             
             var nameText = skillItem.transform.Find("SkillName")?.GetComponent<TextMeshProUGUI>();
             if (nameText != null)

@@ -6,7 +6,9 @@ public class Core : MonoBehaviour
 
     [Header("Managers")]
     // 의존성이 적은 순서대로 정렬
-    [SerializeField] private GameManager gameManager; // GameManager 추가
+    [SerializeField] private GameManager gameManager;
+    [SerializeField] private PoolManager poolManager;
+ // GameManager 추가
     [SerializeField] private GridManager gridManager;
     [SerializeField] private StageManager stageManager;
     [SerializeField] private UIManager uiManager;
@@ -16,7 +18,9 @@ public class Core : MonoBehaviour
     [SerializeField] private InputManager inputManager;
 
     // 프로퍼티도 위와 동일한 순서로 정렬
-    public GameManager GameManager => gameManager; // GameManager 프로퍼티 추가
+    public GameManager GameManager => gameManager;
+    public PoolManager PoolManager => poolManager;
+ // GameManager 프로퍼티 추가
     public GridManager GridManager => gridManager;
     public StageManager StageManager => stageManager;
     public UIManager UIManager => uiManager;

@@ -10,7 +10,7 @@ public class SkillPanelUI : MonoBehaviour
 
     private List<GameObject> currentSkillButtons = new List<GameObject>();
 
-    public void DisplaySkills(SkillData[] skills)
+public void DisplaySkills(SkillData[] skills)
     {
         ClearSkills();
 
@@ -20,27 +20,25 @@ public class SkillPanelUI : MonoBehaviour
         {
             if (skillButtonPrefab == null) continue;
 
-            GameObject skillButton = Instantiate(skillButtonPrefab, skillButtonContainer);
+            GameObject skillButton = Core.Instance.PoolManager.SpawnFromPool("SkillButton", skillButtonContainer, false);
             TextMeshProUGUI skillNameText = skillButton.GetComponentInChildren<TextMeshProUGUI>();
-            Debug.Log($"SkillMeta - {skillData.skillMeta}, skillNameText = {skillNameText}");
             if (skillNameText != null && skillData.skillMeta != null)
             {
-                // Here you would use the localization package to get the display name
-                // For now, we'll just display the key itself.
                 string displayName = $"[{skillData.skillMeta.nameKey}]";
                 skillNameText.text = displayName;
-
-                // TODO: Add button listener to use the skill
             }
             currentSkillButtons.Add(skillButton);
         }
     }
 
-    public void ClearSkills()
+public void ClearSkills()
     {
         foreach(var button in currentSkillButtons)
         {
-            Destroy(button);
+            if (button != null)
+            {
+                Core.Instance.PoolManager.ReturnToPool(button);
+            }
         }
         currentSkillButtons.Clear();
     }
