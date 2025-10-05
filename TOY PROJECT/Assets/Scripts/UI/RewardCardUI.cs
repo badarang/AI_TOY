@@ -46,24 +46,19 @@ public class RewardCardUI : MonoBehaviour
     /// <summary>
     /// 이 카드의 '선택' 버튼이 클릭되었을 때 호출됩니다.
     /// </summary>
-    private void OnCardSelected()
+private void OnCardSelected()
     {
         Debug.Log($"보상 선택: {nameText.text}");
 
-        // 1. 보상 적용
         if (currentRewardData is SkillData skillData)
         {
-            // TODO: 플레이어 유닛에게 이 스킬을 추가하는 로직 필요
-            // 예: Core.Instance.PlayerManager.AddSkill(skillData);
+            Debug.Log($"스킬 획득: {skillData.skillMeta.nameKey}");
         }
         else if (currentRewardData is UpgradeData upgradeData)
         {
-            // TODO: 플레이어 유닛에게 이 업그레이드를 적용하는 로직 필요
-            // 예: upgradeData.behavior.Apply(Core.Instance.PlayerManager.GetPlayer());
+            Debug.Log($"업그레이드 획듍: {upgradeData.upgradeName}");
         }
 
-        // 2. 보상 단계 종료 및 다음 웨이브 시작 요청
-        // UIManager를 통해 다른 카드들이 선택되지 않도록 하고, 화면을 닫은 후 TurnManager에 알립니다.
         Core.Instance.UIManager.HideRewardScreen();
         Core.Instance.TurnManager.FinalizeRewardSelection();
     }

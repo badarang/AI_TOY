@@ -34,10 +34,10 @@ public partial class SROptions
             Debug.Log($"[DEBUG] Player AP is now {player.ap}");
 
             // If player is selected, refresh highlights
-            if (Core.Instance.GridManager.GetSelectedUnit() == player)
-            {
-                player.ShowAvailableActions();
-            }
+            // if (Core.Instance.GridManager.GetSelectedUnit() == player)
+            // {
+            //     player.ShowAvailableActions();
+            // }
         }
         else
         {

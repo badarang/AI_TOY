@@ -13,14 +13,15 @@ MonoBehaviour:
   m_Name: Push
   m_EditorClassIdentifier: 
   skillMeta:
-    nameKey: 
-    descKey: 
-    apCost: 0
-    cooldown: 0
-    range: 0
+    nameKey: Push
+    descKey: Push is good.
+  tier: 0
+  tags: 0100000003000000
   apCost: 1
   cooldown: 1
   range: 1
+  skillType: 0
+  prerequisites: []
   movementPattern: []
   initialBehaviors:
   - {fileID: 11400000, guid: f13b212816ba84d4fa381e186cae11cd, type: 2}

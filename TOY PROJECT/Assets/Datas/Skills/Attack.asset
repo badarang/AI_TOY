@@ -12,12 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3279dc2c16e0b46639b600e83faa2e3d, type: 3}
   m_Name: Attack
   m_EditorClassIdentifier: 
-  unitMeta:
-    nameKey: 
-    descKey: 
+  skillMeta:
+    nameKey: Attack
+    descKey: Normal Attack
+  tier: 0
+  tags: 01000000
   apCost: 1
   cooldown: 1
   range: 1
+  skillType: 0
+  prerequisites: []
   movementPattern: []
   initialBehaviors:
   - {fileID: 11400000, guid: 9476e2a57a6a946849955c67e62fd196, type: 2}

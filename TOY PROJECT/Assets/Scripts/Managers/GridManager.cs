@@ -55,17 +55,10 @@ public class GridManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Clears all grid data and visual elements, preparing for a new stage.
-    /// </summary>
     public void ClearGrid()
     {
-        // Clear data
         unitPositions.Clear();
         hoveredCell = null;
-        // NOTE: TurnManager responsibility was removed from here.
-        
-        // Clear visual elements
         ClearGridLines();
         ClearAllHighlights(); 
         if (highlightQuad != null)
@@ -281,14 +274,13 @@ public class GridManager : MonoBehaviour
         movableTileHighlights.Clear();
     }
 
-    public void HighlightTargets(List<UnitBase> targets)
+public void HighlightAttackableTiles(List<Vector2Int> tiles)
     {
         ClearTargetHighlights();
-        foreach (var unit in targets)
+        foreach (var tile in tiles)
         {
-            Vector2Int tile = unit.position;
             GameObject highlight = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            highlight.name = $"TargetHighlight_{tile.x}_{tile.y}";
+            highlight.name = $"AttackHighlight_{tile.x}_{tile.y}";
             highlight.transform.position = new Vector3(tile.x + 0.5f, 0.04f, tile.y + 0.5f);
             highlight.transform.rotation = Quaternion.Euler(90, 0, 0);
             highlight.GetComponent<Collider>().enabled = false;
@@ -296,6 +288,12 @@ public class GridManager : MonoBehaviour
             rend.material = executableTargetMaterial;
             targetHighlights.Add(highlight);
         }
+    }
+
+    public void HighlightTargets(List<UnitBase> targets)
+    {
+        var tiles = targets.Select(u => u.position).ToList();
+        HighlightAttackableTiles(tiles);
     }
 
     public void ClearTargetHighlights()
@@ -309,6 +307,186 @@ public class GridManager : MonoBehaviour
         return tile.x >= 0 && tile.x < width && tile.y >= 0 && tile.y < height;
     }
     
-    // This is a dummy method to ensure compilation. The actual implementation is in TurnManager.
-    public void ClearSelection() { }
+    public void ClearSelection() 
+    {
+        ClearAllHighlights();
+    }
+
+    // --- Pathfinding (A*) ---
+
+    private class PathNode
+    {
+        public Vector2Int position;
+        public int gCost;
+        public int hCost;
+        public int fCost;
+        public PathNode parent;
+
+        public PathNode(Vector2Int position)
+        {
+            this.position = position;
+            this.gCost = int.MaxValue;
+        }
+
+        public void CalculateFCost()
+        {
+            fCost = gCost + hCost;
+        }
+    }
+
+    public List<Vector2Int> FindPath(Vector2Int startPosition, Vector2Int targetPosition)
+    {
+        PathNode startNode = new PathNode(startPosition);
+        PathNode targetNode = new PathNode(targetPosition);
+
+        List<PathNode> openList = new List<PathNode> { startNode };
+        HashSet<Vector2Int> closedList = new HashSet<Vector2Int>();
+        Dictionary<Vector2Int, PathNode> allNodes = new Dictionary<Vector2Int, PathNode>();
+        allNodes[startPosition] = startNode;
+
+        startNode.gCost = 0;
+        startNode.hCost = ChebyshevDistance(startPosition, targetPosition);
+        startNode.CalculateFCost();
+
+        while (openList.Count > 0)
+        {
+            PathNode currentNode = GetLowestFCostNode(openList);
+
+            if (currentNode.position == targetNode.position)
+            {
+                return RetracePath(startNode, currentNode);
+            }
+
+            openList.Remove(currentNode);
+            closedList.Add(currentNode.position);
+
+            foreach (Vector2Int neighbourPosition in GetNeighbourPositions(currentNode.position))
+            {
+                if (closedList.Contains(neighbourPosition) || !IsValidTile(neighbourPosition))
+                {
+                    continue;
+                }
+
+                if (!IsWalkable(neighbourPosition) && neighbourPosition != targetPosition)
+                {
+                    continue;
+                }
+
+                int tentativeGCost = currentNode.gCost + 1; // Chebyshev distance for adjacent nodes is 1
+
+                PathNode neighbourNode;
+                if (!allNodes.TryGetValue(neighbourPosition, out neighbourNode))
+                {
+                    neighbourNode = new PathNode(neighbourPosition);
+                    allNodes[neighbourPosition] = neighbourNode;
+                }
+
+                if (tentativeGCost < neighbourNode.gCost)
+                {
+                    neighbourNode.parent = currentNode;
+                    neighbourNode.gCost = tentativeGCost;
+                    neighbourNode.hCost = ChebyshevDistance(neighbourPosition, targetPosition);
+                    neighbourNode.CalculateFCost();
+
+                    if (!openList.Contains(neighbourNode))
+                    {
+                        openList.Add(neighbourNode);
+                    }
+                }
+            }
+        }
+
+        Debug.LogWarning($"Path not found from {startPosition} to {targetPosition}");
+        return null;
+    }
+
+    private bool IsWalkable(Vector2Int position)
+    {
+        return !HasUnitAt(position);
+    }
+
+    private List<Vector2Int> RetracePath(PathNode startNode, PathNode endNode)
+    {
+        List<Vector2Int> path = new List<Vector2Int>();
+        PathNode currentNode = endNode;
+
+        while (currentNode != startNode)
+        {
+            path.Add(currentNode.position);
+            currentNode = currentNode.parent;
+        }
+        path.Reverse();
+        return path;
+    }
+
+    private PathNode GetLowestFCostNode(List<PathNode> pathNodeList)
+    {
+        PathNode lowestFCostNode = pathNodeList[0];
+        for (int i = 1; i < pathNodeList.Count; i++)
+        {
+            if (pathNodeList[i].fCost < lowestFCostNode.fCost || (pathNodeList[i].fCost == lowestFCostNode.fCost && pathNodeList[i].hCost < lowestFCostNode.hCost))
+            {
+                lowestFCostNode = pathNodeList[i];
+            }
+        }
+        return lowestFCostNode;
+    }
+
+    private List<Vector2Int> GetNeighbourPositions(Vector2Int currentPos)
+    {
+        List<Vector2Int> neighbours = new List<Vector2Int>();
+        for (int x = -1; x <= 1; x++)
+        {
+            for (int y = -1; y <= 1; y++)
+            {
+                if (x == 0 && y == 0) continue;
+                neighbours.Add(new Vector2Int(currentPos.x + x, currentPos.y + y));
+            }
+        }
+        return neighbours;
+    }
+
+    private int ChebyshevDistance(Vector2Int a, Vector2Int b)
+    {
+        return Mathf.Max(Mathf.Abs(a.x - b.x), Mathf.Abs(a.y - b.y));
+    }
+
+    public void HighlightWalkableNodes(Vector2Int start, int range)
+    {
+        List<Vector2Int> walkableTiles = GetWalkableTilesInRange(start, range);
+        HighlightMovableTiles(walkableTiles);
+    }
+
+    public List<Vector2Int> GetWalkableTilesInRange(Vector2Int start, int range)
+    {
+        List<Vector2Int> reachableTiles = new List<Vector2Int>();
+        Queue<Tuple<Vector2Int, int>> queue = new Queue<Tuple<Vector2Int, int>>();
+        HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
+
+        queue.Enqueue(new Tuple<Vector2Int, int>(start, 0));
+        visited.Add(start);
+
+        while (queue.Count > 0)
+        {
+            var (currentPos, currentCost) = queue.Dequeue();
+
+            if (currentCost > 0)
+            {
+                reachableTiles.Add(currentPos);
+            }
+
+            if (currentCost < range)
+            {
+                foreach (var neighbour in GetNeighbourPositions(currentPos)) // 4방향 -> 8방향 탐색으로 변경
+                {
+                    if (IsValidTile(neighbour) && !HasUnitAt(neighbour) && !visited.Contains(neighbour))
+                    {
+                        visited.Add(neighbour);
+                        queue.Enqueue(new Tuple<Vector2Int, int>(neighbour, currentCost + 1));
+                    }
+                }
+            }
+        }
+        return reachableTiles;
+    }
 }

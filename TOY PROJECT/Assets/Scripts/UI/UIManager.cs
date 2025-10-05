@@ -6,7 +6,8 @@ public class UIManager : MonoBehaviour
 {
     [Header("Component References")]
     public TurnOrderUI turnOrderUI;
-    public SkillPanelUI skillPanelUI;
+        public UnitInfoUI unitInfoUI;
+public SkillPanelUI skillPanelUI;
 
     [Header("In-Game UI")]
     [SerializeField] private TextMeshProUGUI turnCounterText;
@@ -35,6 +36,32 @@ public class UIManager : MonoBehaviour
             turnCounterText.text = $"증원까지: {turnsLeft}턴";
         }
     }
+
+public void ShowUnitInfo(UnitBase unit)
+    {
+        if (unitInfoUI != null)
+        {
+            unitInfoUI.Show(unit);
+        }
+    }
+
+    public void HideUnitInfo()
+    {
+        if (unitInfoUI != null)
+        {
+            unitInfoUI.Hide();
+        }
+    }
+
+public void HideSkillPanel()
+    {
+        if (skillPanelUI != null)
+        {
+            skillPanelUI.ClearSkills();
+        }
+    }
+
+
 
     public void ShowRewardScreen(List<ScriptableObject> rewards)
     {

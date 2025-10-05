@@ -15,10 +15,8 @@ public enum SkillTier
 // 쇼러너 AI가 플레이어의 빌드를 분석하거나, 업그레이드 대상을 필터링하는 데 사용됩니다.
 public enum SkillTag
 {
-    Fire,
-    Ice,
-    Lightning,
     Movement,
+    Attack,
     Defense,
     Utility
 }

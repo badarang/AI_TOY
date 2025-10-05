@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   unitType: 1
   unitMeta:
-    nameKey: 
-    descKey: 
+    icon: {fileID: 21300000, guid: d1b72323dad76bc4da0da6c26f3dbc2f, type: 3}
+    nameKey: Hikai
+    descKey: Hikai is a Ninja.
   maxHp: 3
   maxAp: 2
   skills:
   - {fileID: 11400000, guid: 4618c872995fb4e4e9320e06b9a1a6cc, type: 2}
   - {fileID: 11400000, guid: c3ea022ad25394a02a9220034ff5c7d3, type: 2}
+  difficultyScore: 1

@@ -50,6 +50,6 @@ public class NodeButtonUI : MonoBehaviour
         Core.Instance.UIManager.HideNodeSelectionScreen();
 
         // 2. TurnManager에게 플레이어의 선택을 알리고, 다음 라운드를 시작하도록 요청합니다.
-        Core.Instance.TurnManager.OnNodeSelected(currentNodeData);
+        // Core.Instance.TurnManager.OnNodeSelected(currentNodeData);
     }
 }

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using TMPro;
 
 public class SkillPanelUI : MonoBehaviour
 {
@@ -20,8 +21,8 @@ public class SkillPanelUI : MonoBehaviour
             if (skillButtonPrefab == null) continue;
 
             GameObject skillButton = Instantiate(skillButtonPrefab, skillButtonContainer);
-            Text skillNameText = skillButton.GetComponentInChildren<Text>();
-
+            TextMeshProUGUI skillNameText = skillButton.GetComponentInChildren<TextMeshProUGUI>();
+            Debug.Log($"SkillMeta - {skillData.skillMeta}, skillNameText = {skillNameText}");
             if (skillNameText != null && skillData.skillMeta != null)
             {
                 // Here you would use the localization package to get the display name
@@ -42,5 +43,17 @@ public class SkillPanelUI : MonoBehaviour
             Destroy(button);
         }
         currentSkillButtons.Clear();
+    }
+
+
+public void UpdateSkillDisplay(UnitBase unit)
+    {
+        if (unit == null || unit.unitData == null)
+        {
+            ClearSkills();
+            return;
+        }
+        
+        DisplaySkills(unit.unitData.skills);
     }
 }

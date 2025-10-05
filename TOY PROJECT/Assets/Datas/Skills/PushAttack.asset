@@ -15,12 +15,13 @@ MonoBehaviour:
   skillMeta:
     nameKey: 
     descKey: 
-    apCost: 0
-    cooldown: 0
-    range: 0
+  tier: 0
+  tags: 01000000
   apCost: 1
   cooldown: 1
   range: 1
+  skillType: 0
+  prerequisites: []
   movementPattern: []
   initialBehaviors:
   - {fileID: 11400000, guid: 9476e2a57a6a946849955c67e62fd196, type: 2}

@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   unitType: 3
   unitMeta:
-    nameKey: 
-    descKey: 
+    icon: {fileID: 21300000, guid: 534e3ec14cd78434b8676eec8a7fd9ba, type: 3}
+    nameKey: Goose
+    descKey: Goose is a Enemy.
   maxHp: 2
   maxAp: 1
   skills:
   - {fileID: 11400000, guid: fef211ce88e034811883169c02f6c1db, type: 2}
   - {fileID: 11400000, guid: 4618c872995fb4e4e9320e06b9a1a6cc, type: 2}
+  difficultyScore: 1

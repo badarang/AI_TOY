@@ -12,12 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3279dc2c16e0b46639b600e83faa2e3d, type: 3}
   m_Name: Move
   m_EditorClassIdentifier: 
-  unitMeta:
-    nameKey: 
-    descKey: 
+  skillMeta:
+    nameKey: Move
+    descKey: Move Skill
+  tier: 0
+  tags: 00000000
   apCost: 1
   cooldown: 1
   range: 0
+  skillType: 1
+  prerequisites: []
   movementPattern:
   - {x: 1, y: 1}
   - {x: 1, y: -1}

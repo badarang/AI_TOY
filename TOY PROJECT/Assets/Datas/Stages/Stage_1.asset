@@ -12,15 +12,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4544cc851c9a5478794843bc1b8f1d2a, type: 3}
   m_Name: Stage_1
   m_EditorClassIdentifier: 
+  stageType: 0
   width: 7
   height: 7
   playerSpawn: {x: 3, y: 3}
   playerType: 1
+  difficulty: 6
   waves:
   - waveName: Wave 1
     enemySpawns:
     - enemyType: 3
       spawnPos: {x: 2, y: 5}
+    - enemyType: 3
+      spawnPos: {x: 3, y: 4}
+    clearTurnLimit: 5
+    bonusRewardId: 
   - waveName: Wave 2
     enemySpawns:
     - enemyType: 3
@@ -29,4 +35,12 @@ MonoBehaviour:
       spawnPos: {x: 1, y: 5}
     - enemyType: 3
       spawnPos: {x: 5, y: 5}
+    clearTurnLimit: 5
+    bonusRewardId: 
   obstacleSpawns: []
+  eventData:
+    eventTitle: 
+    description: 
+    choices: []
+  shopTableId: 
+  healAmount: 30

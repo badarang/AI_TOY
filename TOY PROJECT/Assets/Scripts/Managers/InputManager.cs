@@ -123,7 +123,7 @@ public class InputManager : MonoBehaviour
         }
     }
 
-    private void ProcessTurnClick()
+private void ProcessTurnClick()
     {
         if (turnManager.CurrentTurn != TurnManager.Turn.Player) return;
 
@@ -134,11 +134,19 @@ public class InputManager : MonoBehaviour
         {
             Vector3 hitPoint = ray.GetPoint(distance);
             Vector2Int cell = new Vector2Int(Mathf.FloorToInt(hitPoint.x), Mathf.FloorToInt(hitPoint.z));
+            
+            var gridManager = Core.Instance.GridManager;
+            var unitAtCell = gridManager.GetUnitAt(cell);
+            
+            if (unitAtCell != null)
+            {
+                Core.Instance.UIManager.ShowUnitInfo(unitAtCell);
+            }
+            
             turnManager.HandleCellClick(cell);
         }
         else
         {
-            // Player clicked on empty space (not on the grid)
             turnManager.CancelSelection();
         }
     }

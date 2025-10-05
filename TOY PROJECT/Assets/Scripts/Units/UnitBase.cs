@@ -52,14 +52,8 @@ public class UnitBase : MonoBehaviour
         DebugPrinter.DebugColor(DebugType.Unit, $"Using skill '{skill.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {skill.apCost}");
         ap -= skill.apCost;
         
-        if (skill.cooldown == 0 && skill.apCost > 0)
-        {
-            _skillCooldowns[skillIndex] = 1;
-        }
-        else
-        {
-            _skillCooldowns[skillIndex] = skill.cooldown;
-        }
+        // 스킬 데이터에 명시된 쿨다운이 0보다 클 때만 쿨다운을 적용합니다.
+        if (skill.cooldown > 0) _skillCooldowns[skillIndex] = skill.cooldown;
 
         DebugPrinter.DebugColor(DebugType.Unit, $"{name} used {skill.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
 
@@ -137,6 +131,13 @@ public class UnitBase : MonoBehaviour
         }
     }
 
+public int GetSkillCooldown(int skillIndex)
+    {
+        if (skillIndex < 0 || skillIndex >= _skillCooldowns.Count) return -1;
+        return _skillCooldowns[skillIndex];
+    }
+
+
     public virtual void OnEnable()
     {
         OnSelected += () => { DebugPrinter.DebugColor(DebugType.Unit, $"{factionData.factionName} is Selected"); };
@@ -159,7 +160,7 @@ public class UnitBase : MonoBehaviour
         OnSelected?.Invoke();
     }
 
-    public virtual void ShowAvailableActions()
+public virtual void ShowAvailableActions()
     {
         var gridManager = Core.Instance?.GridManager;
         if (gridManager == null) return;
@@ -173,15 +174,18 @@ public class UnitBase : MonoBehaviour
         var potentialTargets = new List<UnitBase>();
         var movableTiles = new List<Vector2Int>();
 
+        bool hasMoveAction = false;
+        bool hasAttackAction = false;
+
         for (int i = 0; i < unitData.skills.Length; i++)
         {
             var skill = unitData.skills[i];
 
             if (_skillCooldowns[i] > 0 || ap < skill.apCost) continue;
 
-            // Find potential attack targets from skill range
             if (skill.skillType == SkillType.Attack)
             {
+                hasAttackAction = true;
                 foreach (var potentialTarget in allUnits)
                 {
                     if (potentialTarget.factionData == this.factionData) continue;
@@ -193,23 +197,23 @@ public class UnitBase : MonoBehaviour
                 }
             }
 
-            // Find movable tiles AND enemies on move path
             if (skill.skillType == SkillType.Move)
             {
+                hasMoveAction = true;
                 foreach (var offset in skill.movementPattern)
                 {
                     Vector2Int destination = position + offset;
                     if (!gridManager.IsValidTile(destination)) continue;
                     
                     UnitBase unitOnTile = gridManager.GetUnitAt(destination);
-                    if (unitOnTile != null) // If a unit is on the destination tile
+                    if (unitOnTile != null)
                     {
                         if (unitOnTile.factionData != this.factionData && !potentialTargets.Contains(unitOnTile))
                         {
-                            potentialTargets.Add(unitOnTile); // Add enemy as a potential target
+                            potentialTargets.Add(unitOnTile);
                         }
                     }
-                    else // If the tile is empty
+                    else
                     {
                         if (!movableTiles.Contains(destination)) movableTiles.Add(destination);
                     }
@@ -217,11 +221,19 @@ public class UnitBase : MonoBehaviour
             }
         }
 
-        // Prioritize targets: if a tile is both movable and has a target, only show it as a target.
-        // This logic is implicitly handled now because an occupied tile is never added to movableTiles.
-
-        gridManager.HighlightMovableTiles(movableTiles);
-        gridManager.HighlightTargets(potentialTargets);
+        if (hasAttackAction && !hasMoveAction)
+        {
+            gridManager.HighlightTargets(potentialTargets);
+        }
+        else if (hasMoveAction && !hasAttackAction)
+        {
+            gridManager.HighlightMovableTiles(movableTiles);
+        }
+        else if (hasAttackAction && hasMoveAction)
+        {
+            gridManager.HighlightMovableTiles(movableTiles);
+            gridManager.HighlightTargets(potentialTargets);
+        }
     }
 
     public virtual void Deselect()
@@ -237,5 +249,51 @@ public class UnitBase : MonoBehaviour
         }
 
         OnDeselected?.Invoke();
+    }
+
+
+public virtual void MoveAlongPath(List<Vector2Int> path, Action onComplete)
+    {
+        if (path == null || path.Count == 0)
+        {
+            onComplete?.Invoke();
+            return;
+        }
+        
+        StartCoroutine(MoveAlongPathCoroutine(path, onComplete));
+    }
+
+
+private System.Collections.IEnumerator MoveAlongPathCoroutine(List<Vector2Int> path, Action onComplete)
+    {
+        float moveSpeed = 5f;
+        
+        foreach (var targetCell in path)
+        {
+            Vector3 startPos = transform.position;
+            Vector3 endPos = new Vector3(targetCell.x + 0.5f, transform.position.y, targetCell.y + 0.5f);
+            float distance = Vector3.Distance(startPos, endPos);
+            float duration = distance / moveSpeed;
+            float elapsed = 0f;
+            
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                transform.position = Vector3.Lerp(startPos, endPos, t);
+                yield return null;
+            }
+            
+            transform.position = endPos;
+            
+            var gridManager = Core.Instance?.GridManager;
+            if (gridManager != null)
+            {
+                gridManager.MoveUnit(position, targetCell);
+                position = targetCell;
+            }
+        }
+        
+        onComplete?.Invoke();
     }
 }
