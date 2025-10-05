@@ -29,7 +29,7 @@ public class RewardCardUI : MonoBehaviour
         if (rewardData is SkillData skillData)
         {
             nameText.text = skillData.skillMeta.nameKey;
-            descriptionText.text = skillData.skillMeta.descriptionKey;
+            descriptionText.text = skillData.skillMeta.descKey;
             // iconImage.sprite = skillData.skillMeta.icon; // SkillMeta에 icon 필드 필요
             tierText.text = skillData.tier.ToString();
         }

@@ -29,12 +29,9 @@ public class GridManager : MonoBehaviour
 
     private List<GameObject> gridLines = new List<GameObject>();
     private Vector2Int? hoveredCell = null;
-    private Vector2Int? selectedCell = null;
-    private UnitBase selectedUnit = null;
 
     public Material highlightMat;
     private GameObject highlightQuad;
-    private Material defaultHighlightMat;
 
     void Update()
     {
@@ -45,12 +42,8 @@ public class GridManager : MonoBehaviour
     {
         width = stageData.width;
         height = stageData.height;
-        ClearAllHighlights();
-        ClearGridLines();
-        hoveredCell = null;
-        selectedCell = null;
-        selectedUnit = null;
-        if (highlightQuad != null) Destroy(highlightQuad);
+        
+        ClearGrid(); // This now handles all cleanup
 
         for (int x = 0; x <= width; x++)
         {
@@ -59,6 +52,26 @@ public class GridManager : MonoBehaviour
         for (int z = 0; z <= height; z++)
         {
             CreateGridLine(new Vector3(0, 0.01f, z), new Vector3(width, 0.01f, z));
+        }
+    }
+
+    /// <summary>
+    /// Clears all grid data and visual elements, preparing for a new stage.
+    /// </summary>
+    public void ClearGrid()
+    {
+        // Clear data
+        unitPositions.Clear();
+        hoveredCell = null;
+        // NOTE: TurnManager responsibility was removed from here.
+        
+        // Clear visual elements
+        ClearGridLines();
+        ClearAllHighlights(); 
+        if (highlightQuad != null)
+        {
+            Destroy(highlightQuad);
+            highlightQuad = null;
         }
     }
 
@@ -125,7 +138,6 @@ public class GridManager : MonoBehaviour
             highlightQuad.name = "GridHighlight";
             highlightQuad.transform.rotation = Quaternion.Euler(90, 0, 0);
             highlightQuad.GetComponent<Collider>().enabled = false;
-            defaultHighlightMat = highlightQuad.GetComponent<Renderer>().material;
         }
 
         highlightQuad.transform.position = new Vector3(x + 0.5f, 0.02f, z + 0.5f);
@@ -154,27 +166,16 @@ public class GridManager : MonoBehaviour
 
             if (unit is PlayerUnit)
             {
-                if (selectedUnit == unit)
-                {
-                    ClearSelection();
-                }
-                else
-                {
-                    if (selectedUnit != null)
-                        selectedUnit.Deselect();
-                    selectedUnit = unit;
-                    selectedUnit.Select();
-                    selectedCell = cellPos;
-                }
+                Core.Instance.TurnManager.SelectPlayerUnit(unit as PlayerUnit);
             }
             else
             {
-                ClearSelection();
+                 Core.Instance.TurnManager.ClearSelection();
             }
         }
         else
         {
-            ClearSelection();
+             Core.Instance.TurnManager.ClearSelection();
         }
     }
 
@@ -188,14 +189,7 @@ public class GridManager : MonoBehaviour
         lr.SetPosition(1, end);
         lr.startWidth = 0.03f;
         lr.endWidth = 0.03f;
-        if (gridLineMaterial != null)
-        {
-            lr.material = gridLineMaterial;
-        }
-        else
-        {
-            Debug.LogError("GridLineMaterial is not set in the GridManager Inspector!");
-        }
+        lr.material = gridLineMaterial;
         lr.startColor = lr.endColor = Color.gray;
         lr.useWorldSpace = true;
         gridLines.Add(lineObj);
@@ -247,67 +241,27 @@ public class GridManager : MonoBehaviour
 
     public bool HasUnitAt(Vector2Int gridPos)
     {
-        bool hasUnit = unitPositions.ContainsKey(gridPos) && unitPositions[gridPos] != null;
-        if (hasUnit)
-        {
-            DebugPrinter.DebugColor(DebugType.System, $"GridManager.HasUnitAt({gridPos}): 유닛 있음 -> {unitPositions[gridPos].name}");
-        }
-        else
-        {
-            DebugPrinter.DebugColor(DebugType.System, $"GridManager.HasUnitAt({gridPos}): 유닛 없음");
-        }
-        return hasUnit;
-    }
-
-    public UnitBase GetSelectedUnit() { return selectedUnit; }
-    public Vector2Int? GetSelectedCell() { return selectedCell; }
-    public Vector2Int? GetHoveredCell() { return hoveredCell; }
-
-    public void ClearSelection()
-    {
-        if (selectedUnit != null)
-            selectedUnit.Deselect();
-        selectedUnit = null;
-        selectedCell = null;
-        ClearMovableHighlights();
-        ClearTargetHighlights();
+        return unitPositions.ContainsKey(gridPos) && unitPositions[gridPos] != null;
     }
 
     public void ClearAllHighlights()
     {
-        ClearSelection();
+        HideHighlight();
+        ClearMovableHighlights();
+        ClearTargetHighlights();
     }
 
     [Header("Movable Tile Highlight")]
     public Material movableTileMaterial;
     private List<GameObject> movableTileHighlights = new List<GameObject>();
-    private List<Vector2Int> _currentMovableTiles = new List<Vector2Int>();
 
     [Header("Target Highlight")]
     public Material executableTargetMaterial;
     private List<GameObject> targetHighlights = new List<GameObject>();
-    private List<UnitBase> _currentTargets = new List<UnitBase>();
-
-    public List<Vector2Int> FindMovableTiles(Vector2Int startPos, List<Vector2Int> movementPattern)
-    {
-        var movableTiles = new List<Vector2Int>();
-        if (movementPattern == null) return movableTiles;
-
-        foreach (var offset in movementPattern)
-        {
-            Vector2Int destination = startPos + offset;
-            if (destination.x < 0 || destination.x >= width || destination.y < 0 || destination.y >= height) continue;
-            if (HasUnitAt(destination)) continue;
-            movableTiles.Add(destination);
-        }
-        return movableTiles;
-    }
 
     public void HighlightMovableTiles(List<Vector2Int> tilesToHighlight)
     {
         ClearMovableHighlights();
-        _currentMovableTiles = tilesToHighlight;
-
         foreach (var tile in tilesToHighlight)
         {
             GameObject highlight = GameObject.CreatePrimitive(PrimitiveType.Quad);
@@ -315,27 +269,21 @@ public class GridManager : MonoBehaviour
             highlight.transform.position = new Vector3(tile.x + 0.5f, 0.03f, tile.y + 0.5f);
             highlight.transform.rotation = Quaternion.Euler(90, 0, 0);
             highlight.GetComponent<Collider>().enabled = false;
-            
             var rend = highlight.GetComponent<Renderer>();
-            if (movableTileMaterial != null) { rend.material = movableTileMaterial; }
-            else { rend.material.color = new Color(0.1f, 0.5f, 1f, 0.4f); }
-            
+            rend.material = movableTileMaterial;
             movableTileHighlights.Add(highlight);
         }
     }
 
     public void ClearMovableHighlights()
     {
-        foreach (var highlight in movableTileHighlights) { Destroy(highlight); }
+        foreach (var highlight in movableTileHighlights) { if(highlight != null) Destroy(highlight); }
         movableTileHighlights.Clear();
-        _currentMovableTiles.Clear();
     }
 
     public void HighlightTargets(List<UnitBase> targets)
     {
         ClearTargetHighlights();
-        _currentTargets = targets;
-
         foreach (var unit in targets)
         {
             Vector2Int tile = unit.position;
@@ -344,151 +292,23 @@ public class GridManager : MonoBehaviour
             highlight.transform.position = new Vector3(tile.x + 0.5f, 0.04f, tile.y + 0.5f);
             highlight.transform.rotation = Quaternion.Euler(90, 0, 0);
             highlight.GetComponent<Collider>().enabled = false;
-            
             var rend = highlight.GetComponent<Renderer>();
-            if (executableTargetMaterial != null) { rend.material = executableTargetMaterial; }
-            else { rend.material.color = new Color(1f, 0.2f, 0.2f, 0.5f); }
-            
+            rend.material = executableTargetMaterial;
             targetHighlights.Add(highlight);
         }
     }
 
     public void ClearTargetHighlights()
     {
-        foreach (var highlight in targetHighlights) { Destroy(highlight); }
+        foreach (var highlight in targetHighlights) { if(highlight != null) Destroy(highlight); }
         targetHighlights.Clear();
-        _currentTargets.Clear();
     }
-
-    public UnitBase GetTargetAt(Vector2Int tile)
-    {
-        return _currentTargets.FirstOrDefault(t => t.position == tile);
-    }
-
-    public bool IsMovableTile(Vector2Int tile) { return _currentMovableTiles.Contains(tile); }
 
     public bool IsValidTile(Vector2Int tile)
     {
         return tile.x >= 0 && tile.x < width && tile.y >= 0 && tile.y < height;
     }
-
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.gray;
-        for (int x = 0; x <= width; x++)
-        {
-            Gizmos.DrawLine(new Vector3(x, 0, 0), new Vector3(x, 0, height));
-        }
-        for (int z = 0; z <= height; z++)
-        {
-            Gizmos.DrawLine(new Vector3(0, 0, z), new Vector3(width, 0, z));
-        }
-    }
-
-    #region A* Pathfinding
-
-    private class PathNode
-    {
-        public Vector2Int position;
-        public int gCost; // Cost from start node
-        public int hCost; // Heuristic cost to end node
-        public int fCost => gCost + hCost; // Total cost
-        public PathNode parent;
-
-        public PathNode(Vector2Int position)
-        {
-            this.position = position;
-        }
-    }
-
-    public List<Vector2Int> FindPath(Vector2Int startPos, Vector2Int endPos)
-    {
-        PathNode startNode = new PathNode(startPos);
-        PathNode endNode = new PathNode(endPos);
-
-        List<PathNode> openList = new List<PathNode> { startNode };
-        HashSet<Vector2Int> closedList = new HashSet<Vector2Int>();
-
-        while (openList.Count > 0)
-        {
-            PathNode currentNode = openList[0];
-            for (int i = 1; i < openList.Count; i++)
-            {
-                if (openList[i].fCost < currentNode.fCost || (openList[i].fCost == currentNode.fCost && openList[i].hCost < currentNode.hCost))
-                {
-                    currentNode = openList[i];
-                }
-            }
-
-            openList.Remove(currentNode);
-            closedList.Add(currentNode.position);
-
-            if (currentNode.position == endPos)
-            {
-                return RetracePath(startNode, currentNode);
-            }
-
-            foreach (Vector2Int neighbourPos in GetNeighbours(currentNode.position))
-            {
-                if (closedList.Contains(neighbourPos)) continue;
-
-                // If the neighbour is an obstacle (or has a unit, and it's not the target), skip it
-                if (HasUnitAt(neighbourPos) && neighbourPos != endPos) continue;
-
-                int newGCost = currentNode.gCost + GetDistance(currentNode.position, neighbourPos);
-                PathNode neighbourNode = new PathNode(neighbourPos) { gCost = newGCost, hCost = GetDistance(neighbourPos, endPos), parent = currentNode };
-
-                if (!openList.Exists(n => n.position == neighbourPos) || newGCost < openList.Find(n => n.position == neighbourPos).gCost)
-                {
-                    if (!openList.Exists(n => n.position == neighbourPos))
-                        openList.Add(neighbourNode);
-                }
-            }
-        }
-
-        return null; // No path found
-    }
-
-    private List<Vector2Int> RetracePath(PathNode startNode, PathNode endNode)
-    {
-        List<Vector2Int> path = new List<Vector2Int>();
-        PathNode currentNode = endNode;
-
-        while (currentNode != startNode)
-        {
-            path.Add(currentNode.position);
-            currentNode = currentNode.parent;
-        }
-        path.Reverse();
-        return path;
-    }
-
-    private List<Vector2Int> GetNeighbours(Vector2Int pos)
-    {
-        List<Vector2Int> neighbours = new List<Vector2Int>();
-        for (int x = -1; x <= 1; x++)
-        {
-            for (int y = -1; y <= 1; y++)
-            {
-                if (x == 0 && y == 0) continue;
-                // if (Mathf.Abs(x) == 1 && Mathf.Abs(y) == 1) continue; // Uncomment for no diagonal movement
-
-                Vector2Int neighbourPos = new Vector2Int(pos.x + x, pos.y + y);
-                if (neighbourPos.x >= 0 && neighbourPos.x < width && neighbourPos.y >= 0 && neighbourPos.y < height)
-                {
-                    neighbours.Add(neighbourPos);
-                }
-            }
-        }
-        return neighbours;
-    }
-
-    private int GetDistance(Vector2Int posA, Vector2Int posB)
-    {
-        int dstX = Mathf.Abs(posA.x - posB.x);
-        int dstY = Mathf.Abs(posA.y - posB.y);
-        return 14 * Mathf.Min(dstX, dstY) + 10 * (Mathf.Abs(dstX - dstY)); // Diagonal distance heuristic
-    }
-
-    #endregion
+    
+    // This is a dummy method to ensure compilation. The actual implementation is in TurnManager.
+    public void ClearSelection() { }
 }

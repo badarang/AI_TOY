@@ -17,4 +17,7 @@ public class UnitData : ScriptableObject
     public int maxHp;
     public int maxAp;
     public SkillData[] skills;
+
+    [Header("AI & Difficulty")]
+    public int difficultyScore = 1; // 이 유닛의 난이도 점수
 }
