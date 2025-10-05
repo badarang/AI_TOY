@@ -16,20 +16,47 @@ public void DisplaySkills(SkillData[] skills)
 
         if (skills == null) return;
 
-        foreach (var skillData in skills)
+        for (int i = 0; i < skills.Length; i++)
         {
+            var skillData = skills[i];
+            int skillIndex = i;
+            
             if (skillButtonPrefab == null) continue;
 
             GameObject skillButton = Core.Instance.PoolManager.SpawnFromPool("SkillButton", skillButtonContainer, false);
+            if (skillButton == null)
+            {
+                skillButton = Instantiate(skillButtonPrefab, skillButtonContainer, false);
+            }
+            
             TextMeshProUGUI skillNameText = skillButton.GetComponentInChildren<TextMeshProUGUI>();
             if (skillNameText != null && skillData.skillMeta != null)
             {
                 string displayName = $"[{skillData.skillMeta.nameKey}]";
                 skillNameText.text = displayName;
             }
+            
+            Button btn = skillButton.GetComponent<Button>();
+            if (btn != null)
+            {
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(() => OnSkillButtonClicked(skillIndex));
+            }
+            
             currentSkillButtons.Add(skillButton);
         }
     }
+
+private void OnSkillButtonClicked(int skillIndex)
+    {
+        Debug.Log($"스킬 버튼 클릭: {skillIndex}");
+        
+        if (Core.Instance != null && Core.Instance.TurnManager != null)
+        {
+            Core.Instance.TurnManager.RequestSkillUse(skillIndex);
+        }
+    }
+
 
 public void ClearSkills()
     {

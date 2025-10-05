@@ -28,6 +28,36 @@ public SkillPanelUI skillPanelUI;
         if (nodeSelectionScreenPanel != null) nodeSelectionScreenPanel.SetActive(false);
     }
 
+void PositionUIToBottomRight()
+    {
+        if (unitInfoUI != null)
+        {
+            RectTransform rt = unitInfoUI.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                rt.anchorMin = new Vector2(1, 0);
+                rt.anchorMax = new Vector2(1, 0);
+                rt.pivot = new Vector2(1, 0);
+                rt.anchoredPosition = new Vector2(-20, 20);
+                rt.sizeDelta = new Vector2(300, 400);
+            }
+        }
+
+        if (skillPanelUI != null)
+        {
+            RectTransform rt = skillPanelUI.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                rt.anchorMin = new Vector2(1, 0);
+                rt.anchorMax = new Vector2(1, 0);
+                rt.pivot = new Vector2(1, 0);
+                rt.anchoredPosition = new Vector2(-20, 430);
+                rt.sizeDelta = new Vector2(300, 200);
+            }
+        }
+    }
+
+
     public void UpdateTurnUI(int currentTurnInWave, int turnLimit)
     {
         if (turnCounterText != null)

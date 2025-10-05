@@ -457,8 +457,9 @@ public void HighlightAttackableTiles(List<Vector2Int> tiles)
         HighlightMovableTiles(walkableTiles);
     }
 
-    public List<Vector2Int> GetWalkableTilesInRange(Vector2Int start, int range)
+public List<Vector2Int> GetWalkableTilesInRange(Vector2Int start, int range)
     {
+        Debug.Log($"GetWalkableTilesInRange 호출: start={start}, range={range}");
         List<Vector2Int> reachableTiles = new List<Vector2Int>();
         Queue<Tuple<Vector2Int, int>> queue = new Queue<Tuple<Vector2Int, int>>();
         HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
@@ -477,16 +478,35 @@ public void HighlightAttackableTiles(List<Vector2Int> tiles)
 
             if (currentCost < range)
             {
-                foreach (var neighbour in GetNeighbourPositions(currentPos)) // 4방향 -> 8방향 탐색으로 변경
+                foreach (var neighbour in GetNeighbourPositions(currentPos))
                 {
-                    if (IsValidTile(neighbour) && !HasUnitAt(neighbour) && !visited.Contains(neighbour))
+                    bool isValid = IsValidTile(neighbour);
+                    bool hasUnit = HasUnitAt(neighbour);
+                    bool isVisited = visited.Contains(neighbour);
+                    
+                    if (!isValid)
                     {
+                        Debug.Log($"  {neighbour}: 범위 밖");
+                    }
+                    else if (hasUnit)
+                    {
+                        Debug.Log($"  {neighbour}: 유닛 존재");
+                    }
+                    else if (isVisited)
+                    {
+                        Debug.Log($"  {neighbour}: 이미 방문");
+                    }
+                    else
+                    {
+                        Debug.Log($"  {neighbour}: 이동 가능 추가");
                         visited.Add(neighbour);
                         queue.Enqueue(new Tuple<Vector2Int, int>(neighbour, currentCost + 1));
                     }
                 }
             }
         }
+        
+        Debug.Log($"최종 이동 가능 타일: {reachableTiles.Count}개");
         return reachableTiles;
     }
 }

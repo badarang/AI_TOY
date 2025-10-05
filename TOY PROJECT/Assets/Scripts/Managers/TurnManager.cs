@@ -33,6 +33,8 @@ public class TurnManager : MonoBehaviour
         private bool hasMovedThisTurn = false;
     private bool hasAttackedThisTurn = false;
 private PlayerUnit selectedUnit;
+    private int currentSkillIndex = -1;
+
 
     void Start()
     {
@@ -162,8 +164,14 @@ public void StartPlayerTurn()
     }
 
     // Dummy methods for compilation. Implement actual logic as needed.
-    public void SelectPlayerUnit(PlayerUnit unit)
+public void SelectPlayerUnit(PlayerUnit unit)
     {
+        if (selectedUnit == unit && CurrentPlayerState == PlayerTurnState.UnitSelected)
+        {
+            ClearSelection();
+            return;
+        }
+        
         if (selectedUnit != null) ClearSelection();
         
         selectedUnit = unit;
@@ -172,8 +180,118 @@ public void StartPlayerTurn()
         
         ShowAvailableActionsForUnit(unit);
         
+        Core.Instance.UIManager.ShowUnitInfo(unit);
         uiManager.skillPanelUI?.UpdateSkillDisplay(unit);
     }
+
+public void RequestSkillUse(int skillIndex)
+    {
+        if (CurrentTurn != Turn.Player || CurrentPlayerState != PlayerTurnState.UnitSelected)
+        {
+            Debug.Log("스킬을 사용할 수 없는 상태입니다.");
+            return;
+        }
+
+        if (selectedUnit == null)
+        {
+            Debug.Log("선택된 유닛이 없습니다.");
+            return;
+        }
+
+        if (skillIndex < 0 || skillIndex >= selectedUnit.unitData.skills.Length)
+        {
+            Debug.LogWarning($"잘못된 스킬 인덱스: {skillIndex}");
+            return;
+        }
+
+        var skill = selectedUnit.unitData.skills[skillIndex];
+        
+        if (selectedUnit.GetSkillCooldown(skillIndex) > 0)
+        {
+            Debug.Log($"{skill.skillMeta.nameKey}는 쿨다운 중입니다: {selectedUnit.GetSkillCooldown(skillIndex)}턴 남음");
+            return;
+        }
+
+        if (selectedUnit.ap < skill.apCost)
+        {
+            Debug.Log($"{skill.skillMeta.nameKey}를 사용하기에 AP가 부족합니다. 필요: {skill.apCost}, 현재: {selectedUnit.ap}");
+            return;
+        }
+
+        switch (skill.skillType)
+        {
+            case SkillType.Move:
+                Debug.Log("이동 스킬은 직접 타일을 클릭하세요.");
+                break;
+                
+            case SkillType.Attack:
+                StartSkillTargeting(skillIndex);
+                break;
+                
+            default:
+                Debug.Log($"지원하지 않는 스킬 타입: {skill.skillType}");
+                break;
+        }
+    }
+
+private void StartSkillTargeting(int skillIndex)
+    {
+        currentSkillIndex = skillIndex;
+        var skill = selectedUnit.unitData.skills[skillIndex];
+        
+        Debug.Log($"{skill.skillMeta.nameKey} 타겟 선택 모드 시작");
+        
+        var allUnits = gridManager.GetAllUnits();
+        var targetableTiles = new List<Vector2Int>();
+
+        foreach (var potentialTarget in allUnits)
+        {
+            if (potentialTarget.factionData == selectedUnit.factionData) continue;
+            
+            int distance = Mathf.Max(
+                Mathf.Abs(selectedUnit.position.x - potentialTarget.position.x), 
+                Mathf.Abs(selectedUnit.position.y - potentialTarget.position.y)
+            );
+            
+            if (distance <= skill.range)
+            {
+                targetableTiles.Add(potentialTarget.position);
+            }
+        }
+        
+        gridManager.ClearAllHighlights();
+        gridManager.HighlightAttackableTiles(targetableTiles);
+        
+        SetPlayerState(PlayerTurnState.AwaitingSkillSubTarget);
+    }
+
+private void ExecuteSkillOnTarget(int skillIndex, Vector2Int targetCell)
+    {
+        SetPlayerState(PlayerTurnState.PerformingAction);
+        
+        selectedUnit.UseSkill(skillIndex, targetCell);
+        
+        var skill = selectedUnit.unitData.skills[skillIndex];
+        if (skill.skillType == SkillType.Attack)
+        {
+            hasAttackedThisTurn = true;
+        }
+        
+        currentSkillIndex = -1;
+        
+        if (hasMovedThisTurn && hasAttackedThisTurn)
+        {
+            ClearSelection();
+        }
+        else
+        {
+            SetPlayerState(PlayerTurnState.UnitSelected);
+            ShowAvailableActionsForUnit(selectedUnit);
+        }
+    }
+
+
+
 
 private void ShowAvailableActionsForUnit(PlayerUnit unit)
     {
@@ -245,7 +363,7 @@ public void ClearSelection()
     }
 
 
-    public void HandleCellClick(Vector2Int cell)
+public void HandleCellClick(Vector2Int cell)
     {
         if (CurrentTurn != Turn.Player) return;
 
@@ -260,41 +378,63 @@ public void ClearSelection()
                 }
                 else if (unitAtCell is EnemyUnit enemyUnit)
                 {
-                    // TODO: 적 정보 UI 표시 로직 구현
+                    gridManager.ClearAllHighlights();
+                    Core.Instance.UIManager.ShowUnitInfo(enemyUnit);
                     Debug.Log($"적 정보 표시: {enemyUnit.name}");
+                }
+                else
+                {
+                    gridManager.ClearAllHighlights();
+                    ClearSelection();
                 }
                 break;
 
             case PlayerTurnState.UnitSelected:
-                if (selectedUnit == null) // 안전 장치
+                if (selectedUnit == null)
                 {
                     SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
                     return;
                 }
 
-                if (unitAtCell == null) // 빈 타일 클릭
+                if (unitAtCell == null)
                 {
-                    // 이동 가능한 타일인지 확인 후 이동 시도
+                    gridManager.ClearAllHighlights();
                     if (!TryMoveUnit(selectedUnit, cell))
                     {
-                        // 이동 불가능한 빈 타일이면 선택 해제
                         ClearSelection();
                     }
                 }
                 else if (unitAtCell is PlayerUnit _playerUnit)
                 {
-                    // 다른 플레이어 유닛 클릭 시 선택 변경
+                    gridManager.ClearAllHighlights();
                     SelectPlayerUnit(_playerUnit);
                 }
                 else if (unitAtCell.factionData != selectedUnit.factionData)
                 {
-                    // 적 유닛 클릭 시 공격 시도
+                    gridManager.ClearAllHighlights();
                     TryAttackUnit(selectedUnit, cell);
                 }
                 break;
 
             case PlayerTurnState.AwaitingSkillSubTarget:
-                // 스킬의 서브 타겟을 선택하는 로직
+                if (selectedUnit == null || currentSkillIndex < 0)
+                {
+                    SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
+                    return;
+                }
+                
+                gridManager.ClearAllHighlights();
+                
+                if (unitAtCell != null && unitAtCell.factionData != selectedUnit.factionData)
+                {
+                    ExecuteSkillOnTarget(currentSkillIndex, cell);
+                }
+                else
+                {
+                    Debug.Log("유효하지 않은 타겟입니다.");
+                    SetPlayerState(PlayerTurnState.UnitSelected);
+                    ShowAvailableActionsForUnit(selectedUnit);
+                }
                 break;
         }
     }
@@ -338,24 +478,45 @@ private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
         }
     }
 
-    private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
+private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
     {
-        if (hasMovedThisTurn) return false;
+        Debug.Log($"TryMoveUnit 호출: {targetCell}, hasMovedThisTurn={hasMovedThisTurn}");
+        
+        if (hasMovedThisTurn)
+        {
+            Debug.Log("이미 이동했습니다.");
+            return false;
+        }
 
         int moveSkillIndex = unit.GetMoveSkillIndex();
-        if (moveSkillIndex < 0) return false;
+        if (moveSkillIndex < 0)
+        {
+            Debug.Log("이동 스킬을 찾을 수 없습니다.");
+            return false;
+        }
 
         var moveSkill = unit.unitData.skills[moveSkillIndex];
-        if (unit.GetSkillCooldown(moveSkillIndex) > 0 || unit.ap < moveSkill.apCost) return false;
+        if (unit.GetSkillCooldown(moveSkillIndex) > 0 || unit.ap < moveSkill.apCost)
+        {
+            Debug.Log($"이동 불가: 쿨다운={unit.GetSkillCooldown(moveSkillIndex)}, AP={unit.ap}/{moveSkill.apCost}");
+            return false;
+        }
 
         List<Vector2Int> walkableTiles = gridManager.GetWalkableTilesInRange(unit.position, moveSkill.range);
+        Debug.Log($"이동 가능한 타일 개수: {walkableTiles.Count}");
+        foreach (var tile in walkableTiles)
+        {
+            Debug.Log($"  - {tile}");
+        }
 
         if (walkableTiles.Contains(targetCell))
         {
+            Debug.Log($"{targetCell}로 이동 시도");
             MoveUnitToCell(unit, targetCell);
             return true;
         }
 
+        Debug.Log($"{targetCell}은 이동 가능한 타일이 아닙니다.");
         return false;
     }
 

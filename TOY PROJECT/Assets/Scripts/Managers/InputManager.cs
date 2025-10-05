@@ -127,6 +127,13 @@ private void ProcessTurnClick()
     {
         if (turnManager.CurrentTurn != TurnManager.Turn.Player) return;
 
+        if (UnityEngine.EventSystems.EventSystem.current != null && 
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        {
+            Debug.Log("UI 클릭 - 그리드 클릭 무시");
+            return;
+        }
+
         Ray ray = Camera.main.ScreenPointToRay(CurrentInputPosition);
         Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
 

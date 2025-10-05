@@ -19,7 +19,7 @@ MonoBehaviour:
   tags: 00000000
   apCost: 1
   cooldown: 1
-  range: 0
+  range: 1
   skillType: 1
   prerequisites: []
   movementPattern:
