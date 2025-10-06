@@ -63,7 +63,6 @@ public class Core : MonoBehaviour
         CallBeforeInit(inputManager);
         
         Debug.Log("[Core] === Phase 2: AfterInit ===");
-        CallAfterInit(gameManager);
         CallAfterInit(poolManager);
         CallAfterInit(gridManager);
         CallAfterInit(stageManager);
@@ -73,6 +72,7 @@ public class Core : MonoBehaviour
         CallAfterInit(enemyAIManager);
         CallAfterInit(previewManager);
         CallAfterInit(inputManager);
+        CallAfterInit(gameManager);
         
         Debug.Log("[Core] All managers initialized successfully.");
     }
