@@ -27,5 +27,4 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9476e2a57a6a946849955c67e62fd196, type: 2}
   - {fileID: 11400000, guid: f13b212816ba84d4fa381e186cae11cd, type: 2}
   - {fileID: 11400000, guid: bdfe52c5033fc4af9ad858a4af7a2627, type: 2}
-  - {fileID: 11400000, guid: 1f94f4563204a41579c0740d767a99fe, type: 2}
   subTargetBehaviors: []
