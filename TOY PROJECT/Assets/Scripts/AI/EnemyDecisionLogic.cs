@@ -59,14 +59,29 @@ public static class EnemyDecisionLogic
                 var movableTiles = Core.Instance.GridManager.GetWalkableTilesInRange(enemy.position, moveSkill.range);
 
                 Vector2Int? bestMoveTarget = null;
-                int closestDistance = int.MaxValue;
+                int closestChebyshevDistance = int.MaxValue;
+                int closestManhattanDistance = int.MaxValue;
 
                 foreach (var tile in movableTiles)
                 {
-                    int distanceToPlayer = GridUtils.ChebyshevDistance(tile, playerPosition);
-                    if (distanceToPlayer < closestDistance)
+                    int chebyshevDist = GridUtils.ChebyshevDistance(tile, playerPosition);
+                    int manhattanDist = GridUtils.ManhattanDistance(tile, playerPosition);
+                    
+                    bool isBetter = false;
+                    
+                    if (chebyshevDist < closestChebyshevDistance)
                     {
-                        closestDistance = distanceToPlayer;
+                        isBetter = true;
+                    }
+                    else if (chebyshevDist == closestChebyshevDistance && manhattanDist < closestManhattanDistance)
+                    {
+                        isBetter = true;
+                    }
+                    
+                    if (isBetter)
+                    {
+                        closestChebyshevDistance = chebyshevDist;
+                        closestManhattanDistance = manhattanDist;
                         bestMoveTarget = tile;
                     }
                 }

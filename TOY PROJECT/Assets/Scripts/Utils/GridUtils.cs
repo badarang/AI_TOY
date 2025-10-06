@@ -8,4 +8,10 @@ public static class GridUtils
     {
         return Mathf.Max(Mathf.Abs(posA.x - posB.x), Mathf.Abs(posA.y - posB.y));
     }
+
+    public static int ManhattanDistance(Vector2Int posA, Vector2Int posB)
+    {
+        return Mathf.Abs(posA.x - posB.x) + Mathf.Abs(posA.y - posB.y);
+    }
+
 }
