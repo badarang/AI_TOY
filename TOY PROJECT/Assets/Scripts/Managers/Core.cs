@@ -8,7 +8,6 @@ public class Core : MonoBehaviour
     // 의존성이 적은 순서대로 정렬
     [SerializeField] private GameManager gameManager;
     [SerializeField] private PoolManager poolManager;
- // GameManager 추가
     [SerializeField] private GridManager gridManager;
     [SerializeField] private StageManager stageManager;
     [SerializeField] private UIManager uiManager;
@@ -18,16 +17,14 @@ public class Core : MonoBehaviour
     [SerializeField] private PreviewManager previewManager;
     [SerializeField] private InputManager inputManager;
 
-    // 프로퍼티도 위와 동일한 순서로 정렬
     public GameManager GameManager => gameManager;
     public PoolManager PoolManager => poolManager;
- // GameManager 프로퍼티 추가
     public GridManager GridManager => gridManager;
     public StageManager StageManager => stageManager;
     public UIManager UIManager => uiManager;
     public TurnManager TurnManager => turnManager;
     public RewardManager RewardManager => rewardManager;
-        public EnemyAIManager EnemyAIManager => enemyAIManager;
+    public EnemyAIManager EnemyAIManager => enemyAIManager;
     public PreviewManager PreviewManager => previewManager;
     public InputManager InputManager => inputManager;
 
@@ -38,12 +35,80 @@ public class Core : MonoBehaviour
             Instance = this;
             DontDestroyOnLoad(gameObject);
             Debug.Log("Core: Instance created.");
+            
+            InitializeManagers();
         }
         else
         {
             Debug.Log("Core: Duplicate instance destroyed");
             Destroy(gameObject);
         }
+    }
+    
+    private void InitializeManagers()
+    {
+        Debug.Log("[Core] Starting Manager Initialization...");
+        
+        ValidateManagers();
+        
+        Debug.Log("[Core] === Phase 1: BeforeInit ===");
+        CallBeforeInit(gameManager);
+        CallBeforeInit(poolManager);
+        CallBeforeInit(gridManager);
+        CallBeforeInit(stageManager);
+        CallBeforeInit(uiManager);
+        CallBeforeInit(turnManager);
+        CallBeforeInit(rewardManager);
+        CallBeforeInit(enemyAIManager);
+        CallBeforeInit(previewManager);
+        CallBeforeInit(inputManager);
+        
+        Debug.Log("[Core] === Phase 2: AfterInit ===");
+        CallAfterInit(gameManager);
+        CallAfterInit(poolManager);
+        CallAfterInit(gridManager);
+        CallAfterInit(stageManager);
+        CallAfterInit(uiManager);
+        CallAfterInit(turnManager);
+        CallAfterInit(rewardManager);
+        CallAfterInit(enemyAIManager);
+        CallAfterInit(previewManager);
+        CallAfterInit(inputManager);
+        
+        Debug.Log("[Core] All managers initialized successfully.");
+    }
+
+private void CallBeforeInit(MonoBehaviour manager)
+    {
+        if (manager is IManager iManager)
+        {
+            Debug.Log($"[Core] BeforeInit: {manager.GetType().Name}");
+            iManager.BeforeInit();
+        }
+    }
+    
+    private void CallAfterInit(MonoBehaviour manager)
+    {
+        if (manager is IManager iManager)
+        {
+            Debug.Log($"[Core] AfterInit: {manager.GetType().Name}");
+            iManager.AfterInit();
+        }
+    }
+
+    
+    private void ValidateManagers()
+    {
+        if (gameManager == null) Debug.LogError("[Core] GameManager is not assigned!");
+        if (poolManager == null) Debug.LogError("[Core] PoolManager is not assigned!");
+        if (gridManager == null) Debug.LogError("[Core] GridManager is not assigned!");
+        if (stageManager == null) Debug.LogError("[Core] StageManager is not assigned!");
+        if (uiManager == null) Debug.LogError("[Core] UIManager is not assigned!");
+        if (turnManager == null) Debug.LogError("[Core] TurnManager is not assigned!");
+        if (rewardManager == null) Debug.LogError("[Core] RewardManager is not assigned!");
+        if (enemyAIManager == null) Debug.LogError("[Core] EnemyAIManager is not assigned!");
+        if (previewManager == null) Debug.LogError("[Core] PreviewManager is not assigned!");
+        if (inputManager == null) Debug.LogError("[Core] InputManager is not assigned!");
     }
 
     void OnApplicationQuit()

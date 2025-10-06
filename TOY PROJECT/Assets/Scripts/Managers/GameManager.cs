@@ -6,8 +6,21 @@ using System.Linq;
 /// 게임의 전체적인 흐름과 상태를 관리하는 최상위 매니저입니다.
 /// ChapterData를 기반으로 게임의 진행을 총괄합니다.
 /// </summary>
-public class GameManager : MonoBehaviour
+public class GameManager : MonoBehaviour, IManager
 {
+
+public void BeforeInit()
+    {
+    }
+
+    public void AfterInit()
+    {
+        stageManager = Core.Instance.StageManager;
+        turnManager = Core.Instance.TurnManager;
+
+        StartNewGame(startingChapter);
+    }
+
     [Header("챕터 및 스테이지 데이터")]
     [SerializeField] private ChapterData startingChapter;
 
@@ -26,22 +39,6 @@ public class GameManager : MonoBehaviour
     // --- 게임 상태 ---
     private int currentLayerIndex = -1;
     private bool isPlayerSpawned = false;
-
-    void Awake()
-    {
-        // 이 GameManager 인스턴스를 Core에 등록합니다.
-        // 하지만 이 방법은 Core의 Awake()보다 먼저 실행된다는 보장이 없으므로,
-        // Unity 에디터에서 Core 오브젝트의 GameManager 필드에 직접 할당하는 것이 가장 안전합니다.
-    }
-
-    void Start()
-    {
-        // Core가 다른 매니저들을 모두 초기화한 후에 참조를 가져옵니다.
-        stageManager = Core.Instance.StageManager;
-        turnManager = Core.Instance.TurnManager;
-
-        StartNewGame(startingChapter);
-    }
 
     public void StartNewGame(ChapterData chapter)
     {

@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
@@ -137,7 +138,7 @@ public class StageManager : MonoBehaviour
         }
     }
 
-public async void SpawnEnemiesForTurn(int waveIndex, int turnNumber)
+    public async UniTask SpawnEnemiesForTurn(int waveIndex, int turnNumber)
     {
         var enemiesToSpawn = GetEnemiesSpawningOnTurn(waveIndex, turnNumber);
         if (enemiesToSpawn == null || enemiesToSpawn.Count == 0)

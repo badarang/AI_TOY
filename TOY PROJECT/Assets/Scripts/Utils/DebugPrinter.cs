@@ -25,7 +25,7 @@ public static void LogColor(LogType type, string message)
     {
         string colorHex = GetColorHex(type);
         string typeName = GetTypeName(type);
-        string coloredMessage = $"<color=#{colorHex}>[{typeName}]</color> {message}";
+        string coloredMessage = $"<color=#{colorHex}>[{typeName}] {message}</color>";
         
         if (type == LogType.Warning)
             Debug.LogWarning(coloredMessage);

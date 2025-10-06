@@ -71,7 +71,7 @@ private async UniTask CreateGridPlane()
 
         if (handle.Status == AsyncOperationStatus.Succeeded)
         {
-            gridPlane = Instantiate(handle.Result, this.transform);
+            gridPlane = Instantiate(handle.Result);
             gridPlane.name = "GridPlane";
             
             gridPlane.transform.position = new Vector3(width * 0.5f, 0f, height * 0.5f);

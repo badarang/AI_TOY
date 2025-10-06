@@ -31,50 +31,28 @@ public class EnemyAIManager : MonoBehaviour
         Debug.Log("--- Enemy Turn End ---");
     }
 
-    private void DecideAndExecuteAction(EnemyUnit enemy, PlayerUnit player)
+private void DecideAndExecuteAction(EnemyUnit enemy, PlayerUnit player)
     {
-        // 1. 사용할 수 있는 공격 스킬이 있는지 확인 (0번 스킬로 가정)
-        if (enemy.unitData == null || enemy.unitData.skills == null || enemy.unitData.skills.Length == 0 || enemy.unitData.skills[0] == null)
-        {
-            Debug.Log($"{enemy.name} has no skills to use. Skipping turn.");
-            return;
-        }
-        var attackSkill = enemy.unitData.skills[0];
+        var decision = EnemyDecisionLogic.DecideAction(enemy, player.position);
 
-        // 2. 플레이어가 공격 스킬의 사거리 내에 있는지 확인 (체비쇼프 거리 사용)
-        int distance = GridUtils.ChebyshevDistance(enemy.position, player.position);
-        Debug.Log($"[AI DECISION] {enemy.name}: Distance to player is {distance}. Attack range is {attackSkill.range}.");
+        switch (decision.actionType)
+        {
+            case EnemyDecision.ActionType.Attack:
+                Debug.Log($"[AI ACTION] {enemy.name} is in range. Attempting to attack {player.name}.");
+                enemy.UseSkill(decision.skillIndex, decision.targetPosition);
+                break;
 
-        if (distance <= attackSkill.range)
-        {
-            // 3. 범위 내에 있으면 스킬 사용
-            Debug.Log($"[AI ACTION] {enemy.name} is in range. Attempting to attack {player.name}.");
-            enemy.UseSkill(0, player.position);
-        }
-        else
-        {
-            // 4. 범위 밖에 있으면 플레이어에게 이동
-            MoveTowards(enemy, player);
+            case EnemyDecision.ActionType.Move:
+                Debug.Log($"[AI ACTION] {enemy.name} moving to {decision.targetPosition} using skill index {decision.skillIndex}");
+                enemy.UseSkill(decision.skillIndex, decision.targetPosition);
+                break;
+
+            case EnemyDecision.ActionType.Wait:
+            default:
+                Debug.Log($"[AI DECISION] {enemy.name} will wait.");
+                break;
         }
     }
 
-    private void MoveTowards(EnemyUnit enemy, PlayerUnit player)
-    {
-        List<Vector2Int> path = Core.Instance.GridManager.FindPath(enemy.position, player.position);
 
-        if (path != null && path.Count > 0)
-        {
-            Vector2Int targetPos = path[0];
-            int moveSkillIndex = enemy.GetMoveSkillIndex();
-            if (moveSkillIndex != -1)
-            {
-                Debug.Log($"[AI ACTION] {enemy.name} moving to {targetPos} using skill index {moveSkillIndex}");
-                enemy.UseSkill(moveSkillIndex, targetPos);
-            }
-        }
-        else
-        {
-            Debug.Log($"[AI DECISION] {enemy.name} can't find a path to the player.");
-        }
-    }
 }

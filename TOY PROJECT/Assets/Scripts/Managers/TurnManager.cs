@@ -5,8 +5,19 @@ using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
 
-public class TurnManager : MonoBehaviour
+public class TurnManager : MonoBehaviour, IManager
 {
+    public void BeforeInit()
+    {
+    }
+
+    public void AfterInit()
+    {
+        uiManager = Core.Instance.UIManager;
+        stageManager = Core.Instance.StageManager;
+        gridManager = Core.Instance.GridManager;
+    }
+
     public event Action OnPlayerTurnStart;
     public event Action OnPlayerActionEnd; // 플레이어가 턴 안에서 무언가 액션을 했을 때
     public event Action OnEnemyTurnStart;
@@ -36,12 +47,7 @@ public class TurnManager : MonoBehaviour
     private int currentSkillIndex = -1;
 
 
-    void Start()
-    {
-        uiManager = Core.Instance.UIManager;
-        stageManager = Core.Instance.StageManager;
-        gridManager = Core.Instance.GridManager;
-    }
+
 
     /// <summary>
     /// Clears all turn-related data. Called when a new stage is loaded.
@@ -76,7 +82,7 @@ public class TurnManager : MonoBehaviour
         StartPlayerTurn();
     }
 
-public void StartPlayerTurn()
+    public async void StartPlayerTurn()
     {
         CurrentTurn = Turn.Player;
         turnInWave++;
@@ -85,7 +91,7 @@ public void StartPlayerTurn()
         hasMovedThisTurn = false;
         hasAttackedThisTurn = false;
         
-        stageManager.SpawnEnemiesForTurn(currentWave, turnInWave);
+        await stageManager.SpawnEnemiesForTurn(currentWave, turnInWave);
         
         var player = stageManager.GetPlayer();
         if (player != null) player.OnTurnStart();

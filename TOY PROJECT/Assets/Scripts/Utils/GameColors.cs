@@ -4,21 +4,21 @@ public static class GameColors
 {
     public static class Log
     {
-        public static readonly Color Selection = HexToColor("4CAF50");
-        public static readonly Color State = HexToColor("2196F3");
-        public static readonly Color Action = HexToColor("FF9800");
-        public static readonly Color Combat = HexToColor("F44336");
-        public static readonly Color Skill = HexToColor("9C27B0");
-        public static readonly Color Movement = HexToColor("00BCD4");
-        public static readonly Color Warning = HexToColor("FF5722");
-        public static readonly Color Turn = HexToColor("3F51B5");
-        public static readonly Color Success = HexToColor("8BC34A");
-        public static readonly Color Error = HexToColor("D32F2F");
-        public static readonly Color System = HexToColor("00BFFF");
-        public static readonly Color Input = HexToColor("F49303");
-        public static readonly Color Unit = HexToColor("32CD32");
-        public static readonly Color AI = HexToColor("808080");
-        public static readonly Color Debug = HexToColor("FFFF00");
+        public static readonly Color Selection = HexToColor("A5D6A7"); // 밝은 민트그린 – 선택
+        public static readonly Color State = HexToColor("90CAF9");     // 밝은 스카이블루 – 상태
+        public static readonly Color Action = HexToColor("FFCC80");    // 따뜻한 오렌지톤 – 행동
+        public static readonly Color Combat = HexToColor("EF9A9A");    // 부드러운 레드 – 전투
+        public static readonly Color Skill = HexToColor("CE93D8");     // 라벤더 – 스킬
+        public static readonly Color Movement = HexToColor("80DEEA");  // 청록빛 하늘색 – 이동
+        public static readonly Color Warning = HexToColor("FFAB91");   // 살구빛 오렌지 – 경고
+        public static readonly Color Turn = HexToColor("9FA8DA");      // 밝은 인디고톤 – 턴
+        public static readonly Color Success = HexToColor("C5E1A5");   // 라이트 그린 – 성공
+        public static readonly Color Error = HexToColor("E57373");     // 부드러운 레드톤 – 오류
+        public static readonly Color System = HexToColor("81D4FA");    // 밝은 블루 – 시스템
+        public static readonly Color Input = HexToColor("FFD54F");     // 옅은 노랑 – 입력
+        public static readonly Color Unit = HexToColor("AED581");      // 연초록 – 유닛
+        public static readonly Color AI = HexToColor("B0BEC5");        // 회청색 – 인공지능
+        public static readonly Color Debug = HexToColor("FFF176");     // 밝은 옐로 – 디버그
         public static readonly Color Default = Color.white;
         
         public static string GetHex(LogType type)
