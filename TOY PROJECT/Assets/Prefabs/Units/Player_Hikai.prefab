@@ -134,4 +134,3 @@ MonoBehaviour:
   hp: 3
   ap: 1
   position: {x: 0, y: 0}
-  skills: []
