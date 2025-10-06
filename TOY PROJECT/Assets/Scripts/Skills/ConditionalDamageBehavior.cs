@@ -4,7 +4,14 @@ using UnityEngine;
 public class ConditionalDamageBehavior : SkillBehavior
 {
     public int damageAmount;
-    public bool triggerOnWallHit;
+    
+    public override bool CanExecute(SkillContext context, SkillData skillData)
+    {
+        if (!base.CanExecute(context, skillData)) return false;
+        
+        return context.TargetUnit != null;
+    }
+public bool triggerOnWallHit;
 
     public override float Execute(SkillContext context)
     {

@@ -186,8 +186,9 @@ public class UnitBase : MonoBehaviour
                 foreach (var potentialTarget in allUnits)
                 {
                     if (potentialTarget.factionData == this.factionData) continue;
-                    int distance = Mathf.Abs(position.x - potentialTarget.position.x) + Mathf.Abs(position.y - potentialTarget.position.y);
-                    if (distance <= skill.range)
+                    
+                    var context = new SkillContext(this, potentialTarget.position);
+                    if (skill.initialBehaviors.Length > 0 && skill.initialBehaviors[0].CanExecute(context, skill))
                     {
                         if (!potentialTargets.Contains(potentialTarget)) potentialTargets.Add(potentialTarget);
                     }
@@ -202,7 +203,9 @@ public class UnitBase : MonoBehaviour
                     Vector2Int destination = position + offset;
                     if (!gridManager.IsValidTile(destination)) continue;
                     
+                    var context = new SkillContext(this, destination);
                     UnitBase unitOnTile = gridManager.GetUnitAt(destination);
+                    
                     if (unitOnTile != null)
                     {
                         if (unitOnTile.factionData != this.factionData && !potentialTargets.Contains(unitOnTile))
@@ -210,7 +213,7 @@ public class UnitBase : MonoBehaviour
                             potentialTargets.Add(unitOnTile);
                         }
                     }
-                    else
+                    else if (skill.initialBehaviors.Length > 0 && skill.initialBehaviors[0].CanExecute(context, skill))
                     {
                         if (!movableTiles.Contains(destination)) movableTiles.Add(destination);
                     }

@@ -3,7 +3,17 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "SkillBehaviors/PushBehavior")]
 public class PushBehavior : SkillBehavior
 {
-    public int pushDistance = 1;
+    
+    public override bool CanExecute(SkillContext context, SkillData skillData)
+    {
+        if (!base.CanExecute(context, skillData)) return false;
+        
+        var target = Core.Instance.GridManager.GetUnitAt(context.TargetPosition);
+        if (target == null) return false;
+        
+        return target.factionData != context.Caster.factionData;
+    }
+public int pushDistance = 1;
 
     public override float Execute(SkillContext context)
     {

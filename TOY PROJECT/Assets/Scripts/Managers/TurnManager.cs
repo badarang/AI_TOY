@@ -438,12 +438,10 @@ public bool CanAttackTarget(PlayerUnit unit, Vector2Int targetCell)
         for (int i = 0; i < unit.unitData.skills.Length; i++)
         {
             var skill = unit.unitData.skills[i];
-            if (skill.skillType == SkillType.Attack 
-                && unit.GetSkillCooldown(i) == 0 
-                && unit.ap >= skill.apCost)
+            if (skill.skillType == SkillType.Attack)
             {
-                int distance = Mathf.Max(Mathf.Abs(unit.position.x - targetCell.x), Mathf.Abs(unit.position.y - targetCell.y));
-                if (distance <= skill.range)
+                var context = new SkillContext(unit, targetCell);
+                if (skill.initialBehaviors.Length > 0 && skill.initialBehaviors[0].CanExecute(context, skill))
                 {
                     return true;
                 }
@@ -461,13 +459,10 @@ private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
         for (int i = 0; i < unit.unitData.skills.Length; i++)
         {
             var skill = unit.unitData.skills[i];
-            if (skill.skillType == SkillType.Attack 
-                && unit.GetSkillCooldown(i) == 0 
-                && unit.ap >= skill.apCost)
+            if (skill.skillType == SkillType.Attack)
             {
-                // 체비쇼프 거리(대각선 포함 8방향)로 계산 방식 변경
-                int distance = Mathf.Max(Mathf.Abs(unit.position.x - targetCell.x), Mathf.Abs(unit.position.y - targetCell.y));
-                if (distance <= skill.range)
+                var context = new SkillContext(unit, targetCell);
+                if (skill.initialBehaviors.Length > 0 && skill.initialBehaviors[0].CanExecute(context, skill))
                 {
                     attackSkillIndex = i;
                     break;
@@ -511,9 +506,11 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
         }
 
         var moveSkill = unit.unitData.skills[moveSkillIndex];
-        if (unit.GetSkillCooldown(moveSkillIndex) > 0 || unit.ap < moveSkill.apCost)
+        var context = new SkillContext(unit, targetCell);
+        
+        if (moveSkill.initialBehaviors.Length == 0 || !moveSkill.initialBehaviors[0].CanExecute(context, moveSkill))
         {
-            Debug.Log($"이동 불가: 쿨다운={unit.GetSkillCooldown(moveSkillIndex)}, AP={unit.ap}/{moveSkill.apCost}");
+            Debug.Log($"이동 불가: CanExecute 실패");
             return false;
         }
 

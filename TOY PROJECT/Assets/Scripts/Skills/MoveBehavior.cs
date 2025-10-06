@@ -6,7 +6,16 @@ public class MoveBehavior : SkillBehavior
 {
     public float animationDuration = 0.4f;
 
-    public override float Execute(SkillContext context)
+    public override bool CanExecute(SkillContext context, SkillData skillData)
+    {
+        if (!base.CanExecute(context, skillData)) return false;
+        
+        var targetUnit = Core.Instance.GridManager.GetUnitAt(context.TargetPosition);
+        return targetUnit == null;
+    }
+
+    
+public override float Execute(SkillContext context)
     {
         var caster = context.Caster;
 
