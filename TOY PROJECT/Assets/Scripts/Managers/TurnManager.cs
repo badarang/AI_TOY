@@ -166,12 +166,6 @@ public void StartPlayerTurn()
     // Dummy methods for compilation. Implement actual logic as needed.
 public void SelectPlayerUnit(PlayerUnit unit)
     {
-        if (selectedUnit == unit && CurrentPlayerState == PlayerTurnState.UnitSelected)
-        {
-            ClearSelection();
-            return;
-        }
-        
         if (selectedUnit != null) ClearSelection();
         
         selectedUnit = unit;

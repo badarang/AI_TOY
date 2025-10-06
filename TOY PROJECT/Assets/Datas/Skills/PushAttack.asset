@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: PushAttack
   m_EditorClassIdentifier: 
   skillMeta:
-    nameKey: 
-    descKey: 
+    nameKey: PushAttack
+    descKey: PushAttack is Good!
   tier: 0
-  tags: 01000000
+  tags: 0100000003000000
   apCost: 1
   cooldown: 1
   range: 1
