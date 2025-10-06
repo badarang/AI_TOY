@@ -23,14 +23,14 @@ MonoBehaviour:
   skillType: 1
   prerequisites: []
   movementPattern:
+  - {x: 1, y: 0}
+  - {x: 0, y: -1}
+  - {x: -1, y: 0}
+  - {x: 0, y: 1}
   - {x: 1, y: 1}
   - {x: 1, y: -1}
   - {x: -1, y: -1}
   - {x: -1, y: 1}
-  - {x: 1, y: 0}
-  - {x: 0, y: 1}
-  - {x: -1, y: 0}
-  - {x: 0, y: -1}
   initialBehaviors:
   - {fileID: 11400000, guid: 2c3789722acfe41d5a28ce50e7f47628, type: 2}
   subTargetBehaviors: []
