@@ -147,7 +147,18 @@ private void ProcessTurnClick()
             
             if (unitAtCell != null)
             {
-                Core.Instance.UIManager.ShowUnitInfo(unitAtCell);
+                var isPlayerActing = turnManager.CurrentPlayerState == TurnManager.PlayerTurnState.UnitSelected 
+                    && turnManager.SelectedUnit != null;
+                
+                var canAttackThisEnemy = isPlayerActing 
+                    && unitAtCell is EnemyUnit 
+                    && turnManager.SelectedUnit is PlayerUnit playerUnit
+                    && turnManager.CanAttackTarget(playerUnit, cell);
+                
+                if (!canAttackThisEnemy)
+                {
+                    Core.Instance.UIManager.ShowUnitInfo(unitAtCell);
+                }
             }
             
             turnManager.HandleCellClick(cell);

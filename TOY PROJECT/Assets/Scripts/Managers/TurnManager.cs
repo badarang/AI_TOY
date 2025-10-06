@@ -7,11 +7,9 @@ using Cysharp.Threading.Tasks;
 
 public class TurnManager : MonoBehaviour
 {
-    // Events
     public event Action OnPlayerTurnStart;
     public event Action OnEnemyTurnStart;
 
-    // Game State
     public enum Turn { Player, Enemy }
     public Turn CurrentTurn { get; private set; }
     public enum PlayerTurnState { AwaitingUnitSelection, UnitSelected, PerformingAction, AwaitingSkillSubTarget, StageClear }
@@ -33,6 +31,7 @@ public class TurnManager : MonoBehaviour
         private bool hasMovedThisTurn = false;
     private bool hasAttackedThisTurn = false;
 private PlayerUnit selectedUnit;
+public PlayerUnit SelectedUnit => selectedUnit;
     private int currentSkillIndex = -1;
 
 
@@ -432,6 +431,28 @@ public void HandleCellClick(Vector2Int cell)
                 break;
         }
     }
+public bool CanAttackTarget(PlayerUnit unit, Vector2Int targetCell)
+    {
+        if (unit == null || hasAttackedThisTurn) return false;
+
+        for (int i = 0; i < unit.unitData.skills.Length; i++)
+        {
+            var skill = unit.unitData.skills[i];
+            if (skill.skillType == SkillType.Attack 
+                && unit.GetSkillCooldown(i) == 0 
+                && unit.ap >= skill.apCost)
+            {
+                int distance = Mathf.Max(Mathf.Abs(unit.position.x - targetCell.x), Mathf.Abs(unit.position.y - targetCell.y));
+                if (distance <= skill.range)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    
 private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         if (hasAttackedThisTurn) return;
@@ -556,27 +577,6 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
             SetPlayerState(PlayerTurnState.UnitSelected);
         }
     }
-    public PlayerUnit GetSelectedUnit()
-    {
-        return selectedUnit;
-    }
-
-
-    public void OnNodeSelected(MapNodeData selectedNode)
-    {
-        Debug.Log($"노드 선택됨: {selectedNode.nodeType}");
-        uiManager.HideNodeSelectionScreen();
-        
-        if (selectedNode.nodeType == StageNodeType.Battle)
-        {
-            Debug.Log("전투 노드로 진입합니다.");
-        }
-        else if (selectedNode.nodeType == StageNodeType.Event)
-        {
-            Debug.Log("이벤트 노드로 진입합니다.");
-        }
-    }
-
 
     public void CancelSelection()
     {

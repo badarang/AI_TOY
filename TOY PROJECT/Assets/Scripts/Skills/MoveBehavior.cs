@@ -1,4 +1,3 @@
-// /Assets/Scripts/Skills/MoveBehavior.cs
 using UnityEngine;
 using DG.Tweening;
 
@@ -14,15 +13,13 @@ public class MoveBehavior : SkillBehavior
         Vector2Int startPos = caster.position;
         Vector2Int targetPos = context.TargetPosition;
 
-        // 1. Update grid data
         Core.Instance.GridManager.MoveUnit(startPos, targetPos);
 
-        // 2. Play visual tween
         Vector3 targetWorldPos = new Vector3(targetPos.x + 0.5f, caster.transform.position.y, targetPos.y + 0.5f);
         caster.transform.DOJump(targetWorldPos, 0.5f, 1, animationDuration);
 
-        DebugPrinter.DebugColor(DebugType.Unit, $"{caster.name} moved to {targetPos}");
+        DebugPrinter.LogColor(LogType.Unit, $"{caster.name} moved to {targetPos}");
 
-        return animationDuration; // 애니메이션 시간을 반환합니다.
+        return animationDuration;
     }
 }

@@ -9,7 +9,7 @@ public class UnitBase : MonoBehaviour
     public UnitData unitData;
     public FactionData factionData;
     public int hp;
-    public int ap; // 행동력
+    public int ap;
     public Vector2Int position;
     private Action OnSelected;
     private Action OnDeselected;
@@ -49,13 +49,12 @@ public class UnitBase : MonoBehaviour
             return 0f;
         }
 
-        DebugPrinter.DebugColor(DebugType.Unit, $"Using skill '{skill.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {skill.apCost}");
+        DebugPrinter.LogColor(LogType.Unit, $"Using skill '{skill.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {skill.apCost}");
         ap -= skill.apCost;
         
-        // 스킬 데이터에 명시된 쿨다운이 0보다 클 때만 쿨다운을 적용합니다.
         if (skill.cooldown > 0) _skillCooldowns[skillIndex] = skill.cooldown;
 
-        DebugPrinter.DebugColor(DebugType.Unit, $"{name} used {skill.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
+        DebugPrinter.LogColor(LogType.Unit, $"{name} used {skill.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
 
         float totalDuration = 0f;
         var context = new SkillContext(this, targetPos);
@@ -84,13 +83,13 @@ public class UnitBase : MonoBehaviour
                 return i;
             }
         }
-        return -1; // No move skill found
+        return -1;
     }
 
     public virtual void TakeDamage(int amount)
     {
         hp -= amount;
-        DebugPrinter.DebugColor(DebugType.Unit, $"{name} took {amount} damage, remaining HP: {hp}");
+        DebugPrinter.LogColor(LogType.Unit, $"{name} took {amount} damage, remaining HP: {hp}");
 
         if (hp <= 0)
         {
@@ -101,10 +100,9 @@ public class UnitBase : MonoBehaviour
 
     protected virtual void Die()
     {
-        DebugPrinter.DebugColor(DebugType.Unit, $"{name} has died.");
+        DebugPrinter.LogColor(LogType.Unit, $"{name} has died.");
         Core.Instance.GridManager.UnregisterUnit(position);
 
-        // Check if the dying unit is an enemy and unregister it from the StageManager
         if (this is EnemyUnit enemyUnit)
         {
             Core.Instance.StageManager.UnregisterEnemy(enemyUnit);
@@ -115,7 +113,7 @@ public class UnitBase : MonoBehaviour
 
     public virtual void OnTurnStart()
     {
-        DebugPrinter.DebugColor(DebugType.Unit, $"{name}'s turn starts, AP reset.");
+        DebugPrinter.LogColor(LogType.Unit, $"{name}'s turn starts, AP reset.");
         ap = unitData.maxAp;
         ReduceSkillCooldowns();
     }
@@ -131,17 +129,16 @@ public class UnitBase : MonoBehaviour
         }
     }
 
-public int GetSkillCooldown(int skillIndex)
+    public int GetSkillCooldown(int skillIndex)
     {
         if (skillIndex < 0 || skillIndex >= _skillCooldowns.Count) return -1;
         return _skillCooldowns[skillIndex];
     }
 
-
     public virtual void OnEnable()
     {
-        OnSelected += () => { DebugPrinter.DebugColor(DebugType.Unit, $"{factionData.factionName} is Selected"); };
-        OnDeselected += () => { DebugPrinter.DebugColor(DebugType.Unit, $"{factionData.factionName} is DeSelected"); };
+        OnSelected += () => { DebugPrinter.LogColor(LogType.Unit, $"{factionData.factionName} is Selected"); };
+        OnDeselected += () => { DebugPrinter.LogColor(LogType.Unit, $"{factionData.factionName} is DeSelected"); };
     }
 
     public virtual void OnDisable()
@@ -160,7 +157,7 @@ public int GetSkillCooldown(int skillIndex)
         OnSelected?.Invoke();
     }
 
-public virtual void ShowAvailableActions()
+    public virtual void ShowAvailableActions()
     {
         var gridManager = Core.Instance?.GridManager;
         if (gridManager == null) return;
@@ -251,8 +248,7 @@ public virtual void ShowAvailableActions()
         OnDeselected?.Invoke();
     }
 
-
-public virtual void MoveAlongPath(List<Vector2Int> path, Action onComplete)
+    public virtual void MoveAlongPath(List<Vector2Int> path, Action onComplete)
     {
         if (path == null || path.Count == 0)
         {
@@ -263,8 +259,7 @@ public virtual void MoveAlongPath(List<Vector2Int> path, Action onComplete)
         StartCoroutine(MoveAlongPathCoroutine(path, onComplete));
     }
 
-
-private System.Collections.IEnumerator MoveAlongPathCoroutine(List<Vector2Int> path, Action onComplete)
+    private System.Collections.IEnumerator MoveAlongPathCoroutine(List<Vector2Int> path, Action onComplete)
     {
         float moveSpeed = 5f;
         

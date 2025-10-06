@@ -29,7 +29,7 @@ public class MoveToTargetOriginBehavior : SkillBehavior
         // {
         //     DebugPrinter.DebugColor(DebugType.Unit, "MoveToTargetOriginBehavior: 벽에 부딪힘. 시전자는 이동하지 않습니다.");
         // }
-        DebugPrinter.DebugColor(DebugType.Unit, "MoveToTargetOriginBehavior: 시전자는 이동하지 않도록 수정됨.");
+        DebugPrinter.LogColor(LogType.Unit, "MoveToTargetOriginBehavior: 시전자는 이동하지 않도록 수정됨.");
         return 0f;
     }
 }

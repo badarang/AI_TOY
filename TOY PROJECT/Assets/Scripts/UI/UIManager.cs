@@ -141,7 +141,7 @@ public void HideSkillPanel()
     }
 
     // --- 기존 메서드들 ---
-    public void ShowBattleLog(string message) { }
-    public void UpdateSkillPanel() { /* ... */ }
-    public void UpdateTurnOrder() { /* ... */ }
+
+
+
 }

@@ -1,49 +1,77 @@
 using UnityEngine;
 
-public enum DebugType
+public enum LogType
 {
+    Selection,
+    State,
+    Action,
+    Combat,
+    Skill,
+    Movement,
+    Warning,
+    Turn,
+    Success,
+    Error,
     System,
     Input,
-    Unit,
+    Unit
 }
 
 public class DebugPrinter : MonoBehaviour
 {
-    public static void DebugColor(DebugType type, string message)
+public static void LogColor(LogType type, string message)
     {
         string colorHex = GetColorHex(type);
         string typeName = GetTypeName(type);
-        string coloredMessage = $"<color=#{colorHex}>[{typeName}] {message}</color>";
-        Debug.Log(coloredMessage);
+        string coloredMessage = $"<color=#{colorHex}>[{typeName}]</color> {message}";
+        
+        if (type == LogType.Warning)
+            Debug.LogWarning(coloredMessage);
+        else if (type == LogType.Error)
+            Debug.LogError(coloredMessage);
+        else
+            Debug.Log(coloredMessage);
     }
     
-    private static string GetColorHex(DebugType type)
+private static string GetColorHex(LogType type)
     {
         switch (type)
         {
-            case DebugType.System:
-                return "00BFFF";
-            case DebugType.Input:
-                return "F49303";
-            case DebugType.Unit:
-                return "32CD32";
-            default:
-                return "FFFFFF";
+            case LogType.Selection: return "4CAF50";
+            case LogType.State: return "2196F3";
+            case LogType.Action: return "FF9800";
+            case LogType.Combat: return "F44336";
+            case LogType.Skill: return "9C27B0";
+            case LogType.Movement: return "00BCD4";
+            case LogType.Warning: return "FF5722";
+            case LogType.Turn: return "3F51B5";
+            case LogType.Success: return "8BC34A";
+            case LogType.Error: return "D32F2F";
+            case LogType.System: return "00BFFF";
+            case LogType.Input: return "F49303";
+            case LogType.Unit: return "32CD32";
+            default: return "FFFFFF";
         }
     }
     
-    private static string GetTypeName(DebugType type)
+private static string GetTypeName(LogType type)
     {
         switch (type)
         {
-            case DebugType.System:
-                return "시스템";
-            case DebugType.Input:
-                return "입력";
-            case DebugType.Unit:
-                return "유닛";
-            default:
-                return "Unknown";
+            case LogType.Selection: return "선택";
+            case LogType.State: return "상태";
+            case LogType.Action: return "행동";
+            case LogType.Combat: return "전투";
+            case LogType.Skill: return "스킬";
+            case LogType.Movement: return "이동";
+            case LogType.Warning: return "경고";
+            case LogType.Turn: return "턴";
+            case LogType.Success: return "성공";
+            case LogType.Error: return "오류";
+            case LogType.System: return "시스템";
+            case LogType.Input: return "입력";
+            case LogType.Unit: return "유닛";
+            default: return "Unknown";
         }
     }
 }

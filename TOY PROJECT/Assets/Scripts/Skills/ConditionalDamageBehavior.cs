@@ -16,7 +16,7 @@ public class ConditionalDamageBehavior : SkillBehavior
             if (target != null)
             {
                 target.TakeDamage(damageAmount);
-                DebugPrinter.DebugColor(DebugType.Unit, $"ConditionalDamageBehavior: {target.name}에게 {damageAmount}의 조건부 데미지를 입혔습니다. (벽 충돌: {hitWall})");
+                DebugPrinter.LogColor(LogType.Unit, $"ConditionalDamageBehavior: {target.name}에게 {damageAmount}의 조건부 데미지를 입혔습니다. (벽 충돌: {hitWall})");
             }
         }
         return 0f;

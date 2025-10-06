@@ -5,6 +5,13 @@ using System.Linq;
 
 public class GridManager : MonoBehaviour
 {
+    private const float GRID_CELL_OFFSET = 0.5f;
+    private const float GRID_LINE_HEIGHT = 0.01f;
+    private const float HOVER_HIGHLIGHT_HEIGHT = 0.02f;
+    private const float MOVABLE_HIGHLIGHT_HEIGHT = 0.03f;
+    private const float ATTACK_HIGHLIGHT_HEIGHT = 0.04f;
+    private const float GRID_LINE_WIDTH = 0.03f;
+
     public static GridManager Instance { get; private set; }
 
     void Awake()
@@ -38,20 +45,20 @@ public class GridManager : MonoBehaviour
         UpdateCellHover();
     }
 
-    public void GenerateGrid(StageData stageData)
+public void GenerateGrid(StageData stageData)
     {
         width = stageData.width;
         height = stageData.height;
         
-        ClearGrid(); // This now handles all cleanup
+        ClearGrid();
 
         for (int x = 0; x <= width; x++)
         {
-            CreateGridLine(new Vector3(x, 0.01f, 0), new Vector3(x, 0.01f, height));
+            CreateGridLine(new Vector3(x, GRID_LINE_HEIGHT, 0), new Vector3(x, GRID_LINE_HEIGHT, height));
         }
         for (int z = 0; z <= height; z++)
         {
-            CreateGridLine(new Vector3(0, 0.01f, z), new Vector3(width, 0.01f, z));
+            CreateGridLine(new Vector3(0, GRID_LINE_HEIGHT, z), new Vector3(width, GRID_LINE_HEIGHT, z));
         }
     }
 
@@ -123,7 +130,7 @@ public class GridManager : MonoBehaviour
         return Vector2.zero;
     }
 
-    void ShowHighlight(int x, int z)
+void ShowHighlight(int x, int z)
     {
         if (highlightQuad == null)
         {
@@ -133,7 +140,7 @@ public class GridManager : MonoBehaviour
             highlightQuad.GetComponent<Collider>().enabled = false;
         }
 
-        highlightQuad.transform.position = new Vector3(x + 0.5f, 0.02f, z + 0.5f);
+        highlightQuad.transform.position = new Vector3(x + GRID_CELL_OFFSET, HOVER_HIGHLIGHT_HEIGHT, z + GRID_CELL_OFFSET);
         highlightQuad.SetActive(true);
 
         var rend = highlightQuad.GetComponent<Renderer>();
@@ -172,7 +179,7 @@ public class GridManager : MonoBehaviour
         }
     }
 
-    void CreateGridLine(Vector3 start, Vector3 end)
+void CreateGridLine(Vector3 start, Vector3 end)
     {
         GameObject lineObj = new GameObject("GridLine");
         lineObj.transform.parent = this.transform;
@@ -180,8 +187,8 @@ public class GridManager : MonoBehaviour
         lr.positionCount = 2;
         lr.SetPosition(0, start);
         lr.SetPosition(1, end);
-        lr.startWidth = 0.03f;
-        lr.endWidth = 0.03f;
+        lr.startWidth = GRID_LINE_WIDTH;
+        lr.endWidth = GRID_LINE_WIDTH;
         lr.material = gridLineMaterial;
         lr.startColor = lr.endColor = Color.gray;
         lr.useWorldSpace = true;
@@ -252,14 +259,14 @@ public class GridManager : MonoBehaviour
     public Material executableTargetMaterial;
     private List<GameObject> targetHighlights = new List<GameObject>();
 
-    public void HighlightMovableTiles(List<Vector2Int> tilesToHighlight)
+public void HighlightMovableTiles(List<Vector2Int> tilesToHighlight)
     {
         ClearMovableHighlights();
         foreach (var tile in tilesToHighlight)
         {
             GameObject highlight = GameObject.CreatePrimitive(PrimitiveType.Quad);
             highlight.name = $"MovableHighlight_{tile.x}_{tile.y}";
-            highlight.transform.position = new Vector3(tile.x + 0.5f, 0.03f, tile.y + 0.5f);
+            highlight.transform.position = new Vector3(tile.x + GRID_CELL_OFFSET, MOVABLE_HIGHLIGHT_HEIGHT, tile.y + GRID_CELL_OFFSET);
             highlight.transform.rotation = Quaternion.Euler(90, 0, 0);
             highlight.GetComponent<Collider>().enabled = false;
             var rend = highlight.GetComponent<Renderer>();
@@ -281,7 +288,7 @@ public void HighlightAttackableTiles(List<Vector2Int> tiles)
         {
             GameObject highlight = GameObject.CreatePrimitive(PrimitiveType.Quad);
             highlight.name = $"AttackHighlight_{tile.x}_{tile.y}";
-            highlight.transform.position = new Vector3(tile.x + 0.5f, 0.04f, tile.y + 0.5f);
+            highlight.transform.position = new Vector3(tile.x + GRID_CELL_OFFSET, ATTACK_HIGHLIGHT_HEIGHT, tile.y + GRID_CELL_OFFSET);
             highlight.transform.rotation = Quaternion.Euler(90, 0, 0);
             highlight.GetComponent<Collider>().enabled = false;
             var rend = highlight.GetComponent<Renderer>();
@@ -459,7 +466,6 @@ public void HighlightAttackableTiles(List<Vector2Int> tiles)
 
 public List<Vector2Int> GetWalkableTilesInRange(Vector2Int start, int range)
     {
-        Debug.Log($"GetWalkableTilesInRange 호출: start={start}, range={range}");
         List<Vector2Int> reachableTiles = new List<Vector2Int>();
         Queue<Tuple<Vector2Int, int>> queue = new Queue<Tuple<Vector2Int, int>>();
         HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
@@ -480,25 +486,8 @@ public List<Vector2Int> GetWalkableTilesInRange(Vector2Int start, int range)
             {
                 foreach (var neighbour in GetNeighbourPositions(currentPos))
                 {
-                    bool isValid = IsValidTile(neighbour);
-                    bool hasUnit = HasUnitAt(neighbour);
-                    bool isVisited = visited.Contains(neighbour);
-                    
-                    if (!isValid)
+                    if (IsValidTile(neighbour) && !HasUnitAt(neighbour) && !visited.Contains(neighbour))
                     {
-                        Debug.Log($"  {neighbour}: 범위 밖");
-                    }
-                    else if (hasUnit)
-                    {
-                        Debug.Log($"  {neighbour}: 유닛 존재");
-                    }
-                    else if (isVisited)
-                    {
-                        Debug.Log($"  {neighbour}: 이미 방문");
-                    }
-                    else
-                    {
-                        Debug.Log($"  {neighbour}: 이동 가능 추가");
                         visited.Add(neighbour);
                         queue.Enqueue(new Tuple<Vector2Int, int>(neighbour, currentCost + 1));
                     }
@@ -506,7 +495,6 @@ public List<Vector2Int> GetWalkableTilesInRange(Vector2Int start, int range)
             }
         }
         
-        Debug.Log($"최종 이동 가능 타일: {reachableTiles.Count}개");
         return reachableTiles;
     }
 }
