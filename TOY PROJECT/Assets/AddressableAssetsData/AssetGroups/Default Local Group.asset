@@ -20,8 +20,18 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3c11deca911224e28bfdbdd4a38ba822
+    m_Address: Assets/Prefabs/Obstacles/Portal.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4c525d53b72814baf827dabde3e36095
     m_Address: Prefabs/Units/Enemy_Goose.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8f87085b1ff454356b87ae33a0ddc87a
+    m_Address: Assets/Prefabs/Obstacles/GridPlane.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

@@ -1,8 +1,11 @@
 using System;
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
-
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using Cysharp.Threading.Tasks;
 public class GridManager : MonoBehaviour
 {
     private const float GRID_CELL_OFFSET = 0.5f;
@@ -29,12 +32,12 @@ public class GridManager : MonoBehaviour
     private int width { get; set; }
     private int height { get; set; }
     public LayerMask unitLayer;
-    public Material gridLineMaterial;
+    public AssetReference gridPlaneAsset;
 
     [Header("Datas")]
     private Dictionary<Vector2Int, UnitBase> unitPositions = new Dictionary<Vector2Int, UnitBase>();
 
-    private List<GameObject> gridLines = new List<GameObject>();
+    private GameObject gridPlane;
     private Vector2Int? hoveredCell = null;
 
     public Material highlightMat;
@@ -45,28 +48,53 @@ public class GridManager : MonoBehaviour
         UpdateCellHover();
     }
 
-public void GenerateGrid(StageData stageData)
+public async void GenerateGrid(StageData stageData)
     {
         width = stageData.width;
         height = stageData.height;
         
         ClearGrid();
 
-        for (int x = 0; x <= width; x++)
+        await CreateGridPlane();
+    }
+
+private async UniTask CreateGridPlane()
+    {
+        if (gridPlaneAsset == null)
         {
-            CreateGridLine(new Vector3(x, GRID_LINE_HEIGHT, 0), new Vector3(x, GRID_LINE_HEIGHT, height));
+            Debug.LogError("GridPlane AssetReference가 할당되지 않았습니다.");
+            return;
         }
-        for (int z = 0; z <= height; z++)
+
+        AsyncOperationHandle<GameObject> handle = gridPlaneAsset.LoadAssetAsync<GameObject>();
+        await handle.Task;
+
+        if (handle.Status == AsyncOperationStatus.Succeeded)
         {
-            CreateGridLine(new Vector3(0, GRID_LINE_HEIGHT, z), new Vector3(width, GRID_LINE_HEIGHT, z));
+            gridPlane = Instantiate(handle.Result, this.transform);
+            gridPlane.name = "GridPlane";
+            
+            gridPlane.transform.position = new Vector3(width * 0.5f, 0f, height * 0.5f);
+            gridPlane.transform.localScale = new Vector3(width * 0.1f, 1f, height * 0.1f);
+            
+            var collider = gridPlane.GetComponent<Collider>();
+            if (collider != null)
+            {
+                collider.enabled = false;
+            }
+        }
+        else
+        {
+            Debug.LogError("GridPlane Addressable 로드 실패");
         }
     }
 
-    public void ClearGrid()
+
+public void ClearGrid()
     {
         unitPositions.Clear();
         hoveredCell = null;
-        ClearGridLines();
+        ClearGridPlane();
         ClearAllHighlights(); 
         if (highlightQuad != null)
         {
@@ -74,6 +102,16 @@ public void GenerateGrid(StageData stageData)
             highlightQuad = null;
         }
     }
+
+private void ClearGridPlane()
+    {
+        if (gridPlane != null)
+        {
+            Destroy(gridPlane);
+            gridPlane = null;
+        }
+    }
+
 
     private void UpdateCellHover()
     {
@@ -179,30 +217,9 @@ void ShowHighlight(int x, int z)
         }
     }
 
-void CreateGridLine(Vector3 start, Vector3 end)
-    {
-        GameObject lineObj = new GameObject("GridLine");
-        lineObj.transform.parent = this.transform;
-        var lr = lineObj.AddComponent<LineRenderer>();
-        lr.positionCount = 2;
-        lr.SetPosition(0, start);
-        lr.SetPosition(1, end);
-        lr.startWidth = GRID_LINE_WIDTH;
-        lr.endWidth = GRID_LINE_WIDTH;
-        lr.material = gridLineMaterial;
-        lr.startColor = lr.endColor = Color.gray;
-        lr.useWorldSpace = true;
-        gridLines.Add(lineObj);
-    }
 
-    void ClearGridLines()
-    {
-        foreach (var go in gridLines)
-        {
-            if (go != null) Destroy(go);
-        }
-        gridLines.Clear();
-    }
+
+
 
     public void RegisterUnit(UnitBase unit, Vector2Int gridPos)
     {

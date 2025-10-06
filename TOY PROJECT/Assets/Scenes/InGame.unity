@@ -1795,7 +1795,12 @@ MonoBehaviour:
   unitLayer:
     serializedVersion: 2
     m_Bits: 64
-  gridLineMaterial: {fileID: 10306, guid: 0000000000000000f000000000000000, type: 0}
+  gridPlaneAsset:
+    m_AssetGUID: 8f87085b1ff454356b87ae33a0ddc87a
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0
   highlightMat: {fileID: 10306, guid: 0000000000000000f000000000000000, type: 0}
   movableTileMaterial: {fileID: 2100000, guid: 24badb6508c9b480fbd580bacc318c80, type: 2}
   executableTargetMaterial: {fileID: 2100000, guid: 58ed21bbeb404443a9b7c13be8f0dc02, type: 2}
