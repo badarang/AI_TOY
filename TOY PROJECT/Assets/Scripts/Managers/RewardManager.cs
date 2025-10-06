@@ -3,8 +3,17 @@ using UnityEngine;
 
 // "쇼러너 AI"의 역할을 하는 핵심 매니저입니다.
 // 플레이어의 상태와 팬심을 기반으로 보상을 생성하고 관리합니다.
-public class RewardManager : MonoBehaviour
+public class RewardManager : MonoBehaviour, IManager
 {
+
+public void BeforeInit()
+    {
+    }
+
+    public void AfterInit()
+    {
+    }
+
     [Header("데이터베이스 연결")]
     public GameAssetDatabase database;
 

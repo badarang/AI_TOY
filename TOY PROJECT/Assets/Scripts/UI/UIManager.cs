@@ -2,8 +2,17 @@ using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
 
-public class UIManager : MonoBehaviour
+public class UIManager : MonoBehaviour, IManager
 {
+
+public void BeforeInit()
+    {
+    }
+
+    public void AfterInit()
+    {
+    }
+
     [Header("Component References")]
     public TurnOrderUI turnOrderUI;
         public UnitInfoUI unitInfoUI;

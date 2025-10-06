@@ -1,8 +1,17 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class PoolManager : MonoBehaviour
+public class PoolManager : MonoBehaviour, IManager
 {
+
+    public void BeforeInit()
+    {
+    }
+
+    public void AfterInit()
+    {
+    }
+
         [System.Serializable]
     public class Pool
     {

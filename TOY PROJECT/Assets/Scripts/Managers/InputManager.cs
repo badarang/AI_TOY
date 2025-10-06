@@ -2,8 +2,17 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class InputManager : MonoBehaviour
+public class InputManager : MonoBehaviour, IManager
 {
+
+    public void BeforeInit()
+    {
+    }
+
+    public void AfterInit()
+    {
+    }
+
     [Header("Input Settings")]
     [SerializeField] private float clickDragThreshold = 5f;
     public float dragSensitivity = 1f;

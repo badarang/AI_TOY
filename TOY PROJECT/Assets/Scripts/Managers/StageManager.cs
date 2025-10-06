@@ -4,8 +4,17 @@ using Cysharp.Threading.Tasks;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
-public class StageManager : MonoBehaviour
+public class StageManager : MonoBehaviour, IManager
 {
+
+public void BeforeInit()
+    {
+    }
+
+    public void AfterInit()
+    {
+    }
+
     [Header("Dependencies")]
     public GridManager gridManager;
     [SerializeField] private GameObject portalPrefab; // 포탈 프리팹을 여기에 할당해야 합니다.

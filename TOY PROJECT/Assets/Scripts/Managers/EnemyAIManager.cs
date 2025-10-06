@@ -3,8 +3,17 @@ using System.Collections;
 using System.Collections.Generic;
 
 // 모든 적 유닛의 행동을 총괄하는 AI 관리자
-public class EnemyAIManager : MonoBehaviour
+public class EnemyAIManager : MonoBehaviour, IManager
 {
+
+public void BeforeInit()
+    {
+    }
+
+    public void AfterInit()
+    {
+    }
+
     // 적 턴 시작 시 TurnManager에 의해 호출됨
     public IEnumerator ExecuteEnemyTurns()
     {

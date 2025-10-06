@@ -9,7 +9,7 @@ using System.Linq;
 public class GameManager : MonoBehaviour, IManager
 {
 
-public void BeforeInit()
+    public void BeforeInit()
     {
     }
 

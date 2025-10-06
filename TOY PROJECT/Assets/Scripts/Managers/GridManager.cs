@@ -6,8 +6,17 @@ using System.Linq;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using Cysharp.Threading.Tasks;
-public class GridManager : MonoBehaviour
+public class GridManager : MonoBehaviour, IManager
 {
+
+public void BeforeInit()
+    {
+    }
+
+    public void AfterInit()
+    {
+    }
+
     private const float GRID_CELL_OFFSET = 0.5f;
     private const float GRID_LINE_HEIGHT = 0.01f;
     private const float HOVER_HIGHLIGHT_HEIGHT = 0.02f;

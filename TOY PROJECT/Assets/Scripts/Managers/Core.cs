@@ -5,7 +5,6 @@ public class Core : MonoBehaviour
     public static Core Instance { get; private set; }
 
     [Header("Managers")]
-    // 의존성이 적은 순서대로 정렬
     [SerializeField] private GameManager gameManager;
     [SerializeField] private PoolManager poolManager;
     [SerializeField] private GridManager gridManager;
@@ -78,7 +77,7 @@ public class Core : MonoBehaviour
         Debug.Log("[Core] All managers initialized successfully.");
     }
 
-private void CallBeforeInit(MonoBehaviour manager)
+    private void CallBeforeInit(MonoBehaviour manager)
     {
         if (manager is IManager iManager)
         {
