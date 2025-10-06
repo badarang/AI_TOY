@@ -132,14 +132,12 @@ public class InputManager : MonoBehaviour, IManager
         }
     }
 
-private void ProcessTurnClick()
+    private void ProcessTurnClick()
     {
         if (turnManager.CurrentTurn != TurnManager.Turn.Player) return;
 
-        if (UnityEngine.EventSystems.EventSystem.current != null && 
-            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        if (IsPointerOverUI())
         {
-            Debug.Log("UI 클릭 - 그리드 클릭 무시");
             return;
         }
 
@@ -177,4 +175,20 @@ private void ProcessTurnClick()
             turnManager.CancelSelection();
         }
     }
+
+    private bool IsPointerOverUI()
+    {
+        if (UnityEngine.EventSystems.EventSystem.current == null) return false;
+        
+        var eventData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current)
+        {
+            position = CurrentInputPosition
+        };
+        
+        var results = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();
+        UnityEngine.EventSystems.EventSystem.current.RaycastAll(eventData, results);
+        
+        return results.Count > 0;
+    }
+
 }
