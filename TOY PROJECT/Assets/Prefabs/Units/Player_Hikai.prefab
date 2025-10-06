@@ -8,6 +8,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 703485749331730516, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 5d179a2fe6ec84d6da2ff15d8a5447a4, type: 2}
     - target: {fileID: 1206813403242570013, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       propertyPath: m_Layer
       value: 6
@@ -134,4 +138,3 @@ MonoBehaviour:
   hp: 3
   ap: 1
   position: {x: 0, y: 0}
-  skills: []
