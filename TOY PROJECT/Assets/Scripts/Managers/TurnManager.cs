@@ -64,7 +64,7 @@ public class TurnManager : MonoBehaviour
             gridManager.ClearSelection();
         }
         
-        Debug.Log("TurnManager state cleared.");
+        DebugPrinter.LogColor(LogType.Turn, "TurnManager state cleared.");
     }
 
     public void StartFirstWave()
@@ -118,7 +118,7 @@ public class TurnManager : MonoBehaviour
             int turnLimit = stageManager.GetCurrentStageData()?.waves[currentWave - 1].clearTurnLimit ?? 5;
             if (turnInWave >= turnLimit)
             {
-                Debug.Log("방송 시간 초과! 패널티 라운드에 돌입합니다!");
+                DebugPrinter.LogColor(LogType.Turn, "방송 시간 초과! 패널티 라운드에 돌입합니다!");
                 currentWave++;
                 stageManager.SpawnWave(currentWave);
                 turnInWave = 0;
@@ -142,14 +142,14 @@ public class TurnManager : MonoBehaviour
         if (currentWave >= stageManager.GetCurrentStageData().waves.Length)
         {
             // LAST WAVE CLEARED - STAGE IS COMPLETE
-            Debug.Log("모든 웨이브 클리어! 스테이지 완료!");
+            DebugPrinter.LogColor(LogType.Turn, "모든 웨이브 클리어! 스테이지 완료!");
             SetPlayerState(PlayerTurnState.StageClear); // Set state to prevent further actions
             Core.Instance.GameManager.ProceedToNextLayer(); // Tell GM to create portals
         }
         else
         {
             // INTERMEDIATE WAVE CLEARED - START NEXT WAVE
-            Debug.Log($"웨이브 {currentWave} 클리어! 다음 웨이브를 시작합니다.");
+            DebugPrinter.LogColor(LogType.Turn, $"웨이브 {currentWave} 클리어! 다음 웨이브를 시작합니다.");
             currentWave++;
             stageManager.SpawnWave(currentWave);
         }
@@ -159,7 +159,7 @@ public class TurnManager : MonoBehaviour
     public void SetPlayerState(PlayerTurnState newState)
     {
         CurrentPlayerState = newState;
-        Debug.Log($"Player state changed to: {newState}");
+        DebugPrinter.LogColor(LogType.Turn, $"Player state changed to: {newState}");
     }
 
     // Dummy methods for compilation. Implement actual logic as needed.
@@ -169,7 +169,7 @@ public class TurnManager : MonoBehaviour
         
         selectedUnit = unit;
         SetPlayerState(PlayerTurnState.UnitSelected);
-        Debug.Log($"플레이어 유닛 선택됨: {unit.name}");
+        DebugPrinter.LogColor(LogType.Turn, $"플레이어 유닛 선택됨: {unit.name}");
         
         ShowAvailableActionsForUnit(unit);
         
@@ -181,13 +181,13 @@ public class TurnManager : MonoBehaviour
     {
         if (CurrentTurn != Turn.Player || CurrentPlayerState != PlayerTurnState.UnitSelected)
         {
-            Debug.Log("스킬을 사용할 수 없는 상태입니다.");
+            DebugPrinter.LogColor(LogType.Turn, "스킬을 사용할 수 없는 상태입니다.");
             return;
         }
 
         if (selectedUnit == null)
         {
-            Debug.Log("선택된 유닛이 없습니다.");
+            DebugPrinter.LogColor(LogType.Turn, "선택된 유닛이 없습니다.");
             return;
         }
 
@@ -201,20 +201,20 @@ public class TurnManager : MonoBehaviour
         
         if (selectedUnit.GetSkillCooldown(skillIndex) > 0)
         {
-            Debug.Log($"{skill.skillMeta.nameKey}는 쿨다운 중입니다: {selectedUnit.GetSkillCooldown(skillIndex)}턴 남음");
+            DebugPrinter.LogColor(LogType.Turn, $"{skill.skillMeta.nameKey}는 쿨다운 중입니다: {selectedUnit.GetSkillCooldown(skillIndex)}턴 남음");
             return;
         }
 
         if (selectedUnit.ap < skill.apCost)
         {
-            Debug.Log($"{skill.skillMeta.nameKey}를 사용하기에 AP가 부족합니다. 필요: {skill.apCost}, 현재: {selectedUnit.ap}");
+            DebugPrinter.LogColor(LogType.Turn, $"{skill.skillMeta.nameKey}를 사용하기에 AP가 부족합니다. 필요: {skill.apCost}, 현재: {selectedUnit.ap}");
             return;
         }
 
         switch (skill.skillType)
         {
             case SkillType.Move:
-                Debug.Log("이동 스킬은 직접 타일을 클릭하세요.");
+                DebugPrinter.LogColor(LogType.Turn, "이동 스킬은 직접 타일을 클릭하세요.");
                 break;
                 
             case SkillType.Attack:
@@ -222,7 +222,7 @@ public class TurnManager : MonoBehaviour
                 break;
                 
             default:
-                Debug.Log($"지원하지 않는 스킬 타입: {skill.skillType}");
+                DebugPrinter.LogColor(LogType.Turn, $"지원하지 않는 스킬 타입: {skill.skillType}");
                 break;
         }
     }
@@ -232,7 +232,7 @@ private void StartSkillTargeting(int skillIndex)
         currentSkillIndex = skillIndex;
         var skill = selectedUnit.unitData.skills[skillIndex];
         
-        Debug.Log($"{skill.skillMeta.nameKey} 타겟 선택 모드 시작");
+        DebugPrinter.LogColor(LogType.Turn, $"{skill.skillMeta.nameKey} 타겟 선택 모드 시작");
         
         var allUnits = gridManager.GetAllUnits();
         var targetableTiles = new List<Vector2Int>();
@@ -266,7 +266,7 @@ private void ExecuteSkillOnTarget(int skillIndex, Vector2Int targetCell)
         
         if (distance > skill.range)
         {
-            Debug.Log($"타겟이 사거리 밖입니다. 거리: {distance}, 사거리: {skill.range}");
+            DebugPrinter.LogColor(LogType.Turn, $"타겟이 사거리 밖입니다. 거리: {distance}, 사거리: {skill.range}");
             SetPlayerState(PlayerTurnState.UnitSelected);
             ShowAvailableActionsForUnit(selectedUnit);
             currentSkillIndex = -1;
@@ -364,7 +364,7 @@ public void ClearSelection()
         Core.Instance.UIManager.HideUnitInfo();
         Core.Instance.UIManager.HideSkillPanel();
         
-        Debug.Log("선택 취소");
+        DebugPrinter.LogColor(LogType.Turn, "선택 취소");
     }
 
 
@@ -385,7 +385,7 @@ public void HandleCellClick(Vector2Int cell)
                 {
                     gridManager.ClearAllHighlights();
                     Core.Instance.UIManager.ShowUnitInfo(enemyUnit);
-                    Debug.Log($"적 정보 표시: {enemyUnit.name}");
+                    DebugPrinter.LogColor(LogType.Turn, $"적 정보 표시: {enemyUnit.name}");
                 }
                 else
                 {
@@ -442,14 +442,14 @@ public void HandleCellClick(Vector2Int cell)
                     }
                     else
                     {
-                        Debug.Log($"타겟이 사거리 밖입니다. 거리: {distance}, 사거리: {skill.range}");
+                        DebugPrinter.LogColor(LogType.Turn, $"타겟이 사거리 밖입니다. 거리: {distance}, 사거리: {skill.range}");
                         SetPlayerState(PlayerTurnState.UnitSelected);
                         ShowAvailableActionsForUnit(selectedUnit);
                     }
                 }
                 else
                 {
-                    Debug.Log("유효하지 않은 타겟입니다.");
+                    DebugPrinter.LogColor(LogType.Turn, "유효하지 않은 타겟입니다.");
                     SetPlayerState(PlayerTurnState.UnitSelected);
                     ShowAvailableActionsForUnit(selectedUnit);
                 }
@@ -515,18 +515,18 @@ private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
 
 private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
     {
-        Debug.Log($"TryMoveUnit 호출: {targetCell}, hasMovedThisTurn={hasMovedThisTurn}");
+        DebugPrinter.LogColor(LogType.Turn, $"TryMoveUnit 호출: {targetCell}, hasMovedThisTurn={hasMovedThisTurn}");
         
         if (hasMovedThisTurn)
         {
-            Debug.Log("이미 이동했습니다.");
+            DebugPrinter.LogColor(LogType.Turn, "이미 이동했습니다.");
             return false;
         }
 
         int moveSkillIndex = unit.GetMoveSkillIndex();
         if (moveSkillIndex < 0)
         {
-            Debug.Log("이동 스킬을 찾을 수 없습니다.");
+            DebugPrinter.LogColor(LogType.Turn, "이동 스킬을 찾을 수 없습니다.");
             return false;
         }
 
@@ -535,25 +535,25 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
         
         if (moveSkill.initialBehaviors.Length == 0 || !moveSkill.initialBehaviors[0].CanExecute(context, moveSkill))
         {
-            Debug.Log($"이동 불가: CanExecute 실패");
+            DebugPrinter.LogColor(LogType.Turn, $"이동 불가: CanExecute 실패");
             return false;
         }
 
         List<Vector2Int> walkableTiles = gridManager.GetWalkableTilesInRange(unit.position, moveSkill.range);
-        Debug.Log($"이동 가능한 타일 개수: {walkableTiles.Count}");
+        DebugPrinter.LogColor(LogType.Turn, $"이동 가능한 타일 개수: {walkableTiles.Count}");
         foreach (var tile in walkableTiles)
         {
-            Debug.Log($"  - {tile}");
+            DebugPrinter.LogColor(LogType.Turn, $"  - {tile}");
         }
 
         if (walkableTiles.Contains(targetCell))
         {
-            Debug.Log($"{targetCell}로 이동 시도");
+            DebugPrinter.LogColor(LogType.Turn, $"{targetCell}로 이동 시도");
             MoveUnitToCell(unit, targetCell);
             return true;
         }
 
-        Debug.Log($"{targetCell}은 이동 가능한 타일이 아닙니다.");
+        DebugPrinter.LogColor(LogType.Turn, $"{targetCell}은 이동 가능한 타일이 아닙니다.");
         return false;
     }
 
@@ -608,7 +608,7 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
 
     public void FinalizeRewardSelection()
     {
-        Debug.Log("보상 선택이 완료되었습니다.");
+        DebugPrinter.LogColor(LogType.Turn, "보상 선택이 완료되었습니다.");
         
         if (currentWave >= stageManager.GetCurrentStageData().waves.Length)
         {
