@@ -91,7 +91,7 @@ public class GameManager : MonoBehaviour, IManager
         StartStage(selectedType);
     }
 
-    private void StartStage(StageType type)
+    private async void StartStage(StageType type)
     {
         StageData stageToLoad = GetRandomStage(type);
         if (stageToLoad == null)
@@ -105,11 +105,10 @@ public class GameManager : MonoBehaviour, IManager
 
         if (!isPlayerSpawned)
         {
-            stageManager.SpawnPlayer(stageToLoad.playerSpawn);
+            await stageManager.SpawnPlayer(stageToLoad.playerSpawn);
             isPlayerSpawned = true;
         }
 
-        // 스테이지 타입에 따라 다른 로직 수행
         if (stageToLoad.stageType == StageType.Battle || stageToLoad.stageType == StageType.EliteBattle || stageToLoad.stageType == StageType.Boss)
         {
             turnManager.StartFirstWave();
@@ -117,8 +116,6 @@ public class GameManager : MonoBehaviour, IManager
         else
         {
             Debug.Log($"{stageToLoad.stageType} 타입의 스테이지에 진입했습니다. (전투 아님)");
-            // TODO: 이벤트, 상점 등 비전투 스테이지의 UI 및 로직 실행
-            // 예: UIManager.ShowEvent(stageToLoad.eventData);
         }
     }
 

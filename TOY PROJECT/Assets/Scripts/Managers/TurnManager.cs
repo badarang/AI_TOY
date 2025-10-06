@@ -74,11 +74,11 @@ public class TurnManager : MonoBehaviour, IManager
         DebugPrinter.LogColor(LogType.Turn, "TurnManager state cleared.");
     }
 
-    public void StartFirstWave()
+    public async void StartFirstWave()
     {
         currentWave = 1;
         turnInWave = 0;
-        stageManager.SpawnWave(currentWave);
+        await stageManager.SpawnWave(currentWave);
         StartPlayerTurn();
     }
 
@@ -102,11 +102,6 @@ public class TurnManager : MonoBehaviour, IManager
         uiManager.UpdateTurnUI(turnInWave, turnLimit);
         
         ShowNextTurnEnemyPreview();
-        
-        if (Core.Instance.PreviewManager != null)
-        {
-            Core.Instance.PreviewManager.UpdateAllPreviews();
-        }
     }
 
     public void StartEnemyTurn()
@@ -121,7 +116,7 @@ public class TurnManager : MonoBehaviour, IManager
         StartCoroutine(EnemyTurnRoutine());
     }
 
-    public void EndTurn()
+    public async void EndTurn()
     {
         if (CurrentPlayerState == PlayerTurnState.StageClear) return;
 
@@ -129,14 +124,14 @@ public class TurnManager : MonoBehaviour, IManager
         {
             StartEnemyTurn();
         }
-        else // Enemy turn is ending
+        else
         {
             int turnLimit = stageManager.GetCurrentStageData()?.waves[currentWave - 1].clearTurnLimit ?? 5;
             if (turnInWave >= turnLimit)
             {
                 DebugPrinter.LogColor(LogType.Turn, "방송 시간 초과! 패널티 라운드에 돌입합니다!");
                 currentWave++;
-                stageManager.SpawnWave(currentWave);
+                await stageManager.SpawnWave(currentWave);
                 turnInWave = 0;
             }
             StartPlayerTurn();
@@ -146,13 +141,16 @@ public class TurnManager : MonoBehaviour, IManager
     private IEnumerator EnemyTurnRoutine()
     {
         yield return Core.Instance.EnemyAIManager.ExecuteEnemyTurns();
-        if (CheckForWaveClear()) yield break;
-        EndTurn();
+        yield return CheckForWaveClearAsync().ToCoroutine();
     }
 
-private bool CheckForWaveClear()
+    private async UniTask CheckForWaveClearAsync()
     {
-        if (stageManager.GetEnemies().Count > 0) return false;
+        if (stageManager.GetEnemies().Count > 0)
+        {
+            EndTurn();
+            return;
+        }
 
         if (currentWave >= stageManager.GetCurrentStageData().waves.Length)
         {
@@ -165,13 +163,12 @@ private bool CheckForWaveClear()
             DebugPrinter.LogColor(LogType.Turn, $"웨이브 {currentWave} 클리어! 다음 웨이브를 시작합니다.");
             currentWave++;
             turnInWave = 0;
-            stageManager.SpawnWave(currentWave);
+            await stageManager.SpawnWave(currentWave);
             ShowNextTurnEnemyPreview();
         }
-        return true;
     }
 
-private void ShowNextTurnEnemyPreview()
+    private void ShowNextTurnEnemyPreview()
     {
         int nextTurnNumber = turnInWave + 1;
         var upcomingEnemies = stageManager.GetEnemiesSpawningOnTurn(currentWave, nextTurnNumber);
@@ -262,7 +259,7 @@ private void ShowNextTurnEnemyPreview()
         }
     }
 
-private void StartSkillTargeting(int skillIndex)
+    private void StartSkillTargeting(int skillIndex)
     {
         currentSkillIndex = skillIndex;
         var skill = selectedUnit.unitData.skills[skillIndex];
@@ -290,7 +287,7 @@ private void StartSkillTargeting(int skillIndex)
         SetPlayerState(PlayerTurnState.AwaitingSkillSubTarget);
     }
 
-private void ExecuteSkillOnTarget(int skillIndex, Vector2Int targetCell)
+    private void ExecuteSkillOnTarget(int skillIndex, Vector2Int targetCell)
     {
         var skill = selectedUnit.unitData.skills[skillIndex];
         
@@ -317,7 +314,7 @@ private void ExecuteSkillOnTarget(int skillIndex, Vector2Int targetCell)
             hasAttackedThisTurn = true;
         }
         
-        Core.Instance.PreviewManager?.UpdatePreviewsAfterPlayerAction();
+        OnPlayerActionEnd?.Invoke();
         
         currentSkillIndex = -1;
         
@@ -332,10 +329,7 @@ private void ExecuteSkillOnTarget(int skillIndex, Vector2Int targetCell)
         }
     }
 
-
-
-
-private void ShowAvailableActionsForUnit(PlayerUnit unit)
+    private void ShowAvailableActionsForUnit(PlayerUnit unit)
     {
         var allUnits = gridManager.GetAllUnits();
         var attackableTiles = new List<Vector2Int>();
@@ -388,7 +382,7 @@ private void ShowAvailableActionsForUnit(PlayerUnit unit)
         gridManager.HighlightAttackableTiles(attackableTiles);
     }
 
-public void ClearSelection()
+    public void ClearSelection()
     {
         if (CurrentPlayerState == PlayerTurnState.StageClear) return;
         
@@ -404,8 +398,7 @@ public void ClearSelection()
         DebugPrinter.LogColor(LogType.Turn, "선택 취소");
     }
 
-
-public void HandleCellClick(Vector2Int cell)
+    public void HandleCellClick(Vector2Int cell)
     {
         if (CurrentTurn != Turn.Player) return;
 
@@ -493,7 +486,7 @@ public void HandleCellClick(Vector2Int cell)
                 break;
         }
     }
-public bool CanAttackTarget(PlayerUnit unit, Vector2Int targetCell)
+    public bool CanAttackTarget(PlayerUnit unit, Vector2Int targetCell)
     {
         if (unit == null || hasAttackedThisTurn) return false;
 
@@ -513,7 +506,7 @@ public bool CanAttackTarget(PlayerUnit unit, Vector2Int targetCell)
     }
 
     
-private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
+    private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         if (hasAttackedThisTurn) return;
 
@@ -538,7 +531,7 @@ private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
             unit.UseSkill(attackSkillIndex, targetCell);
             hasAttackedThisTurn = true;
             
-            Core.Instance.PreviewManager?.UpdatePreviewsAfterPlayerAction();
+            OnPlayerActionEnd?.Invoke();
             
             if (hasMovedThisTurn)
             {
@@ -552,29 +545,18 @@ private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
         }
     }
 
-private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
+    private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
     {
-        DebugPrinter.LogColor(LogType.Turn, $"TryMoveUnit 호출: {targetCell}, hasMovedThisTurn={hasMovedThisTurn}");
-        
-        if (hasMovedThisTurn)
-        {
-            DebugPrinter.LogColor(LogType.Turn, "이미 이동했습니다.");
-            return false;
-        }
+        if (hasMovedThisTurn) return false;
 
         int moveSkillIndex = unit.GetMoveSkillIndex();
-        if (moveSkillIndex < 0)
-        {
-            DebugPrinter.LogColor(LogType.Turn, "이동 스킬을 찾을 수 없습니다.");
-            return false;
-        }
+        if (moveSkillIndex < 0) return false;
 
         var moveSkill = unit.unitData.skills[moveSkillIndex];
         var context = new SkillContext(unit, targetCell);
         
         if (moveSkill.initialBehaviors.Length == 0 || !moveSkill.initialBehaviors[0].CanExecute(context, moveSkill))
         {
-            DebugPrinter.LogColor(LogType.Turn, $"이동 불가: CanExecute 실패");
             return false;
         }
 
@@ -582,18 +564,14 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
 
         if (walkableTiles.Contains(targetCell))
         {
-            DebugPrinter.LogColor(LogType.Turn, $"{targetCell}로 이동 시도");
             MoveUnitToCell(unit, targetCell);
             return true;
         }
 
-        DebugPrinter.LogColor(LogType.Turn, $"{targetCell}은 이동 가능한 타일이 아닙니다.");
         return false;
     }
 
-
-
-private void MoveUnitToCell(PlayerUnit unit, Vector2Int targetCell)
+    private async void MoveUnitToCell(PlayerUnit unit, Vector2Int targetCell)
     {
         SetPlayerState(PlayerTurnState.PerformingAction);
 
@@ -605,31 +583,24 @@ private void MoveUnitToCell(PlayerUnit unit, Vector2Int targetCell)
             return;
         }
 
-        unit.UseSkill(moveSkillIndex, targetCell);
-
-        List<Vector2Int> path = gridManager.FindPath(unit.position, targetCell);
-        if (path != null && path.Count > 0)
+        float duration = unit.UseSkill(moveSkillIndex, targetCell);
+        
+        if (duration > 0)
         {
-            unit.MoveAlongPath(path, () => {
-                hasMovedThisTurn = true;
-                
-                Core.Instance.PreviewManager?.UpdatePreviewsAfterPlayerAction();
+            await UniTask.Delay(System.TimeSpan.FromSeconds(duration));
+        }
+        
+        hasMovedThisTurn = true;
+        OnPlayerActionEnd?.Invoke();
 
-                if (hasAttackedThisTurn)
-                {
-                    ClearSelection();
-                }
-                else
-                {
-                    SetPlayerState(PlayerTurnState.UnitSelected);
-                    ShowAvailableActionsForUnit(unit);
-                }
-            });
+        if (hasAttackedThisTurn)
+        {
+            ClearSelection();
         }
         else
         {
-            Debug.LogWarning("이동 경로를 찾을 수 없습니다.");
             SetPlayerState(PlayerTurnState.UnitSelected);
+            ShowAvailableActionsForUnit(unit);
         }
     }
 
@@ -639,7 +610,7 @@ private void MoveUnitToCell(PlayerUnit unit, Vector2Int targetCell)
     }
 
 
-    public void FinalizeRewardSelection()
+    public async void FinalizeRewardSelection()
     {
         DebugPrinter.LogColor(LogType.Turn, "보상 선택이 완료되었습니다.");
         
@@ -650,7 +621,7 @@ private void MoveUnitToCell(PlayerUnit unit, Vector2Int targetCell)
         else
         {
             currentWave++;
-            stageManager.SpawnWave(currentWave);
+            await stageManager.SpawnWave(currentWave);
             StartPlayerTurn();
         }
     }

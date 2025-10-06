@@ -72,7 +72,7 @@ void PositionUIToBottomRight()
         if (turnCounterText != null)
         {
             int turnsLeft = turnLimit - currentTurnInWave + 1;
-            turnCounterText.text = $"증원까지: {turnsLeft}턴";
+            turnCounterText.text = $"{turnsLeft} Turn Left";
         }
     }
 

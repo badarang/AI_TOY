@@ -103,7 +103,7 @@ public void BeforeInit()
 
     #region Unit Spawning
 
-    public async void SpawnPlayer(Vector2Int spawnPosition)
+    public async UniTask SpawnPlayer(Vector2Int spawnPosition)
     {
         if (currentStageData == null) return;
 
@@ -118,7 +118,7 @@ public void BeforeInit()
         gridManager.RegisterUnit(player, spawnPosition);
     }
 
-    public async void SpawnWave(int waveIndex)
+    public async UniTask SpawnWave(int waveIndex)
     {
         if (currentStageData == null) return;
         

@@ -33,17 +33,11 @@ public void BeforeInit()
         gridManager = Core.Instance.GridManager;
         turnManager = Core.Instance.TurnManager;
         
-        DebugPrinter.LogColor(LogType.AI, "[PreviewManager] AfterInit - Registering events");
-        
         if (turnManager != null)
         {
             turnManager.OnPlayerTurnStart += UpdateAllPreviews;
             turnManager.OnPlayerActionEnd += UpdateAllPreviews;
-            DebugPrinter.LogColor(LogType.AI, "[PreviewManager] Events registered successfully");
-        }
-        else
-        {
-            DebugPrinter.LogColor(LogType.AI, "[PreviewManager] TurnManager is null!");
+            turnManager.OnEnemyTurnStart += ClearAllPreviews;
         }
     }
 
@@ -57,42 +51,25 @@ public void BeforeInit()
 
 
 
-void OnDestroy()
+    void OnDestroy()
     {
         if (turnManager != null)
         {
             turnManager.OnPlayerTurnStart -= UpdateAllPreviews;
             turnManager.OnPlayerActionEnd -= UpdateAllPreviews;
+            turnManager.OnEnemyTurnStart -= ClearAllPreviews;
         }
     }
 
-public void UpdateAllPreviews()
+    public void UpdateAllPreviews()
     {
-        DebugPrinter.LogColor(LogType.AI, "[PreviewManager] UpdateAllPreviews called");
-        
         ClearAllPreviews();
         
-        if (turnManager == null || turnManager.CurrentTurn != TurnManager.Turn.Player)
-        {
-            DebugPrinter.LogColor(LogType.AI, "[PreviewManager] Not player turn, skipping preview update");
-            return;
-        }
-        
         var player = stageManager.GetPlayer();
-        if (player == null)
-        {
-            DebugPrinter.LogColor(LogType.AI, "[PreviewManager] No player found");
-            return;
-        }
+        if (player == null) return;
         
         var enemies = stageManager.GetEnemies();
-        if (enemies == null || enemies.Count == 0)
-        {
-            DebugPrinter.LogColor(LogType.AI, "No enemies to show preview for.");
-            return;
-        }
-        
-        DebugPrinter.LogColor(LogType.AI, $"[PreviewManager] Processing {enemies.Count} enemies for preview");
+        if (enemies == null || enemies.Count == 0) return;
         
         foreach (var enemy in enemies)
         {
@@ -105,8 +82,6 @@ public void UpdateAllPreviews()
                 ShowPreviewVisual(preview);
             }
         }
-        
-        DebugPrinter.LogColor(LogType.AI, $"Updated previews for {currentPreviews.Count} enemies");
     }
 
     public void UpdatePreviewsAfterPlayerAction()
@@ -144,17 +119,20 @@ private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPo
         }
     }
 
-
-
-private void ShowPreviewVisual(UnitActionPreview preview)
+    private void ShowPreviewVisual(UnitActionPreview preview)
     {
-        if (preview.actionType == PreviewActionType.Wait)
-            return;
+        if (preview.actionType == PreviewActionType.Wait) return;
 
+        if (string.IsNullOrEmpty(previewArrowTag))
+        {
+            Debug.LogError("[PreviewManager] previewArrowTag is not set!");
+            return;
+        }
+        
         GameObject visualObj = Core.Instance.PoolManager.SpawnFromPool(previewArrowTag, null, false);
         if (visualObj == null)
         {
-            Debug.LogWarning($"Failed to spawn preview visual from pool: {previewArrowTag}");
+            Debug.LogWarning($"[PreviewManager] Failed to spawn preview visual from pool: {previewArrowTag}");
             return;
         }
         
@@ -164,7 +142,7 @@ private void ShowPreviewVisual(UnitActionPreview preview)
         var previewPrefab = visualObj.GetComponent<PreviewPrefab>();
         if (previewPrefab == null)
         {
-            Debug.LogError("PreviewPrefab component not found on pooled object!");
+            Debug.LogError("[PreviewManager] PreviewPrefab component not found on pooled object!");
             Core.Instance.PoolManager.ReturnToPool(visualObj);
             return;
         }

@@ -70,10 +70,12 @@ public class Core : MonoBehaviour
         CallAfterInit(turnManager);
         CallAfterInit(rewardManager);
         CallAfterInit(enemyAIManager);
+        
         CallAfterInit(previewManager);
         CallAfterInit(inputManager);
         CallAfterInit(gameManager);
-        
+
+
         Debug.Log("[Core] All managers initialized successfully.");
     }
 
