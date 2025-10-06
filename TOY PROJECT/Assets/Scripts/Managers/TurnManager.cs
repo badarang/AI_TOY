@@ -28,10 +28,10 @@ public class TurnManager : MonoBehaviour
     private StageManager stageManager;
     private GridManager gridManager;
 
-        private bool hasMovedThisTurn = false;
+    private bool hasMovedThisTurn = false;
     private bool hasAttackedThisTurn = false;
-private PlayerUnit selectedUnit;
-public PlayerUnit SelectedUnit => selectedUnit;
+    private PlayerUnit selectedUnit;
+    public PlayerUnit SelectedUnit => selectedUnit;
     private int currentSkillIndex = -1;
 
 
@@ -45,7 +45,7 @@ public PlayerUnit SelectedUnit => selectedUnit;
     /// <summary>
     /// Clears all turn-related data. Called when a new stage is loaded.
     /// </summary>
-public void ClearTurn()
+    public void ClearTurn()
     {
         StopAllCoroutines();
 
@@ -75,7 +75,7 @@ public void ClearTurn()
         StartPlayerTurn();
     }
 
-public void StartPlayerTurn()
+    public void StartPlayerTurn()
     {
         CurrentTurn = Turn.Player;
         turnInWave++;
@@ -163,7 +163,7 @@ public void StartPlayerTurn()
     }
 
     // Dummy methods for compilation. Implement actual logic as needed.
-public void SelectPlayerUnit(PlayerUnit unit)
+    public void SelectPlayerUnit(PlayerUnit unit)
     {
         if (selectedUnit != null) ClearSelection();
         
@@ -177,7 +177,7 @@ public void SelectPlayerUnit(PlayerUnit unit)
         uiManager.skillPanelUI?.UpdateSkillDisplay(unit);
     }
 
-public void RequestSkillUse(int skillIndex)
+    public void RequestSkillUse(int skillIndex)
     {
         if (CurrentTurn != Turn.Player || CurrentPlayerState != PlayerTurnState.UnitSelected)
         {
@@ -240,12 +240,9 @@ private void StartSkillTargeting(int skillIndex)
         foreach (var potentialTarget in allUnits)
         {
             if (potentialTarget.factionData == selectedUnit.factionData) continue;
-            
-            int distance = Mathf.Max(
-                Mathf.Abs(selectedUnit.position.x - potentialTarget.position.x), 
-                Mathf.Abs(selectedUnit.position.y - potentialTarget.position.y)
-            );
-            
+
+            int distance = GridUtils.ChebyshevDistance(selectedUnit.position, potentialTarget.position);
+
             if (distance <= skill.range)
             {
                 targetableTiles.Add(potentialTarget.position);
@@ -260,11 +257,26 @@ private void StartSkillTargeting(int skillIndex)
 
 private void ExecuteSkillOnTarget(int skillIndex, Vector2Int targetCell)
     {
+        var skill = selectedUnit.unitData.skills[skillIndex];
+        
+        int distance = Mathf.Max(
+            Mathf.Abs(selectedUnit.position.x - targetCell.x), 
+            Mathf.Abs(selectedUnit.position.y - targetCell.y)
+        );
+        
+        if (distance > skill.range)
+        {
+            Debug.Log($"타겟이 사거리 밖입니다. 거리: {distance}, 사거리: {skill.range}");
+            SetPlayerState(PlayerTurnState.UnitSelected);
+            ShowAvailableActionsForUnit(selectedUnit);
+            currentSkillIndex = -1;
+            return;
+        }
+        
         SetPlayerState(PlayerTurnState.PerformingAction);
         
         selectedUnit.UseSkill(skillIndex, targetCell);
         
-        var skill = selectedUnit.unitData.skills[skillIndex];
         if (skill.skillType == SkillType.Attack)
         {
             hasAttackedThisTurn = true;
@@ -319,7 +331,7 @@ private void ShowAvailableActionsForUnit(PlayerUnit unit)
                 {
                     if (potentialTarget.factionData == unit.factionData) continue;
                     // 체비쇼프 거리(대각선 포함 8방향)로 계산 방식 변경
-                    int distance = Mathf.Max(Mathf.Abs(unit.position.x - potentialTarget.position.x), Mathf.Abs(unit.position.y - potentialTarget.position.y));
+                    int distance = GridUtils.ChebyshevDistance(unit.position, potentialTarget.position);
                     if (distance <= skill.range)
                     {
                         Vector2Int targetPos = potentialTarget.position;
@@ -420,7 +432,20 @@ public void HandleCellClick(Vector2Int cell)
                 
                 if (unitAtCell != null && unitAtCell.factionData != selectedUnit.factionData)
                 {
-                    ExecuteSkillOnTarget(currentSkillIndex, cell);
+                    var skill = selectedUnit.unitData.skills[currentSkillIndex];
+
+                    int distance = GridUtils.ChebyshevDistance(selectedUnit.position, cell);
+                    
+                    if (distance <= skill.range)
+                    {
+                        ExecuteSkillOnTarget(currentSkillIndex, cell);
+                    }
+                    else
+                    {
+                        Debug.Log($"타겟이 사거리 밖입니다. 거리: {distance}, 사거리: {skill.range}");
+                        SetPlayerState(PlayerTurnState.UnitSelected);
+                        ShowAvailableActionsForUnit(selectedUnit);
+                    }
                 }
                 else
                 {
