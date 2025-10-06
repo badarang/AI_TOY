@@ -314,6 +314,26 @@ public void HighlightAttackableTiles(List<Vector2Int> tiles)
         }
     }
 
+public void HighlightDangerTiles(List<Vector2Int> tiles)
+    {
+        foreach (var tile in tiles)
+        {
+            GameObject highlight = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            highlight.name = $"DangerHighlight_{tile.x}_{tile.y}";
+            highlight.transform.position = new Vector3(tile.x + GRID_CELL_OFFSET, ATTACK_HIGHLIGHT_HEIGHT + 0.01f, tile.y + GRID_CELL_OFFSET);
+            highlight.transform.rotation = Quaternion.Euler(90, 0, 0);
+            highlight.GetComponent<Collider>().enabled = false;
+            var rend = highlight.GetComponent<Renderer>();
+            
+            Material dangerMat = new Material(Shader.Find("Unlit/Color"));
+            dangerMat.color = new Color(1f, 0f, 0f, 0.3f);
+            rend.material = dangerMat;
+            
+            targetHighlights.Add(highlight);
+        }
+    }
+
+
     public void HighlightTargets(List<UnitBase> targets)
     {
         var tiles = targets.Select(u => u.position).ToList();

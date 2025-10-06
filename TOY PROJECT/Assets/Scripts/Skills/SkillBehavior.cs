@@ -19,5 +19,10 @@ public abstract class SkillBehavior : ScriptableObject
         int distance = GridUtils.ChebyshevDistance(caster.position, target);
         return distance <= skillData.range;
     }
-public abstract float Execute(SkillContext context);
+
+    public virtual float Execute(SkillContext context)
+    {
+        Core.Instance.TurnManager.TriggerUnitActionEnd();
+        return 0f;
+    }
 }

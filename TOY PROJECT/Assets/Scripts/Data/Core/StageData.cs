@@ -12,6 +12,11 @@ public class EnemyWave
 {
     [Tooltip("에디터에서 웨이브를 구분하기 위한 이름입니다.")]
     public string waveName;
+    
+    [Tooltip("턴별로 스폰될 적들을 정의합니다. 비어있으면 즉시 모든 적을 스폰합니다.")]
+    public TurnSpawnData[] turnSpawns = new TurnSpawnData[0];
+    
+    [Tooltip("턴별 스폰을 사용하지 않을 경우, 웨이브 시작 시 한번에 스폰될 적들입니다.")]
     public EnemySpawnData[] enemySpawns;
 
     [Header("웨이브 규칙")]
@@ -19,12 +24,22 @@ public class EnemyWave
     public int clearTurnLimit = 5;
     
     [Tooltip("턴 제한 내 클리어 시 받을 추가 보상 ID입니다. (미구현)")]
-    public string bonusRewardId; 
+    public string bonusRewardId;
 }
 
 /// <summary>
 /// 적 유닛의 종류와 생성 위치를 정의합니다.
 /// </summary>
+[System.Serializable]
+public class TurnSpawnData
+{
+    [Tooltip("몇 번째 턴에 이 적들을 스폰할지 지정합니다. (1부터 시작)")]
+    public int turnNumber;
+    
+    [Tooltip("이 턴에 스폰될 적들의 목록입니다.")]
+    public EnemySpawnData[] enemies;
+}
+
 [System.Serializable]
 public class EnemySpawnData
 {

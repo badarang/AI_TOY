@@ -15,6 +15,7 @@ public class Core : MonoBehaviour
     [SerializeField] private TurnManager turnManager;
     [SerializeField] private RewardManager rewardManager;
     [SerializeField] private EnemyAIManager enemyAIManager;
+    [SerializeField] private PreviewManager previewManager;
     [SerializeField] private InputManager inputManager;
 
     // 프로퍼티도 위와 동일한 순서로 정렬
@@ -26,7 +27,8 @@ public class Core : MonoBehaviour
     public UIManager UIManager => uiManager;
     public TurnManager TurnManager => turnManager;
     public RewardManager RewardManager => rewardManager;
-    public EnemyAIManager EnemyAIManager => enemyAIManager;
+        public EnemyAIManager EnemyAIManager => enemyAIManager;
+    public PreviewManager PreviewManager => previewManager;
     public InputManager InputManager => inputManager;
 
     void Awake()

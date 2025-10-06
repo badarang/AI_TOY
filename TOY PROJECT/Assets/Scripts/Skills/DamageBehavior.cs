@@ -22,7 +22,7 @@ public override float Execute(SkillContext context)
         UnitBase target = Core.Instance.GridManager.GetUnitAt(context.TargetPosition);
         if (target != null)
         {
-            Debug.Log($"{target.name}에게 {damage}의 피해를 입혔습니다!");
+            DebugPrinter.LogColor(LogType.Action, $"{target.name}에게 {damage}의 피해를 입혔습니다!");
             target.TakeDamage(damage);
         }
         return 0f; // 즉시 끝나는 행동이므로 0을 반환합니다.

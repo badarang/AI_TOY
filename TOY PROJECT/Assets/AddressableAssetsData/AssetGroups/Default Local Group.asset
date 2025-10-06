@@ -30,6 +30,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8b57c9f51d4c44835a3487ce53d728d6
+    m_Address: Assets/Prefabs/UIs/PreviewPrefab.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 8f87085b1ff454356b87ae33a0ddc87a
     m_Address: Assets/Prefabs/Obstacles/GridPlane.prefab
     m_ReadOnly: 0

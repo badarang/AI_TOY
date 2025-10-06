@@ -8,6 +8,7 @@ using Cysharp.Threading.Tasks;
 public class TurnManager : MonoBehaviour
 {
     public event Action OnPlayerTurnStart;
+    public event Action OnPlayerActionEnd; // 플레이어가 턴 안에서 무언가 액션을 했을 때
     public event Action OnEnemyTurnStart;
 
     public enum Turn { Player, Enemy }
@@ -75,7 +76,7 @@ public class TurnManager : MonoBehaviour
         StartPlayerTurn();
     }
 
-    public void StartPlayerTurn()
+public void StartPlayerTurn()
     {
         CurrentTurn = Turn.Player;
         turnInWave++;
@@ -84,6 +85,8 @@ public class TurnManager : MonoBehaviour
         hasMovedThisTurn = false;
         hasAttackedThisTurn = false;
         
+        stageManager.SpawnEnemiesForTurn(currentWave, turnInWave);
+        
         var player = stageManager.GetPlayer();
         if (player != null) player.OnTurnStart();
 
@@ -91,6 +94,13 @@ public class TurnManager : MonoBehaviour
         
         int turnLimit = stageManager.GetCurrentStageData()?.waves[currentWave - 1].clearTurnLimit ?? 5;
         uiManager.UpdateTurnUI(turnInWave, turnLimit);
+        
+        ShowNextTurnEnemyPreview();
+        
+        if (Core.Instance.PreviewManager != null)
+        {
+            Core.Instance.PreviewManager.UpdateAllPreviews();
+        }
     }
 
     public void StartEnemyTurn()
@@ -134,27 +144,46 @@ public class TurnManager : MonoBehaviour
         EndTurn();
     }
 
-    private bool CheckForWaveClear()
+private bool CheckForWaveClear()
     {
         if (stageManager.GetEnemies().Count > 0) return false;
 
-        // Wave is cleared. Check if it was the last wave.
         if (currentWave >= stageManager.GetCurrentStageData().waves.Length)
         {
-            // LAST WAVE CLEARED - STAGE IS COMPLETE
             DebugPrinter.LogColor(LogType.Turn, "모든 웨이브 클리어! 스테이지 완료!");
-            SetPlayerState(PlayerTurnState.StageClear); // Set state to prevent further actions
-            Core.Instance.GameManager.ProceedToNextLayer(); // Tell GM to create portals
+            SetPlayerState(PlayerTurnState.StageClear);
+            Core.Instance.GameManager.ProceedToNextLayer();
         }
         else
         {
-            // INTERMEDIATE WAVE CLEARED - START NEXT WAVE
             DebugPrinter.LogColor(LogType.Turn, $"웨이브 {currentWave} 클리어! 다음 웨이브를 시작합니다.");
             currentWave++;
+            turnInWave = 0;
             stageManager.SpawnWave(currentWave);
+            ShowNextTurnEnemyPreview();
         }
-        return true; // Wave was cleared
+        return true;
     }
+
+private void ShowNextTurnEnemyPreview()
+    {
+        int nextTurnNumber = turnInWave + 1;
+        var upcomingEnemies = stageManager.GetEnemiesSpawningOnTurn(currentWave, nextTurnNumber);
+        
+        if (upcomingEnemies == null || upcomingEnemies.Count == 0)
+        {
+            DebugPrinter.LogColor(LogType.Turn, $"다음 턴({nextTurnNumber})에 스폰될 적이 없습니다.");
+            return;
+        }
+        
+        DebugPrinter.LogColor(LogType.Turn, $"[미리보기] 다음 턴({nextTurnNumber})에 {upcomingEnemies.Count}마리의 적이 등장합니다!");
+        
+        foreach (var enemySpawnInfo in upcomingEnemies)
+        {
+            DebugPrinter.LogColor(LogType.Turn, $"  - {enemySpawnInfo.enemyType} at {enemySpawnInfo.spawnPos}");
+        }
+    }
+
     
     public void SetPlayerState(PlayerTurnState newState)
     {
@@ -281,6 +310,8 @@ private void ExecuteSkillOnTarget(int skillIndex, Vector2Int targetCell)
         {
             hasAttackedThisTurn = true;
         }
+        
+        Core.Instance.PreviewManager?.UpdatePreviewsAfterPlayerAction();
         
         currentSkillIndex = -1;
         
@@ -501,6 +532,8 @@ private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
             unit.UseSkill(attackSkillIndex, targetCell);
             hasAttackedThisTurn = true;
             
+            Core.Instance.PreviewManager?.UpdatePreviewsAfterPlayerAction();
+            
             if (hasMovedThisTurn)
             {
                 ClearSelection();
@@ -540,11 +573,6 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
         }
 
         List<Vector2Int> walkableTiles = gridManager.GetWalkableTilesInRange(unit.position, moveSkill.range);
-        DebugPrinter.LogColor(LogType.Turn, $"이동 가능한 타일 개수: {walkableTiles.Count}");
-        foreach (var tile in walkableTiles)
-        {
-            DebugPrinter.LogColor(LogType.Turn, $"  - {tile}");
-        }
 
         if (walkableTiles.Contains(targetCell))
         {
@@ -559,7 +587,7 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
 
 
 
-    private void MoveUnitToCell(PlayerUnit unit, Vector2Int targetCell)
+private void MoveUnitToCell(PlayerUnit unit, Vector2Int targetCell)
     {
         SetPlayerState(PlayerTurnState.PerformingAction);
 
@@ -571,7 +599,6 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
             return;
         }
 
-        // 이동 스킬 사용 처리 (AP 소모 및 쿨다운 설정)
         unit.UseSkill(moveSkillIndex, targetCell);
 
         List<Vector2Int> path = gridManager.FindPath(unit.position, targetCell);
@@ -579,6 +606,8 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
         {
             unit.MoveAlongPath(path, () => {
                 hasMovedThisTurn = true;
+                
+                Core.Instance.PreviewManager?.UpdatePreviewsAfterPlayerAction();
 
                 if (hasAttackedThisTurn)
                 {
@@ -594,8 +623,6 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
         else
         {
             Debug.LogWarning("이동 경로를 찾을 수 없습니다.");
-            // AP와 쿨다운을 원래대로 되돌리는 로직이 필요할 수 있습니다.
-            // 현재는 간단하게 상태만 변경합니다.
             SetPlayerState(PlayerTurnState.UnitSelected);
         }
     }
@@ -621,4 +648,13 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
             StartPlayerTurn();
         }
     }
+
+    #region ACTION EVENT API
+
+    public void TriggerUnitActionEnd()
+    {
+        OnPlayerActionEnd?.Invoke();
+    }
+
+    #endregion
 }

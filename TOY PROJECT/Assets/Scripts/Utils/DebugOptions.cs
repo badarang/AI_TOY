@@ -15,11 +15,7 @@ public partial class SROptions
         if (Core.Instance != null && Core.Instance.TurnManager != null)
         {
             Core.Instance.TurnManager.EndTurn();
-            Debug.Log("[DEBUG] Turn manually ended.");
-        }
-        else
-        {
-            Debug.LogError("[DEBUG] Core, or TurnManager not found.");
+            DebugPrinter.LogColor(LogType.Debug, "턴이 끝났습니다.");
         }
     }
 
@@ -31,17 +27,13 @@ public partial class SROptions
         if (player != null)
         {
             player.ap += 1;
-            Debug.Log($"[DEBUG] Player AP is now {player.ap}");
+            DebugPrinter.LogColor(LogType.Debug, $"Player AP is now {player.ap}");
 
             // If player is selected, refresh highlights
             // if (Core.Instance.GridManager.GetSelectedUnit() == player)
             // {
             //     player.ShowAvailableActions();
             // }
-        }
-        else
-        {
-            Debug.LogError("[DEBUG] Player not found.");
         }
     }
 
@@ -62,11 +54,7 @@ public partial class SROptions
                     count++;
                 }
             }
-            Debug.Log($"[DEBUG] Damaged {count} enemies by 10.");
-        }
-        else
-        {
-            Debug.LogError("[DEBUG] StageManager or enemies not found.");
+            DebugPrinter.LogColor(LogType.Debug, $"Damaged {count} enemies by 10.");
         }
     }
 }

@@ -137,6 +137,32 @@ public class StageManager : MonoBehaviour
         }
     }
 
+public async void SpawnEnemiesForTurn(int waveIndex, int turnNumber)
+    {
+        var enemiesToSpawn = GetEnemiesSpawningOnTurn(waveIndex, turnNumber);
+        if (enemiesToSpawn == null || enemiesToSpawn.Count == 0)
+        {
+            Debug.Log($"Wave {waveIndex}, Turn {turnNumber}: No enemies to spawn.");
+            return;
+        }
+
+        Debug.Log($"Spawning {enemiesToSpawn.Count} enemies on Wave {waveIndex}, Turn {turnNumber}");
+
+        foreach (var enemyData in enemiesToSpawn)
+        {
+            string prefabKey = GetPrefabName(enemyData.enemyType);
+            var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Units/{prefabKey}.prefab");
+            await handle.Task;
+            if (handle.Status != AsyncOperationStatus.Succeeded) continue;
+
+            GameObject obj = Instantiate(handle.Result, GridToWorld(enemyData.spawnPos), Quaternion.identity);
+            EnemyUnit enemy = obj.GetComponent<EnemyUnit>();
+            enemy.position = enemyData.spawnPos;
+            enemies.Add(enemy);
+            gridManager.RegisterUnit(enemy, enemyData.spawnPos);
+        }
+    }
+
     async void SpawnObstacles(StageData stage)
     {
         if (stage.obstacleSpawns == null) return;
@@ -203,4 +229,29 @@ public class StageManager : MonoBehaviour
     }
 
     #endregion
+
+
+public List<EnemySpawnData> GetEnemiesSpawningOnTurn(int waveIndex, int turnNumber)
+    {
+        if (currentStageData == null) return null;
+        
+        int arrayIndex = waveIndex - 1;
+        if (arrayIndex < 0 || arrayIndex >= currentStageData.waves.Length)
+            return null;
+
+        EnemyWave wave = currentStageData.waves[arrayIndex];
+        
+        if (wave.turnSpawns == null || wave.turnSpawns.Length == 0)
+            return null;
+
+        foreach (var turnSpawn in wave.turnSpawns)
+        {
+            if (turnSpawn.turnNumber == turnNumber)
+            {
+                return turnSpawn.enemies != null ? new List<EnemySpawnData>(turnSpawn.enemies) : null;
+            }
+        }
+        
+        return null;
+    }
 }

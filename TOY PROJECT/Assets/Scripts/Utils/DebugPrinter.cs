@@ -14,7 +14,9 @@ public enum LogType
     Error,
     System,
     Input,
-    Unit
+    Unit,
+    AI,
+    Debug
 }
 
 public class DebugPrinter : MonoBehaviour
@@ -50,6 +52,8 @@ private static string GetColorHex(LogType type)
             case LogType.System: return "00BFFF";
             case LogType.Input: return "F49303";
             case LogType.Unit: return "32CD32";
+            case LogType.AI: return "808080";
+            case LogType.Debug: return "FFFF00";
             default: return "FFFFFF";
         }
     }
@@ -71,6 +75,8 @@ private static string GetTypeName(LogType type)
             case LogType.System: return "시스템";
             case LogType.Input: return "입력";
             case LogType.Unit: return "유닛";
+            case LogType.AI: return "AI";
+            case LogType.Debug: return "디버그";
             default: return "Unknown";
         }
     }
