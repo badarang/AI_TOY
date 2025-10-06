@@ -326,7 +326,7 @@ public void HighlightDangerTiles(List<Vector2Int> tiles)
             var rend = highlight.GetComponent<Renderer>();
             
             Material dangerMat = new Material(Shader.Find("Unlit/Color"));
-            dangerMat.color = new Color(1f, 0f, 0f, 0.3f);
+            dangerMat.color = GameColors.Grid.Danger;
             rend.material = dangerMat;
             
             targetHighlights.Add(highlight);

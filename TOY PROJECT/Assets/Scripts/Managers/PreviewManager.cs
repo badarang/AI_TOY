@@ -175,8 +175,8 @@ private void ShowPreviewVisual(UnitActionPreview preview)
     {
         if (preview.actionType == PreviewActionType.Wait)
             return;
-        
-        GameObject visualObj = Core.Instance.PoolManager.SpawnFromPool("PreviewArrow", null, false);
+
+        GameObject visualObj = Core.Instance.PoolManager.SpawnFromPool(previewArrowTag, null, false);
         if (visualObj == null)
         {
             Debug.LogWarning($"Failed to spawn preview visual from pool: {previewArrowTag}");
@@ -193,8 +193,11 @@ private void ShowPreviewVisual(UnitActionPreview preview)
             Core.Instance.PoolManager.ReturnToPool(visualObj);
             return;
         }
+
+        Color arrowColor = preview.actionType == PreviewActionType.Attack
+            ? GameColors.Gameplay.AttackPreview
+            : GameColors.Gameplay.MovePreview;
         
-        Color arrowColor = preview.actionType == PreviewActionType.Attack ? Color.red : Color.yellow;
         previewPrefab.Init(startPos, endPos, preview.actionType, arrowColor);
         
         previewVisuals.Add(visualObj);
@@ -204,10 +207,6 @@ private void ShowPreviewVisual(UnitActionPreview preview)
             gridManager.HighlightDangerTiles(preview.affectedTiles);
         }
     }
-
-
-
-
 
 private void ClearAllPreviews()
     {

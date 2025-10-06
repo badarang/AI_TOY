@@ -37,25 +37,7 @@ public static void LogColor(LogType type, string message)
     
 private static string GetColorHex(LogType type)
     {
-        switch (type)
-        {
-            case LogType.Selection: return "4CAF50";
-            case LogType.State: return "2196F3";
-            case LogType.Action: return "FF9800";
-            case LogType.Combat: return "F44336";
-            case LogType.Skill: return "9C27B0";
-            case LogType.Movement: return "00BCD4";
-            case LogType.Warning: return "FF5722";
-            case LogType.Turn: return "3F51B5";
-            case LogType.Success: return "8BC34A";
-            case LogType.Error: return "D32F2F";
-            case LogType.System: return "00BFFF";
-            case LogType.Input: return "F49303";
-            case LogType.Unit: return "32CD32";
-            case LogType.AI: return "808080";
-            case LogType.Debug: return "FFFF00";
-            default: return "FFFFFF";
-        }
+        return GameColors.Log.GetHex(type);
     }
     
 private static string GetTypeName(LogType type)
