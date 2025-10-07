@@ -13,72 +13,68 @@ public class UnitBase : MonoBehaviour
     public Vector2Int position;
     private Action OnSelected;
     private Action OnDeselected;
-    private List<int> _skillCooldowns = new List<int>();
+    private List<Skill> _skills = new List<Skill>();
 
-    protected virtual void Awake()
+protected virtual void Awake()
     {
         if (unitData != null)
         {
             hp = unitData.maxHp;
             ap = unitData.maxAp;
-            for (int i = 0; i < unitData.skills.Length; i++)
+            
+            // SkillData로부터 Skill 인스턴스 생성
+            foreach (var skillData in unitData.skills)
             {
-                _skillCooldowns.Add(0);
+                _skills.Add(new Skill(skillData));
             }
         }
     }
 
-    public virtual float UseSkill(int skillIndex, Vector2Int targetPos)
+public virtual float UseSkill(int skillIndex, Vector2Int targetPos)
     {
-        if (skillIndex < 0 || skillIndex >= unitData.skills.Length)
+        if (skillIndex < 0 || skillIndex >= _skills.Count)
         {
             Debug.LogError("Invalid skill index.");
             return 0f;
         }
 
-        var skill = unitData.skills[skillIndex];
-        if (_skillCooldowns[skillIndex] > 0)
+        var skill = _skills[skillIndex];
+        
+        // 쿨다운 체크
+        if (skill.currentCooldown > 0)
         {
-            Debug.LogWarning($"Skill {skill.skillMeta.nameKey} is on cooldown for {_skillCooldowns[skillIndex]} more turns.");
+            Debug.LogWarning($"Skill {skill.data.skillMeta.nameKey} is on cooldown for {skill.currentCooldown} more turns.");
             return 0f;
         }
 
-        if (ap < skill.apCost)
+        // AP 체크
+        int apCost = skill.GetAPCost();
+        if (ap < apCost)
         {
             Debug.LogWarning("Not enough AP to use this skill.");
             return 0f;
         }
 
-        DebugPrinter.LogColor(LogType.Unit, $"Using skill '{skill.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {skill.apCost}");
-        ap -= skill.apCost;
+        DebugPrinter.LogColor(LogType.Unit, $"Using skill '{skill.data.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {apCost}");
         
-        if (skill.cooldown > 0) _skillCooldowns[skillIndex] = skill.cooldown;
+        // AP 소모
+        ap -= apCost;
+        
+        // 쿨다운 설정
+        if (skill.data.cooldown > 0) skill.currentCooldown = skill.data.cooldown;
 
-        DebugPrinter.LogColor(LogType.Unit, $"{name} used {skill.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
+        DebugPrinter.LogColor(LogType.Unit, $"{name} used {skill.data.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
 
-        float totalDuration = 0f;
-        var context = new SkillContext(this, targetPos);
-        foreach (var behavior in skill.initialBehaviors)
-        {
-            totalDuration += behavior.Execute(context);
-        }
-
-        if (skill.subTargetBehaviors != null && skill.subTargetBehaviors.Length > 0)
-        {
-            Core.Instance.TurnManager.PausedSkillData = skill;
-            Core.Instance.TurnManager.PausedSkillContext = context;
-            Core.Instance.TurnManager.SetPlayerState(TurnManager.PlayerTurnState.AwaitingSkillSubTarget);
-        }
-
-        return totalDuration;
+        // 스킬 실행
+        return skill.Execute(this, targetPos);
     }
 
-    public int GetMoveSkillIndex()
+public int GetMoveSkillIndex()
     {
-        for (int i = 0; i < unitData.skills.Length; i++)
+        for (int i = 0; i < _skills.Count; i++)
         {
-            var skill = unitData.skills[i];
-            if (skill.skillType == SkillType.Move)
+            var skill = _skills[i];
+            if (skill.data.skillType == SkillType.Move)
             {
                 return i;
             }
@@ -118,21 +114,56 @@ public class UnitBase : MonoBehaviour
         ReduceSkillCooldowns();
     }
 
-    public virtual void ReduceSkillCooldowns()
+public virtual void ReduceSkillCooldowns()
     {
-        for (int i = 0; i < _skillCooldowns.Count; i++)
+        foreach (var skill in _skills)
         {
-            if (_skillCooldowns[i] > 0)
+            if (skill.currentCooldown > 0)
             {
-                _skillCooldowns[i]--;
+                skill.currentCooldown--;
             }
         }
     }
 
-    public int GetSkillCooldown(int skillIndex)
+
+
+    /// <summary>
+    /// 스킬에 업그레이드를 적용합니다. (로그라이크용)
+    /// </summary>
+    public void ApplySkillUpgrade(int skillIndex, string modifierKey, float value)
     {
-        if (skillIndex < 0 || skillIndex >= _skillCooldowns.Count) return -1;
-        return _skillCooldowns[skillIndex];
+        if (skillIndex < 0 || skillIndex >= _skills.Count) return;
+        
+        var skill = _skills[skillIndex];
+        if (skill.modifiers.ContainsKey(modifierKey))
+            skill.modifiers[modifierKey] += value;
+        else
+            skill.modifiers[modifierKey] = value;
+        
+        Debug.Log($"Skill upgraded: {skill.data.skillMeta.nameKey} - {modifierKey} +{value}");
+    }
+    
+    /// <summary>
+    /// 스킬 이름으로 인덱스를 찾습니다.
+    /// </summary>
+    public int FindSkillIndexByName(string skillName)
+    {
+        for (int i = 0; i < _skills.Count; i++)
+        {
+            if (_skills[i].data.skillMeta.nameKey == skillName)
+                return i;
+        }
+        return -1;
+    }
+    
+    /// <summary>
+    /// 현재 보유한 Skill 목록을 반환합니다.
+    /// </summary>
+    public List<Skill> GetSkills() => _skills;
+public int GetSkillCooldown(int skillIndex)
+    {
+        if (skillIndex < 0 || skillIndex >= _skills.Count) return -1;
+        return _skills[skillIndex].currentCooldown;
     }
 
     public virtual void OnEnable()
@@ -157,7 +188,7 @@ public class UnitBase : MonoBehaviour
         OnSelected?.Invoke();
     }
 
-    public virtual void ShowAvailableActions()
+public virtual void ShowAvailableActions()
     {
         var gridManager = Core.Instance?.GridManager;
         if (gridManager == null) return;
@@ -174,36 +205,34 @@ public class UnitBase : MonoBehaviour
         bool hasMoveAction = false;
         bool hasAttackAction = false;
 
-        for (int i = 0; i < unitData.skills.Length; i++)
+        for (int i = 0; i < _skills.Count; i++)
         {
-            var skill = unitData.skills[i];
+            var skill = _skills[i];
 
-            if (_skillCooldowns[i] > 0 || ap < skill.apCost) continue;
+            if (skill.currentCooldown > 0 || ap < skill.GetAPCost()) continue;
 
-            if (skill.skillType == SkillType.Attack)
+            if (skill.data.skillType == SkillType.Attack)
             {
                 hasAttackAction = true;
                 foreach (var potentialTarget in allUnits)
                 {
                     if (potentialTarget.factionData == this.factionData) continue;
                     
-                    var context = new SkillContext(this, potentialTarget.position);
-                    if (skill.initialBehaviors.Length > 0 && skill.initialBehaviors[0].CanExecute(context, skill))
+                    if (skill.data.initialBehaviors.Length > 0 && skill.data.initialBehaviors[0].CanExecute(this, potentialTarget.position, skill))
                     {
                         if (!potentialTargets.Contains(potentialTarget)) potentialTargets.Add(potentialTarget);
                     }
                 }
             }
 
-            if (skill.skillType == SkillType.Move)
+            if (skill.data.skillType == SkillType.Move)
             {
                 hasMoveAction = true;
-                foreach (var offset in skill.movementPattern)
+                foreach (var offset in skill.data.movementPattern)
                 {
                     Vector2Int destination = position + offset;
                     if (!gridManager.IsValidTile(destination)) continue;
                     
-                    var context = new SkillContext(this, destination);
                     UnitBase unitOnTile = gridManager.GetUnitAt(destination);
                     
                     if (unitOnTile != null)
@@ -213,7 +242,7 @@ public class UnitBase : MonoBehaviour
                             potentialTargets.Add(unitOnTile);
                         }
                     }
-                    else if (skill.initialBehaviors.Length > 0 && skill.initialBehaviors[0].CanExecute(context, skill))
+                    else if (skill.data.initialBehaviors.Length > 0 && skill.data.initialBehaviors[0].CanExecute(this, destination, skill))
                     {
                         if (!movableTiles.Contains(destination)) movableTiles.Add(destination);
                     }

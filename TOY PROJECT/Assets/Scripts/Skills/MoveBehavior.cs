@@ -6,21 +6,18 @@ public class MoveBehavior : SkillBehavior
 {
     public float animationDuration = 0.4f;
 
-    public override bool CanExecute(SkillContext context, SkillData skillData)
+public override bool CanExecute(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
-        if (!base.CanExecute(context, skillData)) return false;
+        if (!base.CanExecute(caster, targetPos, skill)) return false;
         
-        var targetUnit = Core.Instance.GridManager.GetUnitAt(context.TargetPosition);
+        var targetUnit = Core.Instance.GridManager.GetUnitAt(targetPos);
         return targetUnit == null;
     }
 
     
-public override float Execute(SkillContext context)
+public override float Execute(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
-        var caster = context.Caster;
-
         Vector2Int startPos = caster.position;
-        Vector2Int targetPos = context.TargetPosition;
 
         Core.Instance.GridManager.MoveUnit(startPos, targetPos);
 

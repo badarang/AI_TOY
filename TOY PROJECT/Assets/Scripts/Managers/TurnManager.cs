@@ -32,8 +32,8 @@ public class TurnManager : MonoBehaviour, IManager
     private int turnInWave = 0;
 
     // Paused Skill State
-    public SkillData PausedSkillData { get; set; }
-    public SkillContext PausedSkillContext { get; set; }
+    public Skill PausedSkill { get; set; }
+    public UnitBase PausedCaster { get; set; }
 
     // Manager References
     private UIManager uiManager;
@@ -63,8 +63,8 @@ public class TurnManager : MonoBehaviour, IManager
         currentWave = 0;
         turnInWave = 0;
         
-        PausedSkillData = null;
-        PausedSkillContext = null;
+        PausedSkill = null;
+        PausedCaster = null;
 
         if (gridManager != null)
         {
@@ -486,17 +486,17 @@ public class TurnManager : MonoBehaviour, IManager
                 break;
         }
     }
-    public bool CanAttackTarget(PlayerUnit unit, Vector2Int targetCell)
+public bool CanAttackTarget(PlayerUnit unit, Vector2Int targetCell)
     {
         if (unit == null || hasAttackedThisTurn) return false;
 
-        for (int i = 0; i < unit.unitData.skills.Length; i++)
+        var skills = unit.GetSkills();
+        for (int i = 0; i < skills.Count; i++)
         {
-            var skill = unit.unitData.skills[i];
-            if (skill.skillType == SkillType.Attack)
+            var skill = skills[i];
+            if (skill.data.skillType == SkillType.Attack)
             {
-                var context = new SkillContext(unit, targetCell);
-                if (skill.initialBehaviors.Length > 0 && skill.initialBehaviors[0].CanExecute(context, skill))
+                if (skill.data.initialBehaviors.Length > 0 && skill.data.initialBehaviors[0].CanExecute(unit, targetCell, skill))
                 {
                     return true;
                 }
@@ -506,18 +506,18 @@ public class TurnManager : MonoBehaviour, IManager
     }
 
     
-    private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
+private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         if (hasAttackedThisTurn) return;
 
         int attackSkillIndex = -1;
-        for (int i = 0; i < unit.unitData.skills.Length; i++)
+        var skills = unit.GetSkills();
+        for (int i = 0; i < skills.Count; i++)
         {
-            var skill = unit.unitData.skills[i];
-            if (skill.skillType == SkillType.Attack)
+            var skill = skills[i];
+            if (skill.data.skillType == SkillType.Attack)
             {
-                var context = new SkillContext(unit, targetCell);
-                if (skill.initialBehaviors.Length > 0 && skill.initialBehaviors[0].CanExecute(context, skill))
+                if (skill.data.initialBehaviors.Length > 0 && skill.data.initialBehaviors[0].CanExecute(unit, targetCell, skill))
                 {
                     attackSkillIndex = i;
                     break;
@@ -539,28 +539,28 @@ public class TurnManager : MonoBehaviour, IManager
             }
             else
             {
-                SetPlayerState(PlayerTurnState.UnitSelected);
-                ShowAvailableActionsForUnit(unit);
+                SetPlayerState(PlayerTurnState.UnitSelected);;
+                unit.Select();
             }
         }
     }
 
-    private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
+private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         if (hasMovedThisTurn) return false;
 
         int moveSkillIndex = unit.GetMoveSkillIndex();
         if (moveSkillIndex < 0) return false;
 
-        var moveSkill = unit.unitData.skills[moveSkillIndex];
-        var context = new SkillContext(unit, targetCell);
+        var skills = unit.GetSkills();
+        var moveSkill = skills[moveSkillIndex];
         
-        if (moveSkill.initialBehaviors.Length == 0 || !moveSkill.initialBehaviors[0].CanExecute(context, moveSkill))
+        if (moveSkill.data.initialBehaviors.Length == 0 || !moveSkill.data.initialBehaviors[0].CanExecute(unit, targetCell, moveSkill))
         {
             return false;
         }
 
-        List<Vector2Int> walkableTiles = gridManager.GetWalkableTilesInRange(unit.position, moveSkill.range);
+        List<Vector2Int> walkableTiles = gridManager.GetWalkableTilesInRange(unit.position, moveSkill.GetRange());
 
         if (walkableTiles.Contains(targetCell))
         {

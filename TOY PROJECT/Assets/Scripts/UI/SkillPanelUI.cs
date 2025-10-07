@@ -10,15 +10,15 @@ public class SkillPanelUI : MonoBehaviour
 
     private List<GameObject> currentSkillButtons = new List<GameObject>();
 
-public void DisplaySkills(SkillData[] skills)
+public void DisplaySkills(List<Skill> skills)
     {
         ClearSkills();
 
         if (skills == null) return;
 
-        for (int i = 0; i < skills.Length; i++)
+        for (int i = 0; i < skills.Count; i++)
         {
-            var skillData = skills[i];
+            var skill = skills[i];
             int skillIndex = i;
             
             if (skillButtonPrefab == null) continue;
@@ -30,9 +30,10 @@ public void DisplaySkills(SkillData[] skills)
             }
             
             TextMeshProUGUI skillNameText = skillButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (skillNameText != null && skillData.skillMeta != null)
+            if (skillNameText != null && skill.data.skillMeta != null)
             {
-                string displayName = $"[{skillData.skillMeta.nameKey}]";
+                string cooldownText = skill.currentCooldown > 0 ? $" (CD: {skill.currentCooldown})" : "";
+                string displayName = $"[{skill.data.skillMeta.nameKey}]{cooldownText}";
                 skillNameText.text = displayName;
             }
             
@@ -41,6 +42,10 @@ public void DisplaySkills(SkillData[] skills)
             {
                 btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(() => OnSkillButtonClicked(skillIndex));
+                
+                // 쿨다운 중이거나 AP가 부족하면 버튼 비활성화
+                bool canUse = skill.currentCooldown == 0;
+                btn.interactable = canUse;
             }
             
             currentSkillButtons.Add(skillButton);
@@ -79,6 +84,6 @@ public void UpdateSkillDisplay(UnitBase unit)
             return;
         }
         
-        DisplaySkills(unit.unitData.skills);
+        DisplaySkills(unit.GetSkills());
     }
 }

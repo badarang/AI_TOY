@@ -6,25 +6,28 @@ public class DamageBehavior : SkillBehavior
 {
     public int damage = 10;
 
-    public override bool CanExecute(SkillContext context, SkillData skillData)
+public override bool CanExecute(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
-        if (!base.CanExecute(context, skillData)) return false;
+        if (!base.CanExecute(caster, targetPos, skill)) return false;
         
-        var target = Core.Instance.GridManager.GetUnitAt(context.TargetPosition);
+        var target = Core.Instance.GridManager.GetUnitAt(targetPos);
         if (target == null) return false;
         
-        return target.factionData != context.Caster.factionData;
+        return target.factionData != caster.factionData;
     }
 
     
-public override float Execute(SkillContext context)
+public override float Execute(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
-        UnitBase target = Core.Instance.GridManager.GetUnitAt(context.TargetPosition);
+        // 스킬의 modifiers에서 증가된 데미지 가져오기
+        int finalDamage = skill.GetModifiedValue("damage", damage);
+        
+        UnitBase target = Core.Instance.GridManager.GetUnitAt(targetPos);
         if (target != null)
         {
-            DebugPrinter.LogColor(LogType.Action, $"{target.name}에게 {damage}의 피해를 입혔습니다!");
-            target.TakeDamage(damage);
+            DebugPrinter.LogColor(LogType.Action, $"{target.name}에게 {finalDamage}의 피해를 입혔습니다!");
+            target.TakeDamage(finalDamage);
         }
-        return 0f; // 즉시 끝나는 행동이므로 0을 반환합니다.
+        return 0f;
     }
 }

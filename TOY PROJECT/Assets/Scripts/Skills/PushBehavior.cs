@@ -4,25 +4,26 @@ using UnityEngine;
 public class PushBehavior : SkillBehavior
 {
     
-    public override bool CanExecute(SkillContext context, SkillData skillData)
+public override bool CanExecute(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
-        if (!base.CanExecute(context, skillData)) return false;
+        if (!base.CanExecute(caster, targetPos, skill)) return false;
         
-        var target = Core.Instance.GridManager.GetUnitAt(context.TargetPosition);
+        var target = Core.Instance.GridManager.GetUnitAt(targetPos);
         if (target == null) return false;
         
-        return target.factionData != context.Caster.factionData;
+        return target.factionData != caster.factionData;
     }
 public int pushDistance = 1;
 
-    public override float Execute(SkillContext context)
+public override float Execute(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
-        UnitBase target = Core.Instance.GridManager.GetUnitAt(context.TargetPosition);
+        UnitBase target = Core.Instance.GridManager.GetUnitAt(targetPos);
         if (target == null) return 0f;
 
-        context.TargetUnit = target;
+        // 블랙보드에 타겟 저장
+        skill.blackboard["targetUnit"] = target;
 
-        Vector2 directionFloat = new Vector2(target.position.x - context.Caster.position.x, target.position.y - context.Caster.position.y);
+        Vector2 directionFloat = new Vector2(target.position.x - caster.position.x, target.position.y - caster.position.y);
         directionFloat.Normalize();
         Vector2Int pushDirection = new Vector2Int(Mathf.RoundToInt(directionFloat.x), Mathf.RoundToInt(directionFloat.y));
 
@@ -30,14 +31,13 @@ public int pushDistance = 1;
 
         if (!Core.Instance.GridManager.IsValidTile(destination) || Core.Instance.GridManager.HasUnitAt(destination))
         {
-            DebugPrinter.LogColor(LogType.Unit, "PushBehavior: 벽 또는 유닛 충돌. PushedUnitHitWall = true");
-            context.PushedUnitHitWall = true;
-            DebugPrinter.LogColor(LogType.Unit, $"{target.name}이(가) 벽 또는 다른 유닛에 부딪혔습니다!");
+            // 벽 충돌 정보를 블랙보드에 저장
+            skill.blackboard["pushedUnitHitWall"] = true;
+            DebugPrinter.LogColor(LogType.Unit, $"{target.name}이(가) 벽 또는 다른 유닛에 부딕혔습니다!");
         }
         else
         {
-            DebugPrinter.LogColor(LogType.Unit, "PushBehavior: 충돌 없음. PushedUnitHitWall = false");
-            context.PushedUnitHitWall = false;
+            skill.blackboard["pushedUnitHitWall"] = false;
             Core.Instance.GridManager.MoveUnit(target.position, destination);
 
             Vector3 targetWorldPos = new Vector3(destination.x + 0.5f, target.transform.position.y, destination.y + 0.5f);
