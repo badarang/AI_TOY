@@ -37,11 +37,13 @@ public class NetworkManager : MonoBehaviour, IManager
         currentRunner = Instantiate(networkRunnerPrefab);
         currentRunner.name = "NetworkRunner";
 
+        var sceneManager = currentRunner.gameObject.AddComponent<NetworkSceneManagerDefault>();
+
         var startGameArgs = new StartGameArgs()
         {
             GameMode = GameMode.Host,
             SessionName = roomName,
-            SceneManager = null
+            SceneManager = sceneManager
         };
 
         var result = await currentRunner.StartGame(startGameArgs);
@@ -69,11 +71,13 @@ public class NetworkManager : MonoBehaviour, IManager
         currentRunner = Instantiate(networkRunnerPrefab);
         currentRunner.name = "NetworkRunner";
 
+        var sceneManager = currentRunner.gameObject.AddComponent<NetworkSceneManagerDefault>();
+
         var startGameArgs = new StartGameArgs()
         {
             GameMode = GameMode.Client,
             SessionName = roomName,
-            SceneManager = null
+            SceneManager = sceneManager
         };
 
         var result = await currentRunner.StartGame(startGameArgs);
@@ -90,6 +94,41 @@ public class NetworkManager : MonoBehaviour, IManager
         }
     }
 
+    public void LoadSceneNetwork(string sceneName)
+    {
+        if (currentRunner == null || !currentRunner.IsServer)
+        {
+            Debug.LogError("[NetworkManager] Only Host can load scenes!");
+            return;
+        }
+
+        int sceneIndex = GetSceneIndex(sceneName);
+        if (sceneIndex == -1)
+        {
+            Debug.LogError($"[NetworkManager] Scene '{sceneName}' not found in Build Settings!");
+            return;
+        }
+
+        Debug.Log($"[NetworkManager] Loading scene for all players: {sceneName} (Index: {sceneIndex})");
+        currentRunner.LoadScene(SceneRef.FromIndex(sceneIndex));
+    }
+
+    private int GetSceneIndex(string sceneName)
+    {
+        for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings; i++)
+        {
+            string scenePath = UnityEngine.SceneManagement.SceneUtility.GetScenePathByBuildIndex(i);
+            string name = System.IO.Path.GetFileNameWithoutExtension(scenePath);
+
+            if (name == sceneName)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
     public void LeaveRoom()
     {
         if (currentRunner != null)
@@ -104,7 +143,7 @@ public class NetworkManager : MonoBehaviour, IManager
     private void OnDestroy()
     {
         LeaveRoom();
-        
+
         if (Instance == this)
         {
             Instance = null;

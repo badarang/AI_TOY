@@ -135,7 +135,7 @@ public class WaitingRoomUIManager : MonoBehaviour, IManager
     private void OnStartGameButtonClick()
     {
         Debug.Log("[WaitingRoomUI] Starting game...");
-        SceneLoader.LoadInGame();
+        PersistentCore.Instance.NetworkManager.LoadSceneNetwork("InGame");
     }
 
     private void OnDestroy()
