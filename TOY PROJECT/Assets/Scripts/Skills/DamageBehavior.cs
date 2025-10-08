@@ -27,6 +27,10 @@ public override float Execute(UnitBase caster, Vector2Int targetPos, Skill skill
             return caster.PerformAttackMotion(targetPos, () => {
                 DebugPrinter.LogColor(LogType.Action, $"{target.name}에게 {finalDamage}의 피해를 입혔습니다!");
                 target.TakeDamage(finalDamage);
+                
+                float speedMultiplier = target.unitData != null ? target.unitData.animationSpeedMultiplier : 1.0f;
+                float flashDuration = UnitAnimationConfig.GetFlashDuration(speedMultiplier);
+                target.PlayFlashEffect(UnitAnimationConfig.FLASH_COLOR, flashDuration);
             });
         }
         return 0f;

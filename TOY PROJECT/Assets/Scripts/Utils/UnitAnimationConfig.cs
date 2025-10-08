@@ -7,6 +7,9 @@ public static class UnitAnimationConfig
     public const float BASE_ATTACK_RETURN_DURATION = 0.25f;
     public const float BASE_MOVE_DURATION_PER_TILE = 0.2f;
     public const float BASE_HIT_REACTION_DURATION = 0.3f;
+    public const float BASE_FLASH_DURATION = 0.3f;
+    public static readonly Color FLASH_COLOR = Color.white;
+
     
     public const float ATTACK_APPROACH_DISTANCE_RATIO = 0.4f;
     
@@ -40,5 +43,11 @@ public static class UnitAnimationConfig
         return GetAttackApproachDuration(speedMultiplier) + 
                GetAttackHitDuration(speedMultiplier) + 
                GetAttackReturnDuration(speedMultiplier);
+    }
+
+
+public static float GetFlashDuration(float speedMultiplier)
+    {
+        return BASE_FLASH_DURATION * speedMultiplier;
     }
 }

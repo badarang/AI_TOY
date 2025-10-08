@@ -13,6 +13,9 @@ Shader "Custom/URP_WoodenFigurine"
         _RimIntensity("Rim Intensity", Range(0, 1)) = 0.5
         
         _Smoothness("Smoothness", Range(0, 1)) = 0.2
+        
+        _FlashColor("Flash Color", Color) = (1, 1, 1, 1)
+        _FlashAmount("Flash Amount", Range(0, 1)) = 0
     }
 
     SubShader
@@ -66,6 +69,8 @@ Shader "Custom/URP_WoodenFigurine"
                 float _ShadowSteps;
                 float _ShadowSoftness;
                 float _Smoothness;
+                float4 _FlashColor;
+                float _FlashAmount;
             CBUFFER_END
 
             Varyings vert(Attributes input)
@@ -102,6 +107,8 @@ Shader "Custom/URP_WoodenFigurine"
                 float3 rim = _RimColor.rgb * pow(rimDot, _RimPower) * _RimIntensity;
                 
                 float3 finalColor = lighting + rim + albedo * 0.1;
+                
+                finalColor = lerp(finalColor, _FlashColor.rgb, _FlashAmount);
                 
                 return half4(finalColor, 1.0);
             }

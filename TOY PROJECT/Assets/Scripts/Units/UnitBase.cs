@@ -17,6 +17,10 @@ public class UnitBase : MonoBehaviour
     private Action OnDeselected;
     private List<Skill> _skills = new List<Skill>();
     private Animator _animator;
+    private Renderer _renderer;
+    private MaterialPropertyBlock _propertyBlock;
+    
+
 
 
 protected virtual void Awake()
@@ -29,6 +33,13 @@ protected virtual void Awake()
             // SkillData로부터 Skill 인스턴스 생성
             
             _animator = GetComponent<Animator>();
+            _renderer = GetComponentInChildren<Renderer>();
+            if (_renderer != null)
+            {
+                _propertyBlock = new MaterialPropertyBlock();
+            }
+            
+
             
 foreach (var skillData in unitData.skills)
             {
@@ -363,5 +374,17 @@ public float PerformAttackMotion(Vector2Int targetPos, System.Action onHitFrame)
         seq.Append(transform.DOMove(originalPos, returnDuration).SetEase(Ease.InQuad));
         
         return UnitAnimationConfig.GetTotalAttackDuration(speedMultiplier);
+    }
+
+
+public void PlayFlashEffect(Color flashColor, float duration)
+    {
+        if (_renderer == null || _propertyBlock == null) return;
+        
+        DOVirtual.Float(1f, 0f, duration, (amount) => {
+            _propertyBlock.SetColor("_FlashColor", flashColor);
+            _propertyBlock.SetFloat("_FlashAmount", amount);
+            _renderer.SetPropertyBlock(_propertyBlock);
+        }).SetEase(Ease.OutQuad);
     }
 }
