@@ -148,7 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2637e2bb6aaa45eaab0c2c96e8bf3df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  networkManager: {fileID: 536031331}
+  networkManager: {fileID: 536031333}
   audioManager: {fileID: 2126916787}
 --- !u!4 &147118389
 Transform:
@@ -378,7 +378,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 536031332}
-  - component: {fileID: 536031331}
+  - component: {fileID: 536031333}
   m_Layer: 0
   m_Name: NetworkManager
   m_TagString: Untagged
@@ -386,19 +386,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &536031331
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 536031330}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 953e81cb95d67465f81af3c7f33a63c6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  networkRunnerPrefab: {fileID: 8020386030368276730, guid: 9390b5d96b2c94b558a784573ddb1c55, type: 3}
 --- !u!4 &536031332
 Transform:
   m_ObjectHideFlags: 0
@@ -414,6 +401,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 147118389}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &536031333
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 536031330}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9ec9911aab73450e80b8c4e4440e261, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  networkRunnerPrefab: {fileID: 8020386030368276730, guid: 9390b5d96b2c94b558a784573ddb1c55, type: 3}
 --- !u!1 &578147161
 GameObject:
   m_ObjectHideFlags: 0

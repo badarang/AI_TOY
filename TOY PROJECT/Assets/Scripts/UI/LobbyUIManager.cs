@@ -95,7 +95,7 @@ public class LobbyUIManager : MonoBehaviour, IManager
 
     private void LoadGameScene()
     {
-        UnityEngine.SceneManagement.SceneManager.LoadScene("InGame");
+        UnityEngine.SceneManagement.SceneManager.LoadScene("WaitingRoom");
     }
 
     private void OnDestroy()
