@@ -3,45 +3,104 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using Fusion;
 
-public class StageManager : MonoBehaviour, IManager
+// StageManager is now a NetworkBehaviour to handle networked stage logic.
+public class StageManager : NetworkBehaviour, IManager
 {
-
-public void BeforeInit()
-    {
-    }
-
-    public void AfterInit()
-    {
-    }
-
     [Header("Dependencies")]
-    public GridManager gridManager;
-    [SerializeField] private GameObject portalPrefab; // 포탈 프리팹을 여기에 할당해야 합니다.
+    [SerializeField] private GridManager gridManager;
+    [SerializeField] private GameObject portalPrefab;
+    [SerializeField] private GameAssetDatabase gameDatabase; // For loading stage/unit data
 
-    // --- 현재 스테이지 상태 ---
+    // --- Networked State ---
+    [Networked]
+    private NetworkStageInfo CurrentStageInfo { get; set; }
+
+    [Networked, Capacity(50)] // Increased capacity just in case
+    private NetworkArray<NetworkEnemySpawnInfo> EnemySpawnQueue => default;
+
+    // --- Local State ---
     private StageData currentStageData;
     private PlayerUnit player;
     private List<EnemyUnit> enemies = new List<EnemyUnit>();
     private List<GameObject> spawnedObstacles = new List<GameObject>();
     private List<GameObject> spawnedPortals = new List<GameObject>();
 
-    /// <summary>
-    /// 새로운 스테이지(방)를 로드합니다. 기존에 있던 모든 것을 지우고 새로 구성합니다.
-    /// </summary>
+    #region IManager & Fusion Lifecycle
+
+    public void BeforeInit() { }
+    public void AfterInit() { }
+
+    public override void Spawned()
+    {
+        if (HasStateAuthority)
+        {
+            LoadStageOnServerRpc("Stage_1");
+        }
+    }
+
+    #endregion
+
+    #region Stage Loading (Networked)
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.StateAuthority)]
+    public void LoadStageOnServerRpc(string stageName)
+    {
+        if (!HasStateAuthority) return;
+
+        var stageDataToLoad = gameDatabase.GetStageByName(stageName);
+        if (stageDataToLoad == null)
+        {
+            Debug.LogError($"[Server] StageData not found: {stageName}");
+            return;
+        }
+
+        currentStageData = stageDataToLoad;
+
+        CurrentStageInfo = new NetworkStageInfo
+        {
+            stageName = stageName,
+            waveIndex = 0,
+            currentTurn = 0
+        };
+
+        if (currentStageData.waves.Length > 0)
+        {
+            SetupWaveSpawns(0);
+        }
+
+        Debug.Log($"[Server] Loaded stage: {stageName}. Notifying clients.");
+
+        NotifyStageLoadedRpc(stageName);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void NotifyStageLoadedRpc(NetworkString<_64> stageName)
+    {
+        Debug.Log($"[{ (HasStateAuthority ? "Server" : "Client")}] Received notification to load stage: {stageName}");
+
+        var stageDataToLoad = gameDatabase.GetStageByName(stageName.ToString());
+        if (stageDataToLoad == null)
+        {
+            Debug.LogError($"[Client] Failed to find StageData: {stageName} in GameAssetDatabase");
+            return;
+        }
+
+        LoadStage(stageDataToLoad);
+    }
+
     public void LoadStage(StageData stageData)
     {
         if (stageData == null)
         {
-            Debug.LogError("LoadStage에 전달된 StageData가 null입니다!");
+            Debug.LogError("LoadStage called with null StageData!");
             return;
         }
 
-        ClearCurrentStage(); // 이전 스테이지의 모든 오브젝트를 정리합니다.
-        
+        ClearCurrentStage();
         currentStageData = stageData;
 
-        // 전투 타입의 스테이지일 경우에만 그리드와 전투 관련 오브젝트를 생성합니다.
         if (IsBattleType(stageData.stageType))
         {
             gridManager.GenerateGrid(currentStageData);
@@ -50,126 +109,136 @@ public void BeforeInit()
         }
     }
 
-    /// <summary>
-    /// 현재 맵의 가장자리에 다음 층으로 가는 포탈들을 생성합니다.
-    /// </summary>
-    public void CreatePortals(List<StageType> portalTypes)
+    private void ClearCurrentStage()
     {
-        if (portalPrefab == null)
+        if (HasStateAuthority)
         {
-            Debug.LogError("Portal Prefab이 StageManager에 할당되지 않았습니다!");
+            foreach (var enemy in enemies)
+            {
+                if (enemy != null && enemy.Object != null)
+                {
+                    Runner.Despawn(enemy.Object);
+                }
+            }
+        }
+        enemies.Clear();
+
+        foreach (var obstacle in spawnedObstacles) { if (obstacle != null) Destroy(obstacle); }
+        spawnedObstacles.Clear();
+
+        foreach (var portal in spawnedPortals) { if (portal != null) Destroy(portal); }
+        spawnedPortals.Clear();
+
+        gridManager.ClearGrid();
+        if (Core.Instance?.TurnManager != null)
+        {
+            Core.Instance.TurnManager.ClearTurn();
+        }
+    }
+
+    #endregion
+
+    #region Spawning & Wave Management (Server-Authoritative)
+
+    public void AdvanceToNextWave()
+    {
+        if (!HasStateAuthority) return;
+
+        var newWaveIndex = CurrentStageInfo.waveIndex + 1;
+        if (newWaveIndex >= currentStageData.waves.Length)
+        {
+            Debug.LogWarning("[Server] Tried to advance beyond the final wave.");
             return;
         }
 
-        // 포탈이 생성될 위치를 정의합니다. (맵 상단, 좌측, 우측 등)
-        Vector3[] spawnPositions = {
-            new Vector3(currentStageData.width / 2f, 0.5f, currentStageData.height + 1),
-            new Vector3(-1, 0.5f, currentStageData.height / 2f),
-            new Vector3(currentStageData.width + 1, 0.5f, currentStageData.height / 2f)
-        };
+        var info = CurrentStageInfo;
+        info.waveIndex = newWaveIndex;
+        CurrentStageInfo = info;
 
-        for (int i = 0; i < portalTypes.Count && i < spawnPositions.Length; i++)
+        SetupWaveSpawns(newWaveIndex);
+        Debug.Log($"[Server] Advanced to Wave {newWaveIndex}. Spawn queue updated.");
+    }
+
+    private void SetupWaveSpawns(int waveIndex)
+    {
+        if (!HasStateAuthority || waveIndex >= currentStageData.waves.Length) return;
+
+        var wave = currentStageData.waves[waveIndex];
+        int spawnIndex = 0;
+        EnemySpawnQueue.Clear();
+
+        if (wave.turnSpawns != null && wave.turnSpawns.Length > 0)
         {
-            StageType type = portalTypes[i];
-            Vector3 pos = spawnPositions[i];
-
-            GameObject portalObj = Instantiate(portalPrefab, pos, Quaternion.identity);
-            Portal portal = portalObj.GetComponent<Portal>();
-            portal.Initialize(type);
-            
-            spawnedPortals.Add(portalObj);
+            foreach (var turnSpawn in wave.turnSpawns)
+            {
+                foreach (var enemySpawn in turnSpawn.enemies)
+                {
+                    if (spawnIndex >= EnemySpawnQueue.Length) break;
+                    EnemySpawnQueue.Set(spawnIndex++, new NetworkEnemySpawnInfo
+                    {
+                        enemyTypeIndex = (int)enemySpawn.enemyType,
+                        spawnPos = enemySpawn.spawnPos,
+                        turnNumber = turnSpawn.turnNumber
+                    });
+                }
+            }
+        }
+        else if (wave.enemySpawns != null)
+        {
+            foreach (var enemySpawn in wave.enemySpawns)
+            {
+                if (spawnIndex >= EnemySpawnQueue.Length) break;
+                EnemySpawnQueue.Set(spawnIndex++, new NetworkEnemySpawnInfo
+                {
+                    enemyTypeIndex = (int)enemySpawn.enemyType,
+                    spawnPos = enemySpawn.spawnPos,
+                    turnNumber = 0
+                });
+            }
         }
     }
 
-    /// <summary>
-    /// 현재 스테이지에 있는 모든 적, 장애물, 포탈을 제거하고 턴 데이터를 초기화합니다.
-    /// </summary>
-    private void ClearCurrentStage()
-    {
-        // Clear all game objects
-        foreach (var enemy in enemies) { if(enemy != null) Destroy(enemy.gameObject); }
-        enemies.Clear();
-
-        foreach (var obstacle in spawnedObstacles) { if(obstacle != null) Destroy(obstacle); }
-        spawnedObstacles.Clear();
-
-        foreach (var portal in spawnedPortals) { if(portal != null) Destroy(portal); }
-        spawnedPortals.Clear();
-
-        // Clear manager states
-        gridManager.ClearGrid();
-        Core.Instance.TurnManager.ClearTurn(); // It is StageManager's responsibility to clear turns
-    }
-
-    #region Unit Spawning
-
     public async UniTask SpawnPlayer(Vector2Int spawnPosition)
     {
-        if (currentStageData == null) return;
+        if (!HasStateAuthority || currentStageData == null) return;
 
         string prefabKey = GetPrefabName(currentStageData.playerType);
         var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Units/{prefabKey}.prefab");
         await handle.Task;
         if (handle.Status != AsyncOperationStatus.Succeeded) return;
 
-        GameObject obj = Instantiate(handle.Result, GridToWorld(spawnPosition), Quaternion.identity);
-        player = obj.GetComponent<PlayerUnit>();
+        NetworkObject playerNO = Runner.Spawn(handle.Result, GridToWorld(spawnPosition), Quaternion.identity);
+        player = playerNO.GetComponent<PlayerUnit>();
         player.position = spawnPosition;
+        
         gridManager.RegisterUnit(player, spawnPosition);
     }
 
-    public async UniTask SpawnWave(int waveIndex)
+    public async UniTask SpawnEnemiesForTurn(int turnNumber)
     {
-        if (currentStageData == null) return;
-        
-        int arrayIndex = waveIndex - 1;
-        if (arrayIndex < 0 || arrayIndex >= currentStageData.waves.Length)
-        {
-            Debug.Log("Attempted to spawn a wave that does not exist.");
-            return;
-        }
+        if (!HasStateAuthority) return;
 
-        EnemyWave wave = currentStageData.waves[arrayIndex];
-        Debug.Log($"Spawning Wave {waveIndex}: {wave.waveName}");
+        var enemiesToSpawn = GetEnemySpawnsForTurn(turnNumber);
+        if (enemiesToSpawn.Count == 0) return;
 
-        foreach (var enemyData in wave.enemySpawns)
+        Debug.Log($"[Server] Spawning {enemiesToSpawn.Count} enemies for turn {turnNumber}");
+
+        foreach (var spawnInfo in enemiesToSpawn)
         {
-            string prefabKey = GetPrefabName(enemyData.enemyType);
+            UnitType enemyType = (UnitType)spawnInfo.enemyTypeIndex;
+            string prefabKey = GetPrefabName(enemyType);
+            if (string.IsNullOrEmpty(prefabKey)) continue;
+
             var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Units/{prefabKey}.prefab");
             await handle.Task;
             if (handle.Status != AsyncOperationStatus.Succeeded) continue;
 
-            GameObject obj = Instantiate(handle.Result, GridToWorld(enemyData.spawnPos), Quaternion.identity);
-            EnemyUnit enemy = obj.GetComponent<EnemyUnit>();
-            enemy.position = enemyData.spawnPos;
+            NetworkObject enemyNO = Runner.Spawn(handle.Result, GridToWorld(spawnInfo.spawnPos), Quaternion.identity);
+            EnemyUnit enemy = enemyNO.GetComponent<EnemyUnit>();
+            enemy.position = spawnInfo.spawnPos;
+            
             enemies.Add(enemy);
-            gridManager.RegisterUnit(enemy, enemyData.spawnPos);
-        }
-    }
-
-    public async UniTask SpawnEnemiesForTurn(int waveIndex, int turnNumber)
-    {
-        var enemiesToSpawn = GetEnemiesSpawningOnTurn(waveIndex, turnNumber);
-        if (enemiesToSpawn == null || enemiesToSpawn.Count == 0)
-        {
-            Debug.Log($"Wave {waveIndex}, Turn {turnNumber}: No enemies to spawn.");
-            return;
-        }
-
-        Debug.Log($"Spawning {enemiesToSpawn.Count} enemies on Wave {waveIndex}, Turn {turnNumber}");
-
-        foreach (var enemyData in enemiesToSpawn)
-        {
-            string prefabKey = GetPrefabName(enemyData.enemyType);
-            var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Units/{prefabKey}.prefab");
-            await handle.Task;
-            if (handle.Status != AsyncOperationStatus.Succeeded) continue;
-
-            GameObject obj = Instantiate(handle.Result, GridToWorld(enemyData.spawnPos), Quaternion.identity);
-            EnemyUnit enemy = obj.GetComponent<EnemyUnit>();
-            enemy.position = enemyData.spawnPos;
-            enemies.Add(enemy);
-            gridManager.RegisterUnit(enemy, enemyData.spawnPos);
+            gridManager.RegisterUnit(enemy, spawnInfo.spawnPos);
         }
     }
 
@@ -182,6 +251,7 @@ public void BeforeInit()
             var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Obstacles/{obsData.obstacleData.unitMeta.nameKey}.prefab");
             await handle.Task;
             if (handle.Status != AsyncOperationStatus.Succeeded) continue;
+
             GameObject obj = Instantiate(handle.Result, GridToWorld(obsData.spawnPos), Quaternion.identity);
             Obstacle obstacle = obj.GetComponent<Obstacle>();
             if (obstacle != null) obstacle.data = obsData.obstacleData;
@@ -193,10 +263,50 @@ public void BeforeInit()
 
     #region Getters & Helpers
 
+    public void RegisterEnemy(EnemyUnit enemy) { if (!enemies.Contains(enemy)) enemies.Add(enemy); }
     public void UnregisterEnemy(EnemyUnit enemy) { if (enemies.Contains(enemy)) enemies.Remove(enemy); }
     public PlayerUnit GetPlayer() { return player; }
     public List<EnemyUnit> GetEnemies() { return enemies; }
     public StageData GetCurrentStageData() { return currentStageData; }
+    public NetworkStageInfo GetCurrentStageInfo() { return CurrentStageInfo; }
+
+    public List<NetworkEnemySpawnInfo> GetEnemySpawnsForTurn(int turnNumber)
+    {
+        var spawns = new List<NetworkEnemySpawnInfo>();
+        for (int i = 0; i < EnemySpawnQueue.Length; i++)
+        {
+            var spawnInfo = EnemySpawnQueue.Get(i);
+            if (spawnInfo.turnNumber == turnNumber && spawnInfo.enemyTypeIndex > 0)
+            {
+                spawns.Add(spawnInfo);
+            }
+        }
+        return spawns;
+    }
+
+    public void CreatePortals(List<StageType> portalTypes)
+    {
+        if (portalPrefab == null)
+        {
+            Debug.LogError("Portal Prefab is not assigned in StageManager!");
+            return;
+        }
+
+        Vector3[] spawnPositions = {
+            new Vector3(currentStageData.width / 2f, 0.5f, currentStageData.height + 1),
+            new Vector3(-1, 0.5f, currentStageData.height / 2f),
+            new Vector3(currentStageData.width + 1, 0.5f, currentStageData.height / 2f)
+        };
+
+        for (int i = 0; i < portalTypes.Count && i < spawnPositions.Length; i++)
+        {
+            GameObject portalObj = Instantiate(portalPrefab, spawnPositions[i], Quaternion.identity);
+            Portal portal = portalObj.GetComponent<Portal>();
+            portal.Initialize(portalTypes[i]);
+            spawnedPortals.Add(portalObj);
+        }
+    }
+
     private bool IsBattleType(StageType type) => type == StageType.Battle || type == StageType.EliteBattle || type == StageType.Boss;
     private Vector3 GridToWorld(Vector2Int gridPos) => new Vector3(gridPos.x + 0.5f, 0, gridPos.y + 0.5f);
 
@@ -239,29 +349,4 @@ public void BeforeInit()
     }
 
     #endregion
-
-
-public List<EnemySpawnData> GetEnemiesSpawningOnTurn(int waveIndex, int turnNumber)
-    {
-        if (currentStageData == null) return null;
-        
-        int arrayIndex = waveIndex - 1;
-        if (arrayIndex < 0 || arrayIndex >= currentStageData.waves.Length)
-            return null;
-
-        EnemyWave wave = currentStageData.waves[arrayIndex];
-        
-        if (wave.turnSpawns == null || wave.turnSpawns.Length == 0)
-            return null;
-
-        foreach (var turnSpawn in wave.turnSpawns)
-        {
-            if (turnSpawn.turnNumber == turnNumber)
-            {
-                return turnSpawn.enemies != null ? new List<EnemySpawnData>(turnSpawn.enemies) : null;
-            }
-        }
-        
-        return null;
-    }
 }

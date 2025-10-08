@@ -2086,7 +2086,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1753340078}
   - component: {fileID: 1753340077}
-  - component: {fileID: 1753340080}
   - component: {fileID: 1753340079}
   m_Layer: 0
   m_Name: StageManager
@@ -2102,13 +2101,14 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1753340076}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 14d54375453404a72ac91e6b01947d30, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   gridManager: {fileID: 1927667682}
   portalPrefab: {fileID: 3881687500384103754, guid: 3c11deca911224e28bfdbdd4a38ba822, type: 3}
+  gameDatabase: {fileID: 11400000, guid: 03765f78c305746e5af54dedaba0a188, type: 2}
 --- !u!4 &1753340078
 Transform:
   m_ObjectHideFlags: 0
@@ -2141,21 +2141,8 @@ MonoBehaviour:
   Flags: 262145
   NestedObjects: []
   NetworkedBehaviours:
-  - {fileID: 1753340080}
+  - {fileID: 1753340077}
   ForceRemoteRenderTimeframe: 0
---- !u!114 &1753340080
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1753340076}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5168d37892e024db0a862e8e2711f29f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  gameDatabase: {fileID: 11400000, guid: 03765f78c305746e5af54dedaba0a188, type: 2}
 --- !u!1 &1836424739
 GameObject:
   m_ObjectHideFlags: 0

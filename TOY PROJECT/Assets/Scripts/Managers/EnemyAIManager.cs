@@ -18,8 +18,8 @@ public void BeforeInit()
     public IEnumerator ExecuteEnemyTurns()
     {
         Debug.Log("--- Enemy Turn Start ---");
-        var enemies = Core.Instance.NetworkStageManager.GetEnemies();
-        var player = Core.Instance.NetworkStageManager.GetPlayer();
+        var enemies = Core.Instance.StageManager.GetEnemies();
+        var player = Core.Instance.StageManager.GetPlayer();
 
         if (player == null)
         {

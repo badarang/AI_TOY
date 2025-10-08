@@ -32,7 +32,7 @@ public class GameManager : MonoBehaviour, IManager
     private StageData bossStage; // 보스 스테이지는 보통 하나만 할당
 
     // --- 매니저 참조 ---
-    private NetworkStageManager networkStageManager;
+    private StageManager stageManager;
     private TurnManager turnManager;
 
     // --- 게임 상태 ---
@@ -43,7 +43,7 @@ public class GameManager : MonoBehaviour, IManager
 
     public void AfterInit()
     {
-        networkStageManager = Core.Instance.NetworkStageManager;
+        stageManager = Core.Instance.StageManager;
         turnManager = Core.Instance.TurnManager;
 
         StartNewGame(startingChapter);
@@ -86,7 +86,7 @@ public class GameManager : MonoBehaviour, IManager
         {
             // 선택지가 여러 개이면, 플레이어가 선택할 수 있도록 포탈 생성 요청
             Debug.Log($"다음 선택지: {string.Join(", ", currentLayer.possibleStageTypes)}");
-            //networkStageManager.CreatePortals(currentLayer.possibleStageTypes);
+            //stageManager.CreatePortals(currentLayer.possibleStageTypes);
             // TODO: 게임 상태를 '자유 이동'으로 변경
         }
     }
@@ -112,14 +112,18 @@ public class GameManager : MonoBehaviour, IManager
         }
 
         Debug.Log($"{type} 타입의 스테이지를 로드합니다: {stageToLoad.name}");
-        networkStageManager.LoadStage(stageToLoad);
+        // 서버에게 스테이지 로드를 요청합니다. (이름으로)
+        stageManager.LoadStageOnServerRpc(stageToLoad.name);
 
+        // 플레이어 스폰은 서버에서 한 번만 수행합니다.
         if (!isPlayerSpawned)
         {
-            await networkStageManager.SpawnPlayer(stageToLoad.playerSpawn);
+            // StageManager의 SpawnPlayer는 서버에서만 실행됩니다.
+            await stageManager.SpawnPlayer(stageToLoad.playerSpawn);
             isPlayerSpawned = true;
         }
 
+        // 전투 스테이지인 경우, 턴 매니저를 통해 첫 웨이브를 시작합니다.
         if (
             stageToLoad.stageType == StageType.Battle
             || stageToLoad.stageType == StageType.EliteBattle

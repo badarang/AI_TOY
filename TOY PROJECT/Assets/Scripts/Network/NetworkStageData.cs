@@ -19,6 +19,6 @@ public struct NetworkStageInfo : INetworkStruct
 public struct NetworkEnemySpawnInfo : INetworkStruct
 {
     public int enemyTypeIndex; // UnitType enum을 int로
-    public Vector2 spawnPos;
+    public Vector2Int spawnPos;
     public int turnNumber; // 어느 턴에 스폰될지
 }

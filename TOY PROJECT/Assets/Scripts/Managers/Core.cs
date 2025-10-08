@@ -12,8 +12,7 @@ public class Core : MonoBehaviour
     [SerializeField] private GameManager gameManager;
     [SerializeField] private PoolManager poolManager;
     [SerializeField] private GridManager gridManager;
-    //[SerializeField] private StageManager stageManager;
-    [SerializeField] private NetworkStageManager networkStageManager;
+    [SerializeField] private StageManager stageManager;
     [SerializeField] private UIManager uiManager;
     [SerializeField] private TurnManager turnManager;
     [SerializeField] private RewardManager rewardManager;
@@ -25,8 +24,7 @@ public class Core : MonoBehaviour
     public GameManager GameManager => gameManager;
     public PoolManager PoolManager => poolManager;
     public GridManager GridManager => gridManager;
-    //public StageManager StageManager => stageManager;
-    public NetworkStageManager NetworkStageManager => networkStageManager;
+    public StageManager StageManager => stageManager;
     public UIManager UIManager => uiManager;
     public TurnManager TurnManager => turnManager;
     public RewardManager RewardManager => rewardManager;
@@ -59,7 +57,7 @@ void Awake()
         CallBeforeInit(gameManager);
         CallBeforeInit(poolManager);
         CallBeforeInit(gridManager);
-        CallBeforeInit(networkStageManager);
+        CallBeforeInit(stageManager);
         CallBeforeInit(uiManager);
         CallBeforeInit(turnManager);
         CallBeforeInit(rewardManager);
@@ -70,7 +68,7 @@ void Awake()
         Debug.Log("[Core] === Phase 2: AfterInit ===");
         CallAfterInit(poolManager);
         CallAfterInit(gridManager);
-        CallAfterInit(networkStageManager);
+        CallAfterInit(stageManager);
         CallAfterInit(uiManager);
         CallAfterInit(turnManager);
         CallAfterInit(rewardManager);
@@ -108,7 +106,7 @@ void Awake()
         if (gameManager == null) Debug.LogError("[Core] GameManager is not assigned!");
         if (poolManager == null) Debug.LogError("[Core] PoolManager is not assigned!");
         if (gridManager == null) Debug.LogError("[Core] GridManager is not assigned!");
-        if (networkStageManager == null) Debug.LogError("[Core] StageManager is not assigned!");
+        if (stageManager == null) Debug.LogError("[Core] StageManager is not assigned!");
         if (uiManager == null) Debug.LogError("[Core] UIManager is not assigned!");
         if (turnManager == null) Debug.LogError("[Core] TurnManager is not assigned!");
         if (rewardManager == null) Debug.LogError("[Core] RewardManager is not assigned!");
