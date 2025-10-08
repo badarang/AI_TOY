@@ -17,7 +17,7 @@ MonoBehaviour:
     Answers:
     - QuestionId: Pace
       Answers:
-      - Fast
+      - Slow
     - QuestionId: Cheating
       Answers:
       - CheatingNotImportant
@@ -26,11 +26,11 @@ MonoBehaviour:
       - NoCost
     - QuestionId: NetcodeArchitecture
       Answers:
-      - LockstepSimulation
+      - MultiServerSessions
     - QuestionId: PlayerCount
       Answers:
-      - 4
+      - 2
   Preset: 10
   SelectedSolutions:
-    SelectedHostingModel: 1
+    SelectedHostingModel: 2
     SelectedNetcodeSolution: 3

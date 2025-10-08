@@ -1,9 +1,9 @@
 using UnityEngine;
 using Fusion;
 
-public class NetworkManager : MonoBehaviour, IManager
+public class NetworkManagerAlternative : MonoBehaviour, IManager
 {
-    public static NetworkManager Instance { get; private set; }
+    public static NetworkManagerAlternative Instance { get; private set; }
 
     [Header("Network Settings")]
     [SerializeField] private NetworkRunner networkRunnerPrefab;
@@ -26,7 +26,7 @@ public class NetworkManager : MonoBehaviour, IManager
         Debug.Log("[NetworkManager] Network manager ready.");
     }
 
-public async void StartHost(string roomName)
+    public async void StartHost(string roomName)
     {
         if (currentRunner != null)
         {
@@ -58,7 +58,7 @@ public async void StartHost(string roomName)
         }
     }
 
-public async void JoinRoom(string roomName)
+    public async void JoinRoom(string roomName)
     {
         if (currentRunner != null)
         {
