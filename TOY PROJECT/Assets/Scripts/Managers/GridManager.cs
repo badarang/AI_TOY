@@ -122,7 +122,7 @@ private void ClearGridPlane()
     }
 
 
-    private void UpdateCellHover()
+private void UpdateCellHover()
     {
         Vector2 inputPosition = GetInputPosition();
         if (inputPosition == Vector2.zero) return;
@@ -140,7 +140,7 @@ private void ClearGridPlane()
             {
                 Vector2Int cellPos = new Vector2Int(x, z);
 
-                if (unitPositions.ContainsKey(cellPos) && unitPositions[cellPos] != null)
+                if ((unitPositions.ContainsKey(cellPos) && unitPositions[cellPos] != null) || IsMovableHighlightedTile(cellPos))
                 {
                     if (hoveredCell != cellPos)
                     {
@@ -542,5 +542,11 @@ public List<Vector2Int> GetWalkableTilesInRange(Vector2Int start, int range)
         }
         
         return reachableTiles;
+    }
+
+
+private bool IsMovableHighlightedTile(Vector2Int pos)
+    {
+        return movableTileHighlights.Any(h => h != null && h.name == $"MovableHighlight_{pos.x}_{pos.y}");
     }
 }
