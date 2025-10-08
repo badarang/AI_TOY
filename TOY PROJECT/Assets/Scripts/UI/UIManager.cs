@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using UnityEngine.Events;
 
 public class UIManager : MonoBehaviour, IManager
 {
@@ -16,6 +17,8 @@ public void BeforeInit()
     [Header("Component References")]
     public TurnOrderUI turnOrderUI;
         public UnitInfoUI unitInfoUI;
+
+    public PopupUI popupUI;
 public SkillPanelUI skillPanelUI;
 
     [Header("In-Game UI")]
@@ -151,6 +154,16 @@ public void HideSkillPanel()
 
     // --- 기존 메서드들 ---
 
-
-
+public void ShowEndTurnConfirmPopup(UnityAction onConfirm)
+    {
+        if (popupUI != null)
+        {
+            popupUI.Init(
+                "Turn End Confirmation",
+                "You still have usable skills. Are you sure you want to end your turn?",
+                onConfirm,
+                null
+            );
+        }
+    }
 }
