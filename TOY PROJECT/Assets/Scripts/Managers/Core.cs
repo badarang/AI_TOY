@@ -28,21 +28,19 @@ public class Core : MonoBehaviour
     public PreviewManager PreviewManager => previewManager;
     public InputManager InputManager => inputManager;
 
-    void Awake()
+void Awake()
     {
-        if (Instance == null)
+        if (Instance != null)
         {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-            Debug.Log("Core: Instance created.");
-            
-            InitializeManagers();
-        }
-        else
-        {
-            Debug.Log("Core: Duplicate instance destroyed");
+            Debug.LogWarning("[InGameCore] Duplicate instance found, destroying...");
             Destroy(gameObject);
+            return;
         }
+
+        Instance = this;
+        Debug.Log("[InGameCore] InGame scene managers initialized.");
+        
+        InitializeManagers();
     }
     
     private void InitializeManagers()
@@ -113,8 +111,12 @@ public class Core : MonoBehaviour
         if (inputManager == null) Debug.LogError("[Core] InputManager is not assigned!");
     }
 
-    void OnApplicationQuit()
+void OnDestroy()
     {
-        Instance = null;
+        if (Instance == this)
+        {
+            Instance = null;
+            Debug.Log("[InGameCore] InGame managers cleaned up.");
+        }
     }
 }
