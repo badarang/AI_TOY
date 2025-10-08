@@ -22,9 +22,23 @@ public class TurnManager : MonoBehaviour, IManager
     public event Action OnPlayerActionEnd; // 플레이어가 턴 안에서 무언가 액션을 했을 때
     public event Action OnEnemyTurnStart;
 
-    public enum Turn { Player, Enemy }
+    public enum Turn
+    {
+        Player,
+        Enemy
+    }
+
     public Turn CurrentTurn { get; private set; }
-    public enum PlayerTurnState { AwaitingUnitSelection, UnitSelected, PerformingAction, AwaitingSkillSubTarget, StageClear }
+
+    public enum PlayerTurnState
+    {
+        AwaitingUnitSelection,
+        UnitSelected,
+        PerformingAction,
+        AwaitingSkillSubTarget,
+        StageClear
+    }
+
     public PlayerTurnState CurrentPlayerState { get; private set; }
 
     // Wave & Turn Limit System
@@ -58,11 +72,11 @@ public class TurnManager : MonoBehaviour, IManager
 
         CurrentTurn = Turn.Player;
         CurrentPlayerState = PlayerTurnState.AwaitingUnitSelection;
-        
+
         selectedUnit = null;
         currentWave = 0;
         turnInWave = 0;
-        
+
         PausedSkill = null;
         PausedCaster = null;
 
@@ -70,7 +84,7 @@ public class TurnManager : MonoBehaviour, IManager
         {
             gridManager.ClearSelection();
         }
-        
+
         DebugPrinter.LogColor(LogType.Turn, "TurnManager state cleared.");
     }
 
@@ -87,20 +101,20 @@ public class TurnManager : MonoBehaviour, IManager
         CurrentTurn = Turn.Player;
         turnInWave++;
         SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
-        
+
         hasMovedThisTurn = false;
         hasAttackedThisTurn = false;
-        
+
         await stageManager.SpawnEnemiesForTurn(currentWave, turnInWave);
-        
+
         var player = stageManager.GetPlayer();
         if (player != null) player.OnTurnStart();
 
         OnPlayerTurnStart?.Invoke();
-        
+
         int turnLimit = stageManager.GetCurrentStageData()?.waves[currentWave - 1].clearTurnLimit ?? 5;
         uiManager.UpdateTurnUI(turnInWave, turnLimit);
-        
+
         ShowNextTurnEnemyPreview();
     }
 
@@ -110,7 +124,9 @@ public class TurnManager : MonoBehaviour, IManager
         SetPlayerState(PlayerTurnState.PerformingAction);
 
         var enemies = stageManager.GetEnemies();
-        foreach (var enemy in enemies) if (enemy != null) enemy.OnTurnStart();
+        foreach (var enemy in enemies)
+            if (enemy != null)
+                enemy.OnTurnStart();
 
         OnEnemyTurnStart?.Invoke();
         StartCoroutine(EnemyTurnRoutine());
@@ -122,6 +138,12 @@ public class TurnManager : MonoBehaviour, IManager
 
         if (CurrentTurn == Turn.Player)
         {
+            if (HasUsableSkills())
+            {
+                uiManager.ShowEndTurnConfirmPopup(() => { StartEnemyTurn(); });
+                return;
+            }
+
             StartEnemyTurn();
         }
         else
@@ -134,6 +156,7 @@ public class TurnManager : MonoBehaviour, IManager
                 await stageManager.SpawnWave(currentWave);
                 turnInWave = 0;
             }
+
             StartPlayerTurn();
         }
     }
@@ -172,22 +195,22 @@ public class TurnManager : MonoBehaviour, IManager
     {
         int nextTurnNumber = turnInWave + 1;
         var upcomingEnemies = stageManager.GetEnemiesSpawningOnTurn(currentWave, nextTurnNumber);
-        
+
         if (upcomingEnemies == null || upcomingEnemies.Count == 0)
         {
             DebugPrinter.LogColor(LogType.Turn, $"다음 턴({nextTurnNumber})에 스폰될 적이 없습니다.");
             return;
         }
-        
+
         DebugPrinter.LogColor(LogType.Turn, $"[미리보기] 다음 턴({nextTurnNumber})에 {upcomingEnemies.Count}마리의 적이 등장합니다!");
-        
+
         foreach (var enemySpawnInfo in upcomingEnemies)
         {
             DebugPrinter.LogColor(LogType.Turn, $"  - {enemySpawnInfo.enemyType} at {enemySpawnInfo.spawnPos}");
         }
     }
 
-    
+
     public void SetPlayerState(PlayerTurnState newState)
     {
         CurrentPlayerState = newState;
@@ -198,13 +221,13 @@ public class TurnManager : MonoBehaviour, IManager
     public void SelectPlayerUnit(PlayerUnit unit)
     {
         if (selectedUnit != null) ClearSelection();
-        
+
         selectedUnit = unit;
         SetPlayerState(PlayerTurnState.UnitSelected);
         DebugPrinter.LogColor(LogType.Turn, $"플레이어 유닛 선택됨: {unit.name}");
-        
+
         ShowAvailableActionsForUnit(unit);
-        
+
         Core.Instance.UIManager.ShowUnitInfo(unit);
         uiManager.skillPanelUI?.UpdateSkillDisplay(unit);
     }
@@ -230,7 +253,7 @@ public class TurnManager : MonoBehaviour, IManager
         }
 
         var skill = selectedUnit.unitData.skills[skillIndex];
-        
+
         if (selectedUnit.GetSkillCooldown(skillIndex) > 0)
         {
             DebugPrinter.LogColor(LogType.Turn, $"{skill.skillMeta.nameKey}는 쿨다운 중입니다: {selectedUnit.GetSkillCooldown(skillIndex)}턴 남음");
@@ -248,11 +271,11 @@ public class TurnManager : MonoBehaviour, IManager
             case SkillType.Move:
                 DebugPrinter.LogColor(LogType.Turn, "이동 스킬은 직접 타일을 클릭하세요.");
                 break;
-                
+
             case SkillType.Attack:
                 StartSkillTargeting(skillIndex);
                 break;
-                
+
             default:
                 DebugPrinter.LogColor(LogType.Turn, $"지원하지 않는 스킬 타입: {skill.skillType}");
                 break;
@@ -263,9 +286,9 @@ public class TurnManager : MonoBehaviour, IManager
     {
         currentSkillIndex = skillIndex;
         var skill = selectedUnit.unitData.skills[skillIndex];
-        
+
         DebugPrinter.LogColor(LogType.Turn, $"{skill.skillMeta.nameKey} 타겟 선택 모드 시작");
-        
+
         var allUnits = gridManager.GetAllUnits();
         var targetableTiles = new List<Vector2Int>();
 
@@ -280,22 +303,19 @@ public class TurnManager : MonoBehaviour, IManager
                 targetableTiles.Add(potentialTarget.position);
             }
         }
-        
+
         gridManager.ClearAllHighlights();
         gridManager.HighlightAttackableTiles(targetableTiles);
-        
+
         SetPlayerState(PlayerTurnState.AwaitingSkillSubTarget);
     }
 
     private void ExecuteSkillOnTarget(int skillIndex, Vector2Int targetCell)
     {
         var skill = selectedUnit.unitData.skills[skillIndex];
-        
-        int distance = Mathf.Max(
-            Mathf.Abs(selectedUnit.position.x - targetCell.x), 
-            Mathf.Abs(selectedUnit.position.y - targetCell.y)
-        );
-        
+
+        int distance = Mathf.Max(Mathf.Abs(selectedUnit.position.x - targetCell.x), Mathf.Abs(selectedUnit.position.y - targetCell.y));
+
         if (distance > skill.range)
         {
             DebugPrinter.LogColor(LogType.Turn, $"타겟이 사거리 밖입니다. 거리: {distance}, 사거리: {skill.range}");
@@ -304,20 +324,20 @@ public class TurnManager : MonoBehaviour, IManager
             currentSkillIndex = -1;
             return;
         }
-        
+
         SetPlayerState(PlayerTurnState.PerformingAction);
-        
+
         selectedUnit.UseSkill(skillIndex, targetCell);
-        
+
         if (skill.skillType == SkillType.Attack)
         {
             hasAttackedThisTurn = true;
         }
-        
+
         OnPlayerActionEnd?.Invoke();
-        
+
         currentSkillIndex = -1;
-        
+
         if (hasMovedThisTurn && hasAttackedThisTurn)
         {
             ClearSelection();
@@ -385,16 +405,16 @@ public class TurnManager : MonoBehaviour, IManager
     public void ClearSelection()
     {
         if (CurrentPlayerState == PlayerTurnState.StageClear) return;
-        
+
         selectedUnit = null;
         hasMovedThisTurn = false;
         hasAttackedThisTurn = false;
         SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
         gridManager.ClearSelection();
-        
+
         Core.Instance.UIManager.HideUnitInfo();
         Core.Instance.UIManager.HideSkillPanel();
-        
+
         DebugPrinter.LogColor(LogType.Turn, "선택 취소");
     }
 
@@ -422,6 +442,7 @@ public class TurnManager : MonoBehaviour, IManager
                     gridManager.ClearAllHighlights();
                     ClearSelection();
                 }
+
                 break;
 
             case PlayerTurnState.UnitSelected:
@@ -449,6 +470,7 @@ public class TurnManager : MonoBehaviour, IManager
                     gridManager.ClearAllHighlights();
                     TryAttackUnit(selectedUnit, cell);
                 }
+
                 break;
 
             case PlayerTurnState.AwaitingSkillSubTarget:
@@ -457,15 +479,15 @@ public class TurnManager : MonoBehaviour, IManager
                     SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
                     return;
                 }
-                
+
                 gridManager.ClearAllHighlights();
-                
+
                 if (unitAtCell != null && unitAtCell.factionData != selectedUnit.factionData)
                 {
                     var skill = selectedUnit.unitData.skills[currentSkillIndex];
 
                     int distance = GridUtils.ChebyshevDistance(selectedUnit.position, cell);
-                    
+
                     if (distance <= skill.range)
                     {
                         ExecuteSkillOnTarget(currentSkillIndex, cell);
@@ -483,10 +505,12 @@ public class TurnManager : MonoBehaviour, IManager
                     SetPlayerState(PlayerTurnState.UnitSelected);
                     ShowAvailableActionsForUnit(selectedUnit);
                 }
+
                 break;
         }
     }
-public bool CanAttackTarget(PlayerUnit unit, Vector2Int targetCell)
+
+    public bool CanAttackTarget(PlayerUnit unit, Vector2Int targetCell)
     {
         if (unit == null || hasAttackedThisTurn) return false;
 
@@ -502,11 +526,12 @@ public bool CanAttackTarget(PlayerUnit unit, Vector2Int targetCell)
                 }
             }
         }
+
         return false;
     }
 
-    
-private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
+
+    private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         if (hasAttackedThisTurn) return;
 
@@ -530,22 +555,23 @@ private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
             SetPlayerState(PlayerTurnState.PerformingAction);
             unit.UseSkill(attackSkillIndex, targetCell);
             hasAttackedThisTurn = true;
-            
+
             OnPlayerActionEnd?.Invoke();
-            
+
             if (hasMovedThisTurn)
             {
                 ClearSelection();
             }
             else
             {
-                SetPlayerState(PlayerTurnState.UnitSelected);;
+                SetPlayerState(PlayerTurnState.UnitSelected);
+                ;
                 unit.Select();
             }
         }
     }
 
-private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
+    private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         if (hasMovedThisTurn) return false;
 
@@ -554,7 +580,7 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
 
         var skills = unit.GetSkills();
         var moveSkill = skills[moveSkillIndex];
-        
+
         if (moveSkill.data.initialBehaviors.Length == 0 || !moveSkill.data.initialBehaviors[0].CanExecute(unit, targetCell, moveSkill))
         {
             return false;
@@ -584,12 +610,12 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
         }
 
         float duration = unit.UseSkill(moveSkillIndex, targetCell);
-        
+
         if (duration > 0)
         {
             await UniTask.Delay(System.TimeSpan.FromSeconds(duration));
         }
-        
+
         hasMovedThisTurn = true;
         OnPlayerActionEnd?.Invoke();
 
@@ -613,7 +639,7 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
     public async void FinalizeRewardSelection()
     {
         DebugPrinter.LogColor(LogType.Turn, "보상 선택이 완료되었습니다.");
-        
+
         if (currentWave >= stageManager.GetCurrentStageData().waves.Length)
         {
             Core.Instance.GameManager.ProceedToNextLayer();
@@ -634,4 +660,11 @@ private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
     }
 
     #endregion
+
+    public bool HasUsableSkills()
+    {
+        if (selectedUnit == null) return false;
+
+        return selectedUnit.GetSkills().Any(skill => skill.currentCooldown == 0 && selectedUnit.ap >= skill.GetAPCost());
+    }
 }

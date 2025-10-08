@@ -16,6 +16,7 @@ public class Core : MonoBehaviour
     [SerializeField] private PreviewManager previewManager;
     [SerializeField] private InputManager inputManager;
 
+    [SerializeField] private AudioManager audioManager;
     public GameManager GameManager => gameManager;
     public PoolManager PoolManager => poolManager;
     public GridManager GridManager => gridManager;
