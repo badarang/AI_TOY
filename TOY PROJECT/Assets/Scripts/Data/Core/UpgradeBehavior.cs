@@ -7,5 +7,5 @@ public abstract class UpgradeBehavior : ScriptableObject
     // 모든 구체적인 업그레이드 로직은 이 Apply 메소드를 구현해야 합니다.
     // 이 메소드는 업그레이드가 적용되는 시점에 단 한 번 호출됩니다.
     // playerUnit을 인자로 받아, 해당 유닛의 영구적인 스탯이나 상태를 변경합니다.
-    public abstract void Apply(UnitBase playerUnit);
+    public abstract void Apply(UnitBase playerUnit, Skill skill);
 }

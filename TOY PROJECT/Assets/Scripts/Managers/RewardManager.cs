@@ -1,18 +1,12 @@
+// Assets/Scripts/Managers/RewardManager.cs 개선 버전
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
-// "쇼러너 AI"의 역할을 하는 핵심 매니저입니다.
-// 플레이어의 상태와 팬심을 기반으로 보상을 생성하고 관리합니다.
 public class RewardManager : MonoBehaviour, IManager
 {
-
-public void BeforeInit()
-    {
-    }
-
-    public void AfterInit()
-    {
-    }
+    public void BeforeInit() { }
+    public void AfterInit() { }
 
     [Header("데이터베이스 연결")]
     public GameAssetDatabase database;
@@ -21,14 +15,12 @@ public void BeforeInit()
     [SerializeField] private int currentFans = 0;
     public int CurrentFans => currentFans;
 
-    // 임시로 플레이어 유닛을 직접 참조합니다. 추후 PlayerManager 등으로 대체될 수 있습니다.
     private UnitBase playerUnit;
 
     public void AddFans(int amount)
     {
         currentFans += amount;
         Debug.Log($"{amount}명의 팬이 추가되었습니다! 현재 팬: {currentFans}");
-        // TODO: 팬 수에 따라 후원사 등급 변경 및 UI 업데이트 로직
     }
 
     public void RemoveFans(int amount)
@@ -37,33 +29,108 @@ public void BeforeInit()
         Debug.Log($"{amount}명의 팬이 떠났습니다... 현재 팬: {currentFans}");
     }
 
+    public void SetPlayerUnit(UnitBase unit)
+    {
+        playerUnit = unit;
+    }
+
     /// <summary>
     /// 플레이어에게 제시할 3개의 보상 목록을 생성합니다.
+    /// BuildData를 활용하여 전제 조건을 확인합니다.
     /// </summary>
-    /// <returns>선별된 3개의 보상 (SkillData 또는 UpgradeData)</returns>
     public List<ScriptableObject> GenerateRewards()
     {
-        // TODO: 플레이어 유닛 참조 로직 구현
-        // playerUnit = ...;
+        if (playerUnit == null)
+        {
+            Debug.LogError("PlayerUnit이 설정되지 않았습니다!");
+            return new List<ScriptableObject>();
+        }
 
-        List<ScriptableObject> generatedRewards = new List<ScriptableObject>();
+        List<ScriptableObject> candidates = new List<ScriptableObject>();
 
-        // 1. [보상 종류 결정] 스킬, 업그레이드, 회복 중 어떤 카테고리의 보상을 몇 개 보여줄지 룰렛을 돌립니다.
-        // 예: [스킬, 스킬, 업그레이드] 또는 [회복, 업그레이드, 업그레이드] 등
+        // 1. 스킬 후보군 필터링
+        foreach (var skillData in database.allSkills)
+        {
+            // 전제 조건 확인
+            if (!playerUnit.BuildData.MeetsPrerequisites(skillData.prerequisites))
+                continue;
 
-        // 2. [후보 목록 필터링] 데이터베이스의 전체 목록에서, 플레이어가 아직 만족하지 못한 '전제 조건(prerequisites)'을 가진 보상들을 제외합니다.
+            // 이미 배운 스킬 제외
+            if (playerUnit.BuildData.IsEquipped(skillData))
+                continue;
 
-        // 3. [가중치 계산] 필터링된 후보 목록을 대상으로, '쇼러너 AI'의 규칙에 따라 가중치를 계산합니다.
-        //    - 플레이어의 HP가 낮으면 -> '회복' 또는 '방어' 태그 보상의 가중치 증가
-        //    - 플레이어가 '화염' 빌드를 타고 있으면 -> '화염' 태그 보상의 가중치 증가
-        //    - 팬(후원사) 등급이 높을수록 -> 높은 Tier의 보상 가중치 증가
+            candidates.Add(skillData);
+        }
 
-        // 4. [최종 선택] 계산된 가중치에 따라 룰렛을 돌려, 최종 보상 3개를 선택합니다.
+        // 2. 업그레이드 후보군 필터링
+        foreach (var upgradeData in database.allUpgrades)
+        {
+            // 전제 조건 확인
+            if (!playerUnit.BuildData.MeetsPrerequisites(upgradeData.prerequisites))
+                continue;
 
-        // 임시 반환값
-        Debug.LogWarning("GenerateRewards 로직이 아직 구현되지 않았습니다. 임시 데이터를 반환합니다.");
-        if (database.allSkills.Count > 0) generatedRewards.Add(database.allSkills[0]);
+            // 이미 배운 업그레이드 제외
+            if (playerUnit.BuildData.IsEquipped(upgradeData))
+                continue;
 
-        return generatedRewards;
+            candidates.Add(upgradeData);
+        }
+
+        // 3. 가중치 기반 선택
+        List<ScriptableObject> selectedRewards = SelectRewardsWithWeight(candidates);
+
+        return selectedRewards;
+    }
+
+    /// <summary>
+    /// 가중치를 고려하여 보상을 선택합니다.
+    /// TODO: 팬 수, HP 상태, 빌드 방향성 등을 고려한 가중치 로직 구현
+    /// </summary>
+    private List<ScriptableObject> SelectRewardsWithWeight(List<ScriptableObject> candidates)
+    {
+        List<ScriptableObject> selectedRewards = new List<ScriptableObject>();
+        
+        // 간단한 랜덤 선택 (추후 가중치 로직으로 개선)
+        var shuffled = candidates.OrderBy(x => Random.value).ToList();
+        
+        for (int i = 0; i < Mathf.Min(3, shuffled.Count); i++)
+        {
+            selectedRewards.Add(shuffled[i]);
+        }
+
+        return selectedRewards;
+    }
+
+    /// <summary>
+    /// 플레이어가 보상을 선택했을 때 호출됩니다.
+    /// </summary>
+    public void ApplyReward(ScriptableObject reward)
+    {
+        if (playerUnit == null) return;
+
+        if (reward is SkillData skillData)
+        {
+            playerUnit.LearnSkill(skillData);
+            Debug.Log($"[RewardManager] Player learned skill: {skillData.skillMeta.nameKey}");
+        }
+        else if (reward is UpgradeData upgradeData)
+        {
+            // 스킬별 업그레이드인지 일반 업그레이드인지 판단
+            // TODO: UpgradeData에 targetSkillName 필드가 있다면 해당 스킬에 적용
+            playerUnit.ApplyGeneralUpgrade(upgradeData);
+            Debug.Log($"[RewardManager] Player applied upgrade: {upgradeData.upgradeName}");
+        }
+    }
+
+    /// <summary>
+    /// 현재 플레이어의 빌드 상태를 디버깅용으로 출력합니다.
+    /// </summary>
+    [ContextMenu("Print Player Build")]
+    public void PrintPlayerBuild()
+    {
+        if (playerUnit != null)
+        {
+            Debug.Log(playerUnit.GetBuildSummary());
+        }
     }
 }

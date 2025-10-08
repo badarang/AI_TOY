@@ -111,6 +111,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7518791335084594423, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3333261327733985932}
+    - targetCorrespondingSourceObject: {fileID: 7518791335084594423, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6562410421025266001}
+    - targetCorrespondingSourceObject: {fileID: 7518791335084594423, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -8698204618887315187}
   m_SourcePrefab: {fileID: 100100000, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
 --- !u!1 &3954791853942026252 stripped
 GameObject:
@@ -134,3 +140,40 @@ MonoBehaviour:
   hp: 3
   ap: 1
   position: {x: 0, y: 0}
+--- !u!114 &6562410421025266001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3954791853942026252}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 2777760039
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 3333261327733985932}
+  - {fileID: -8698204618887315187}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &-8698204618887315187
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3954791853942026252}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7a02fe7670964e1ea73622b08bc3920, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  unitData: {fileID: 0}
+  factionData: {fileID: 0}
+  _HP: 0
+  _AP: 0
+  _Position: {x: 0, y: 0}

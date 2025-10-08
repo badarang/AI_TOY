@@ -1,6 +1,6 @@
 using System.Collections.Generic;
-using UnityEngine;
 using System.Linq;
+using UnityEngine;
 
 /// <summary>
 /// 게임의 전체적인 흐름과 상태를 관리하는 최상위 매니저입니다.
@@ -8,44 +8,53 @@ using System.Linq;
 /// </summary>
 public class GameManager : MonoBehaviour, IManager
 {
-
-    public void BeforeInit()
-    {
-    }
-
-    public void AfterInit()
-    {
-        stageManager = Core.Instance.StageManager;
-        turnManager = Core.Instance.TurnManager;
-
-        StartNewGame(startingChapter);
-    }
-
     [Header("챕터 및 스테이지 데이터")]
-    [SerializeField] private ChapterData startingChapter;
+    [SerializeField]
+    private ChapterData startingChapter;
 
     [Header("스테이지 풀 (종류별로 할당)")]
-    [SerializeField] private List<StageData> battleStages;
-    [SerializeField] private List<StageData> eliteBattleStages;
-    [SerializeField] private List<StageData> eventStages;
-    [SerializeField] private List<StageData> shopStages;
-    [SerializeField] private List<StageData> restStages;
-    [SerializeField] private StageData bossStage; // 보스 스테이지는 보통 하나만 할당
+    [SerializeField]
+    private List<StageData> battleStages;
+
+    [SerializeField]
+    private List<StageData> eliteBattleStages;
+
+    [SerializeField]
+    private List<StageData> eventStages;
+
+    [SerializeField]
+    private List<StageData> shopStages;
+
+    [SerializeField]
+    private List<StageData> restStages;
+
+    [SerializeField]
+    private StageData bossStage; // 보스 스테이지는 보통 하나만 할당
 
     // --- 매니저 참조 ---
-    private StageManager stageManager;
+    private NetworkStageManager networkStageManager;
     private TurnManager turnManager;
 
     // --- 게임 상태 ---
     private int currentLayerIndex = -1;
     private bool isPlayerSpawned = false;
 
+    public void BeforeInit() { }
+
+    public void AfterInit()
+    {
+        networkStageManager = Core.Instance.NetworkStageManager;
+        turnManager = Core.Instance.TurnManager;
+
+        StartNewGame(startingChapter);
+    }
+
     public void StartNewGame(ChapterData chapter)
     {
         Debug.Log($"새로운 챕터를 시작합니다: {chapter.chapterName}");
         currentLayerIndex = -1; // 다음 함수에서 0으로 증가하며 시작
         isPlayerSpawned = false;
-        
+
         // TODO: 기존 게임 데이터 초기화 (인벤토리, 플레이어 스탯 등)
 
         ProceedToNextLayer();
@@ -66,7 +75,7 @@ public class GameManager : MonoBehaviour, IManager
         }
 
         var currentLayer = startingChapter.layers[currentLayerIndex];
-        
+
         if (currentLayer.possibleStageTypes.Count == 1)
         {
             // 선택지가 하나뿐이면 바로 해당 타입의 스테이지 시작
@@ -77,7 +86,7 @@ public class GameManager : MonoBehaviour, IManager
         {
             // 선택지가 여러 개이면, 플레이어가 선택할 수 있도록 포탈 생성 요청
             Debug.Log($"다음 선택지: {string.Join(", ", currentLayer.possibleStageTypes)}");
-            stageManager.CreatePortals(currentLayer.possibleStageTypes);
+            //networkStageManager.CreatePortals(currentLayer.possibleStageTypes);
             // TODO: 게임 상태를 '자유 이동'으로 변경
         }
     }
@@ -96,20 +105,26 @@ public class GameManager : MonoBehaviour, IManager
         StageData stageToLoad = GetRandomStage(type);
         if (stageToLoad == null)
         {
-            Debug.LogError($"{type} 타입의 스테이지를 찾을 수 없습니다! StageData를 할당했는지 확인해주세요.");
+            Debug.LogError(
+                $"{type} 타입의 스테이지를 찾을 수 없습니다! StageData를 할당했는지 확인해주세요."
+            );
             return;
         }
 
         Debug.Log($"{type} 타입의 스테이지를 로드합니다: {stageToLoad.name}");
-        stageManager.LoadStage(stageToLoad);
+        networkStageManager.LoadStage(stageToLoad);
 
         if (!isPlayerSpawned)
         {
-            await stageManager.SpawnPlayer(stageToLoad.playerSpawn);
+            await networkStageManager.SpawnPlayer(stageToLoad.playerSpawn);
             isPlayerSpawned = true;
         }
 
-        if (stageToLoad.stageType == StageType.Battle || stageToLoad.stageType == StageType.EliteBattle || stageToLoad.stageType == StageType.Boss)
+        if (
+            stageToLoad.stageType == StageType.Battle
+            || stageToLoad.stageType == StageType.EliteBattle
+            || stageToLoad.stageType == StageType.Boss
+        )
         {
             turnManager.StartFirstWave();
         }

@@ -2,22 +2,47 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
+using Fusion;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class UnitBase : MonoBehaviour
+public class UnitBase : NetworkBehaviour
 {
     public UnitData unitData;
     public FactionData factionData;
-    public int hp;
-    public int ap;
-    public Vector2Int position;
+    [Networked] public int HP { get; set; }
+    [Networked] public int AP { get; set; }
+    [Networked] public Vector2Int Position { get; set; }
+    [Networked] public PlayerRef Owner { get; set; }
+    [Networked] public NetworkBool HasActedThisTurn { get; set; }
+
+    [Networked, Capacity(10)]
+    private NetworkArray<int> SkillCooldowns => default;
+
+    public Vector2Int position { get => Position; set => Position = value; }
+    public int hp { get => HP; set => HP = value; }
+    public int ap { get => AP; set => AP = value; }
     private Action OnSelected;
     private Action OnDeselected;
     private List<Skill> _skills = new List<Skill>();
     private Animator _animator;
     private Renderer _renderer;
     private MaterialPropertyBlock _propertyBlock;
+
+    [Header("스킬 / 업그레이드")]
+    [SerializeField] private UnitBuildData buildData;
+    public UnitBuildData BuildData
+    {
+        get
+        {
+            if (buildData == null)
+                buildData = new UnitBuildData();
+            return buildData;
+        }
+    }
+
+    protected GameAssetDatabase Database => Core.Instance?.GameDatabase;
+
 
     protected virtual void Awake()
     {
@@ -41,6 +66,19 @@ public class UnitBase : MonoBehaviour
             }
         }
     }
+
+public void Initialize(Vector2Int spawnPos, PlayerRef owner)
+    {
+        Position = spawnPos;
+        Owner = owner;
+        position = spawnPos;
+    }
+
+    public bool IsLocalClient()
+    {
+        return HasInputAuthority;
+    }
+
 
     public virtual float UseSkill(int skillIndex, Vector2Int targetPos)
     {
@@ -90,6 +128,62 @@ public class UnitBase : MonoBehaviour
         return skill.Execute(this, targetPos);
     }
 
+public void RequestSkillUse(int skillIndex, Vector2Int targetPos)
+    {
+        if (!HasInputAuthority && !(this is EnemyUnit)) return;
+
+        RPC_UseSkill(skillIndex, targetPos);
+    }
+
+    [Rpc(RpcSources.InputAuthority | RpcSources.StateAuthority, RpcTargets.StateAuthority)]
+    private void RPC_UseSkill(int skillIndex, Vector2Int targetPos)
+    {
+        if (skillIndex < 0 || skillIndex >= _skills.Count)
+        {
+            Debug.LogError("Invalid skill index.");
+            return;
+        }
+
+        var skill = _skills[skillIndex];
+
+        if (SkillCooldowns[skillIndex] > 0)
+        {
+            Debug.LogWarning($"Skill on cooldown: {SkillCooldowns[skillIndex]} turns left");
+            return;
+        }
+
+        int apCost = skill.GetAPCost();
+        if (ap < apCost)
+        {
+            Debug.LogWarning("Not enough AP to use this skill.");
+            return;
+        }
+
+        DebugPrinter.LogColor(LogType.Unit, $"Using skill '{skill.data.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {apCost}");
+
+        ap -= apCost;
+
+        if (skill.data.cooldown > 0)
+        {
+            SkillCooldowns.Set(skillIndex, skill.data.cooldown);
+            skill.currentCooldown = skill.data.cooldown;
+        }
+
+        DebugPrinter.LogColor(LogType.Unit, $"{name} used {skill.data.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
+
+        float animDuration = skill.Execute(this, targetPos);
+        RPC_PlaySkillVisuals(skillIndex, targetPos, animDuration);
+
+        HasActedThisTurn = true;
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_PlaySkillVisuals(int skillIndex, Vector2Int targetPos, float duration)
+    {
+        Debug.Log($"Playing skill visuals for skill {skillIndex} on {targetPos}");
+    }
+
+
     public int GetMoveSkillIndex()
     {
         for (int i = 0; i < _skills.Count; i++)
@@ -103,7 +197,16 @@ public class UnitBase : MonoBehaviour
         return -1;
     }
 
-    public virtual void TakeDamage(int amount)
+public virtual void TakeDamage(int amount)
+    {
+        if (HasStateAuthority)
+        {
+            RPC_TakeDamage(amount);
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_TakeDamage(int amount)
     {
         hp -= amount;
         DebugPrinter.LogColor(LogType.Unit, $"{name} took {amount} damage, remaining HP: {hp}");
@@ -115,17 +218,28 @@ public class UnitBase : MonoBehaviour
         }
     }
 
-    protected virtual void Die()
+protected virtual void Die()
     {
         DebugPrinter.LogColor(LogType.Unit, $"{name} has died.");
-        Core.Instance.GridManager.UnregisterUnit(position);
+        
+        if (Core.Instance?.GridManager != null)
+        {
+            Core.Instance.GridManager.UnregisterUnit(position);
+        }
 
-        if (this is EnemyUnit enemyUnit)
+        if (this is EnemyUnit enemyUnit && Core.Instance?.StageManager != null)
         {
             Core.Instance.StageManager.UnregisterEnemy(enemyUnit);
         }
 
-        Destroy(gameObject);
+        if (HasStateAuthority && Runner != null)
+        {
+            Runner.Despawn(Object);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     public virtual void OnTurnStart()
@@ -135,8 +249,19 @@ public class UnitBase : MonoBehaviour
         ReduceSkillCooldowns();
     }
 
-    public virtual void ReduceSkillCooldowns()
+public virtual void ReduceSkillCooldowns()
     {
+        if (HasStateAuthority)
+        {
+            for (int i = 0; i < _skills.Count && i < SkillCooldowns.Length; i++)
+            {
+                if (SkillCooldowns[i] > 0)
+                {
+                    SkillCooldowns.Set(i, SkillCooldowns[i] - 1);
+                }
+            }
+        }
+
         foreach (var skill in _skills)
         {
             if (skill.currentCooldown > 0)
@@ -437,4 +562,90 @@ public class UnitBase : MonoBehaviour
             )
             .SetEase(Ease.OutQuad);
     }
+
+    #region 스킬 및 업그레이드
+
+    /// <summary>
+    /// 스킬에 업그레이드를 적용하고 빌드 데이터에 기록합니다.
+    /// </summary>
+    public void ApplySkillUpgrade(int skillIndex, UpgradeData upgradeData)
+    {
+        if (skillIndex < 0 || skillIndex >= _skills.Count)
+        {
+            Debug.LogError($"Invalid skill index: {skillIndex}");
+            return;
+        }
+
+        var skill = _skills[skillIndex];
+
+        // UpgradeBehavior 실행
+        if (upgradeData.behavior != null)
+        {
+            upgradeData.behavior.Apply(this, skill);
+        }
+
+        // 빌드 데이터에 기록
+        BuildData.AddSkillUpgrade(skillIndex, skill.data.skillMeta.nameKey, upgradeData);
+
+        Debug.Log($"[BuildData] Skill upgraded: {skill.data.skillMeta.nameKey} with {upgradeData.upgradeName}");
+    }
+
+    /// <summary>
+    /// 새로운 스킬을 배웁니다.
+    /// </summary>
+    public void LearnSkill(SkillData skillData)
+    {
+        // 이미 배운 스킬인지 확인
+        if (BuildData.learnedSkills.Contains(skillData))
+        {
+            Debug.LogWarning($"Skill {skillData.skillMeta.nameKey} is already learned.");
+            return;
+        }
+
+        // 스킬 인스턴스 생성 및 추가
+        var newSkill = new Skill(skillData);
+        _skills.Add(newSkill);
+
+        // 빌드 데이터에 기록
+        BuildData.AddSkill(skillData);
+
+        Debug.Log($"[BuildData] Learned new skill: {skillData.skillMeta.nameKey}");
+    }
+
+    /// <summary>
+    /// 일반 업그레이드를 적용합니다 (스킬별이 아닌 유닛 전체)
+    /// </summary>
+    public void ApplyGeneralUpgrade(UpgradeData upgradeData)
+    {
+        if (upgradeData.behavior != null)
+        {
+            upgradeData.behavior.Apply(this, null);
+        }
+
+        BuildData.AddUpgrade(upgradeData);
+
+        Debug.Log($"[BuildData] Applied general upgrade: {upgradeData.upgradeName}");
+    }
+
+    /// <summary>
+    /// 현재 유닛의 빌드 데이터를 가져옵니다 (디버깅/UI용)
+    /// </summary>
+    public string GetBuildSummary()
+    {
+        string summary = $"=== {name} Build Summary ===\n";
+        summary += $"Learned Skills: {BuildData.learnedSkills.Count}\n";
+        foreach (var skill in BuildData.learnedSkills)
+        {
+            summary += $"  - {skill.skillMeta.nameKey}\n";
+        }
+        summary += $"General Upgrades: {BuildData.generalUpgrades.Count}\n";
+        foreach (var upgrade in BuildData.generalUpgrades)
+        {
+            summary += $"  - {upgrade.upgradeName}\n";
+        }
+        return summary;
+    }
+
+    #endregion
+
 }
