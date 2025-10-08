@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine;
 using System.Linq;
-using UnityEngine.UI;
 using DG.Tweening;
-
+using UnityEngine;
+using UnityEngine.UI;
 
 public class UnitBase : MonoBehaviour
 {
@@ -19,36 +18,31 @@ public class UnitBase : MonoBehaviour
     private Animator _animator;
     private Renderer _renderer;
     private MaterialPropertyBlock _propertyBlock;
-    
 
-
-
-protected virtual void Awake()
+    protected virtual void Awake()
     {
         if (unitData != null)
         {
             hp = unitData.maxHp;
             ap = unitData.maxAp;
-            
+
             // SkillData로부터 Skill 인스턴스 생성
-            
+
             _animator = GetComponent<Animator>();
             _renderer = GetComponentInChildren<Renderer>();
             if (_renderer != null)
             {
                 _propertyBlock = new MaterialPropertyBlock();
             }
-            
 
-            
-foreach (var skillData in unitData.skills)
+            foreach (var skillData in unitData.skills)
             {
                 _skills.Add(new Skill(skillData));
             }
         }
     }
 
-public virtual float UseSkill(int skillIndex, Vector2Int targetPos)
+    public virtual float UseSkill(int skillIndex, Vector2Int targetPos)
     {
         if (skillIndex < 0 || skillIndex >= _skills.Count)
         {
@@ -57,11 +51,13 @@ public virtual float UseSkill(int skillIndex, Vector2Int targetPos)
         }
 
         var skill = _skills[skillIndex];
-        
+
         // 쿨다운 체크
         if (skill.currentCooldown > 0)
         {
-            Debug.LogWarning($"Skill {skill.data.skillMeta.nameKey} is on cooldown for {skill.currentCooldown} more turns.");
+            Debug.LogWarning(
+                $"Skill {skill.data.skillMeta.nameKey} is on cooldown for {skill.currentCooldown} more turns."
+            );
             return 0f;
         }
 
@@ -73,21 +69,28 @@ public virtual float UseSkill(int skillIndex, Vector2Int targetPos)
             return 0f;
         }
 
-        DebugPrinter.LogColor(LogType.Unit, $"Using skill '{skill.data.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {apCost}");
-        
+        DebugPrinter.LogColor(
+            LogType.Unit,
+            $"Using skill '{skill.data.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {apCost}"
+        );
+
         // AP 소모
         ap -= apCost;
-        
-        // 쿨다운 설정
-        if (skill.data.cooldown > 0) skill.currentCooldown = skill.data.cooldown;
 
-        DebugPrinter.LogColor(LogType.Unit, $"{name} used {skill.data.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
+        // 쿨다운 설정
+        if (skill.data.cooldown > 0)
+            skill.currentCooldown = skill.data.cooldown;
+
+        DebugPrinter.LogColor(
+            LogType.Unit,
+            $"{name} used {skill.data.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}"
+        );
 
         // 스킬 실행
         return skill.Execute(this, targetPos);
     }
 
-public int GetMoveSkillIndex()
+    public int GetMoveSkillIndex()
     {
         for (int i = 0; i < _skills.Count; i++)
         {
@@ -132,7 +135,7 @@ public int GetMoveSkillIndex()
         ReduceSkillCooldowns();
     }
 
-public virtual void ReduceSkillCooldowns()
+    public virtual void ReduceSkillCooldowns()
     {
         foreach (var skill in _skills)
         {
@@ -143,24 +146,23 @@ public virtual void ReduceSkillCooldowns()
         }
     }
 
-
-
     /// <summary>
     /// 스킬에 업그레이드를 적용합니다. (로그라이크용)
     /// </summary>
     public void ApplySkillUpgrade(int skillIndex, string modifierKey, float value)
     {
-        if (skillIndex < 0 || skillIndex >= _skills.Count) return;
-        
+        if (skillIndex < 0 || skillIndex >= _skills.Count)
+            return;
+
         var skill = _skills[skillIndex];
         if (skill.modifiers.ContainsKey(modifierKey))
             skill.modifiers[modifierKey] += value;
         else
             skill.modifiers[modifierKey] = value;
-        
+
         Debug.Log($"Skill upgraded: {skill.data.skillMeta.nameKey} - {modifierKey} +{value}");
     }
-    
+
     /// <summary>
     /// 스킬 이름으로 인덱스를 찾습니다.
     /// </summary>
@@ -173,21 +175,29 @@ public virtual void ReduceSkillCooldowns()
         }
         return -1;
     }
-    
+
     /// <summary>
     /// 현재 보유한 Skill 목록을 반환합니다.
     /// </summary>
     public List<Skill> GetSkills() => _skills;
-public int GetSkillCooldown(int skillIndex)
+
+    public int GetSkillCooldown(int skillIndex)
     {
-        if (skillIndex < 0 || skillIndex >= _skills.Count) return -1;
+        if (skillIndex < 0 || skillIndex >= _skills.Count)
+            return -1;
         return _skills[skillIndex].currentCooldown;
     }
 
     public virtual void OnEnable()
     {
-        OnSelected += () => { DebugPrinter.LogColor(LogType.Unit, $"{factionData.factionName} is Selected"); };
-        OnDeselected += () => { DebugPrinter.LogColor(LogType.Unit, $"{factionData.factionName} is DeSelected"); };
+        OnSelected += () =>
+        {
+            DebugPrinter.LogColor(LogType.Unit, $"{factionData.factionName} is Selected");
+        };
+        OnDeselected += () =>
+        {
+            DebugPrinter.LogColor(LogType.Unit, $"{factionData.factionName} is DeSelected");
+        };
     }
 
     public virtual void OnDisable()
@@ -201,20 +211,22 @@ public int GetSkillCooldown(int skillIndex)
         var outline = GetComponent<Outline>();
         if (outline != null)
             outline.enabled = true;
-        
+
         ShowAvailableActions();
         OnSelected?.Invoke();
     }
 
-public virtual void ShowAvailableActions()
+    public virtual void ShowAvailableActions()
     {
         var gridManager = Core.Instance?.GridManager;
-        if (gridManager == null) return;
+        if (gridManager == null)
+            return;
 
         gridManager.ClearMovableHighlights();
         gridManager.ClearTargetHighlights();
 
-        if (ap <= 0) return;
+        if (ap <= 0)
+            return;
 
         var allUnits = gridManager.GetAllUnits();
         var potentialTargets = new List<UnitBase>();
@@ -227,18 +239,26 @@ public virtual void ShowAvailableActions()
         {
             var skill = _skills[i];
 
-            if (skill.currentCooldown > 0 || ap < skill.GetAPCost()) continue;
+            if (skill.currentCooldown > 0 || ap < skill.GetAPCost())
+                continue;
 
             if (skill.data.skillType == SkillType.Attack)
             {
                 hasAttackAction = true;
                 foreach (var potentialTarget in allUnits)
                 {
-                    if (potentialTarget.factionData == this.factionData) continue;
-                    
-                    if (skill.data.initialBehaviors.Length > 0 && skill.data.initialBehaviors[0].CanExecute(this, potentialTarget.position, skill))
+                    if (potentialTarget.factionData == this.factionData)
+                        continue;
+
+                    if (
+                        skill.data.initialBehaviors.Length > 0
+                        && skill
+                            .data.initialBehaviors[0]
+                            .CanExecute(this, potentialTarget.position, skill)
+                    )
                     {
-                        if (!potentialTargets.Contains(potentialTarget)) potentialTargets.Add(potentialTarget);
+                        if (!potentialTargets.Contains(potentialTarget))
+                            potentialTargets.Add(potentialTarget);
                     }
                 }
             }
@@ -249,20 +269,28 @@ public virtual void ShowAvailableActions()
                 foreach (var offset in skill.data.movementPattern)
                 {
                     Vector2Int destination = position + offset;
-                    if (!gridManager.IsValidTile(destination)) continue;
-                    
+                    if (!gridManager.IsValidTile(destination))
+                        continue;
+
                     UnitBase unitOnTile = gridManager.GetUnitAt(destination);
-                    
+
                     if (unitOnTile != null)
                     {
-                        if (unitOnTile.factionData != this.factionData && !potentialTargets.Contains(unitOnTile))
+                        if (
+                            unitOnTile.factionData != this.factionData
+                            && !potentialTargets.Contains(unitOnTile)
+                        )
                         {
                             potentialTargets.Add(unitOnTile);
                         }
                     }
-                    else if (skill.data.initialBehaviors.Length > 0 && skill.data.initialBehaviors[0].CanExecute(this, destination, skill))
+                    else if (
+                        skill.data.initialBehaviors.Length > 0
+                        && skill.data.initialBehaviors[0].CanExecute(this, destination, skill)
+                    )
                     {
-                        if (!movableTiles.Contains(destination)) movableTiles.Add(destination);
+                        if (!movableTiles.Contains(destination))
+                            movableTiles.Add(destination);
                     }
                 }
             }
@@ -305,22 +333,29 @@ public virtual void ShowAvailableActions()
             onComplete?.Invoke();
             return;
         }
-        
+
         StartCoroutine(MoveAlongPathCoroutine(path, onComplete));
     }
 
-    private System.Collections.IEnumerator MoveAlongPathCoroutine(List<Vector2Int> path, Action onComplete)
+    private System.Collections.IEnumerator MoveAlongPathCoroutine(
+        List<Vector2Int> path,
+        Action onComplete
+    )
     {
         float moveSpeed = 5f;
-        
+
         foreach (var targetCell in path)
         {
             Vector3 startPos = transform.position;
-            Vector3 endPos = new Vector3(targetCell.x + 0.5f, transform.position.y, targetCell.y + 0.5f);
+            Vector3 endPos = new Vector3(
+                targetCell.x + 0.5f,
+                transform.position.y,
+                targetCell.y + 0.5f
+            );
             float distance = Vector3.Distance(startPos, endPos);
             float duration = distance / moveSpeed;
             float elapsed = 0f;
-            
+
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
@@ -328,9 +363,9 @@ public virtual void ShowAvailableActions()
                 transform.position = Vector3.Lerp(startPos, endPos, t);
                 yield return null;
             }
-            
+
             transform.position = endPos;
-            
+
             var gridManager = Core.Instance?.GridManager;
             if (gridManager != null)
             {
@@ -338,27 +373,34 @@ public virtual void ShowAvailableActions()
                 position = targetCell;
             }
         }
-        
+
         onComplete?.Invoke();
     }
 
-
-public float PerformAttackMotion(Vector2Int targetPos, System.Action onHitFrame)
+    public float PerformAttackMotion(Vector2Int targetPos, System.Action onHitFrame)
     {
         float speedMultiplier = unitData != null ? unitData.animationSpeedMultiplier : 1.0f;
-        
+
         Vector3 originalPos = transform.position;
-        Vector3 targetWorldPos = new Vector3(targetPos.x + 0.5f, transform.position.y, targetPos.y + 0.5f);
-        Vector3 attackPos = Vector3.Lerp(originalPos, targetWorldPos, UnitAnimationConfig.ATTACK_APPROACH_DISTANCE_RATIO);
-        
+        Vector3 targetWorldPos = new Vector3(
+            targetPos.x + 0.5f,
+            transform.position.y,
+            targetPos.y + 0.5f
+        );
+        Vector3 attackPos = Vector3.Lerp(
+            originalPos,
+            targetWorldPos,
+            UnitAnimationConfig.ATTACK_APPROACH_DISTANCE_RATIO
+        );
+
         float approachDuration = UnitAnimationConfig.GetAttackApproachDuration(speedMultiplier);
         float hitDuration = UnitAnimationConfig.GetAttackHitDuration(speedMultiplier);
         float returnDuration = UnitAnimationConfig.GetAttackReturnDuration(speedMultiplier);
-        
+
         Sequence seq = DOTween.Sequence();
-        
+
         seq.Append(transform.DOMove(attackPos, approachDuration).SetEase(Ease.OutExpo));
-        
+
         if (_animator != null)
         {
             seq.AppendCallback(() => _animator.Play("Attack"));
@@ -368,23 +410,31 @@ public float PerformAttackMotion(Vector2Int targetPos, System.Action onHitFrame)
         {
             seq.AppendInterval(hitDuration);
         }
-        
+
         seq.AppendCallback(() => onHitFrame?.Invoke());
-        
+
         seq.Append(transform.DOMove(originalPos, returnDuration).SetEase(Ease.InQuad));
-        
+
         return UnitAnimationConfig.GetTotalAttackDuration(speedMultiplier);
     }
 
-
-public void PlayFlashEffect(Color flashColor, float duration)
+    public void PlayFlashEffect(Color flashColor, float duration)
     {
-        if (_renderer == null || _propertyBlock == null) return;
-        
-        DOVirtual.Float(1f, 0f, duration, (amount) => {
-            _propertyBlock.SetColor("_FlashColor", flashColor);
-            _propertyBlock.SetFloat("_FlashAmount", amount);
-            _renderer.SetPropertyBlock(_propertyBlock);
-        }).SetEase(Ease.OutQuad);
+        if (_renderer == null || _propertyBlock == null)
+            return;
+
+        DOVirtual
+            .Float(
+                1f,
+                0f,
+                duration,
+                (amount) =>
+                {
+                    _propertyBlock.SetColor("_FlashColor", flashColor);
+                    _propertyBlock.SetFloat("_FlashAmount", amount);
+                    _renderer.SetPropertyBlock(_propertyBlock);
+                }
+            )
+            .SetEase(Ease.OutQuad);
     }
 }

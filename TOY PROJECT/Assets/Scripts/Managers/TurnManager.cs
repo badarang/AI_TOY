@@ -663,8 +663,7 @@ public class TurnManager : MonoBehaviour, IManager
 
     public bool HasUsableSkills()
     {
-        if (selectedUnit == null) return false;
-
-        return selectedUnit.GetSkills().Any(skill => skill.currentCooldown == 0 && selectedUnit.ap >= skill.GetAPCost());
+        var player = stageManager.GetPlayer();
+        return player.GetSkills().Any(skill => skill.currentCooldown == 0 && player.ap >= skill.GetAPCost());
     }
 }

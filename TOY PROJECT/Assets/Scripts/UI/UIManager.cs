@@ -1,46 +1,54 @@
-using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using UnityEngine;
 using UnityEngine.Events;
 
 public class UIManager : MonoBehaviour, IManager
 {
+    public void BeforeInit() { }
 
-public void BeforeInit()
-    {
-    }
-
-    public void AfterInit()
-    {
-    }
+    public void AfterInit() { }
 
     [Header("Component References")]
     public TurnOrderUI turnOrderUI;
-        public UnitInfoUI unitInfoUI;
+    public UnitInfoUI unitInfoUI;
 
     public PopupUI popupUI;
-public SkillPanelUI skillPanelUI;
+    public SkillPanelUI skillPanelUI;
 
     [Header("In-Game UI")]
-    [SerializeField] private TextMeshProUGUI turnCounterText;
+    [SerializeField]
+    private TextMeshProUGUI turnCounterText;
 
     [Header("Reward Screen")]
-    [SerializeField] private GameObject rewardScreenPanel;
-    [SerializeField] private GameObject rewardCardPrefab;
-    [SerializeField] private Transform rewardCardsContainer;
+    [SerializeField]
+    private GameObject rewardScreenPanel;
+
+    [SerializeField]
+    private GameObject rewardCardPrefab;
+
+    [SerializeField]
+    private Transform rewardCardsContainer;
 
     [Header("Node Selection Screen")]
-    [SerializeField] private GameObject nodeSelectionScreenPanel;
-    [SerializeField] private GameObject nodeButtonPrefab; // 각 노드를 나타낼 버튼 프리팹
-    [SerializeField] private Transform nodeButtonsContainer; // 버튼들이 생성될 부모 객체
+    [SerializeField]
+    private GameObject nodeSelectionScreenPanel;
+
+    [SerializeField]
+    private GameObject nodeButtonPrefab; // 각 노드를 나타낼 버튼 프리팹
+
+    [SerializeField]
+    private Transform nodeButtonsContainer; // 버튼들이 생성될 부모 객체
 
     void Start()
     {
-        if (rewardScreenPanel != null) rewardScreenPanel.SetActive(false);
-        if (nodeSelectionScreenPanel != null) nodeSelectionScreenPanel.SetActive(false);
+        if (rewardScreenPanel != null)
+            rewardScreenPanel.SetActive(false);
+        if (nodeSelectionScreenPanel != null)
+            nodeSelectionScreenPanel.SetActive(false);
     }
 
-void PositionUIToBottomRight()
+    void PositionUIToBottomRight()
     {
         if (unitInfoUI != null)
         {
@@ -69,7 +77,6 @@ void PositionUIToBottomRight()
         }
     }
 
-
     public void UpdateTurnUI(int currentTurnInWave, int turnLimit)
     {
         if (turnCounterText != null)
@@ -79,7 +86,7 @@ void PositionUIToBottomRight()
         }
     }
 
-public void ShowUnitInfo(UnitBase unit)
+    public void ShowUnitInfo(UnitBase unit)
     {
         if (unitInfoUI != null)
         {
@@ -95,7 +102,7 @@ public void ShowUnitInfo(UnitBase unit)
         }
     }
 
-public void HideSkillPanel()
+    public void HideSkillPanel()
     {
         if (skillPanelUI != null)
         {
@@ -103,13 +110,13 @@ public void HideSkillPanel()
         }
     }
 
-
-
     public void ShowRewardScreen(List<ScriptableObject> rewards)
     {
-        if (rewardScreenPanel == null) return;
+        if (rewardScreenPanel == null)
+            return;
 
-        foreach (Transform child in rewardCardsContainer) Destroy(child.gameObject);
+        foreach (Transform child in rewardCardsContainer)
+            Destroy(child.gameObject);
 
         rewardScreenPanel.SetActive(true);
 
@@ -122,7 +129,8 @@ public void HideSkillPanel()
 
     public void HideRewardScreen()
     {
-        if (rewardScreenPanel != null) rewardScreenPanel.SetActive(false);
+        if (rewardScreenPanel != null)
+            rewardScreenPanel.SetActive(false);
     }
 
     /// <summary>
@@ -130,9 +138,11 @@ public void HideSkillPanel()
     /// </summary>
     public void ShowNodeSelectionScreen(List<MapNodeData> nextNodes)
     {
-        if (nodeSelectionScreenPanel == null) return;
+        if (nodeSelectionScreenPanel == null)
+            return;
 
-        foreach (Transform child in nodeButtonsContainer) Destroy(child.gameObject);
+        foreach (Transform child in nodeButtonsContainer)
+            Destroy(child.gameObject);
 
         nodeSelectionScreenPanel.SetActive(true);
 
@@ -149,10 +159,9 @@ public void HideSkillPanel()
     /// </summary>
     public void HideNodeSelectionScreen()
     {
-        if (nodeSelectionScreenPanel != null) nodeSelectionScreenPanel.SetActive(false);
+        if (nodeSelectionScreenPanel != null)
+            nodeSelectionScreenPanel.SetActive(false);
     }
-
-    // --- 기존 메서드들 ---
 
 public void ShowEndTurnConfirmPopup(UnityAction onConfirm)
     {
@@ -162,7 +171,7 @@ public void ShowEndTurnConfirmPopup(UnityAction onConfirm)
                 "Turn End Confirmation",
                 "You still have usable skills. Are you sure you want to end your turn?",
                 onConfirm,
-                null
+                () => { }
             );
         }
     }
