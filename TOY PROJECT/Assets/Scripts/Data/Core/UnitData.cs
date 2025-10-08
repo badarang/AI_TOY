@@ -18,6 +18,9 @@ public class UnitData : ScriptableObject
     public int maxAp;
     public SkillData[] skills;
 
-    [Header("AI & Difficulty")]
+    
+    [Header("Animation")]
+    public float animationSpeedMultiplier = 1.0f;
+[Header("AI & Difficulty")]
     public int difficultyScore = 1; // 이 유닛의 난이도 점수
 }

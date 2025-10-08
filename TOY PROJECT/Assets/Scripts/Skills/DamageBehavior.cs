@@ -19,14 +19,15 @@ public override bool CanExecute(UnitBase caster, Vector2Int targetPos, Skill ski
     
 public override float Execute(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
-        // 스킬의 modifiers에서 증가된 데미지 가져오기
         int finalDamage = skill.GetModifiedValue("damage", damage);
-        
         UnitBase target = Core.Instance.GridManager.GetUnitAt(targetPos);
+        
         if (target != null)
         {
-            DebugPrinter.LogColor(LogType.Action, $"{target.name}에게 {finalDamage}의 피해를 입혔습니다!");
-            target.TakeDamage(finalDamage);
+            return caster.PerformAttackMotion(targetPos, () => {
+                DebugPrinter.LogColor(LogType.Action, $"{target.name}에게 {finalDamage}의 피해를 입혔습니다!");
+                target.TakeDamage(finalDamage);
+            });
         }
         return 0f;
     }

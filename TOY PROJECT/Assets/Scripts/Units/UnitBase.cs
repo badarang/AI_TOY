@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using UnityEngine.UI;
+using DG.Tweening;
+
 
 public class UnitBase : MonoBehaviour
 {
@@ -14,6 +16,8 @@ public class UnitBase : MonoBehaviour
     private Action OnSelected;
     private Action OnDeselected;
     private List<Skill> _skills = new List<Skill>();
+    private Animator _animator;
+
 
 protected virtual void Awake()
     {
@@ -23,7 +27,10 @@ protected virtual void Awake()
             ap = unitData.maxAp;
             
             // SkillData로부터 Skill 인스턴스 생성
-            foreach (var skillData in unitData.skills)
+            
+            _animator = GetComponent<Animator>();
+            
+foreach (var skillData in unitData.skills)
             {
                 _skills.Add(new Skill(skillData));
             }
@@ -322,5 +329,39 @@ public virtual void ShowAvailableActions()
         }
         
         onComplete?.Invoke();
+    }
+
+
+public float PerformAttackMotion(Vector2Int targetPos, System.Action onHitFrame)
+    {
+        float speedMultiplier = unitData != null ? unitData.animationSpeedMultiplier : 1.0f;
+        
+        Vector3 originalPos = transform.position;
+        Vector3 targetWorldPos = new Vector3(targetPos.x + 0.5f, transform.position.y, targetPos.y + 0.5f);
+        Vector3 attackPos = Vector3.Lerp(originalPos, targetWorldPos, UnitAnimationConfig.ATTACK_APPROACH_DISTANCE_RATIO);
+        
+        float approachDuration = UnitAnimationConfig.GetAttackApproachDuration(speedMultiplier);
+        float hitDuration = UnitAnimationConfig.GetAttackHitDuration(speedMultiplier);
+        float returnDuration = UnitAnimationConfig.GetAttackReturnDuration(speedMultiplier);
+        
+        Sequence seq = DOTween.Sequence();
+        
+        seq.Append(transform.DOMove(attackPos, approachDuration).SetEase(Ease.OutExpo));
+        
+        if (_animator != null)
+        {
+            seq.AppendCallback(() => _animator.Play("Attack"));
+            seq.AppendInterval(hitDuration);
+        }
+        else
+        {
+            seq.AppendInterval(hitDuration);
+        }
+        
+        seq.AppendCallback(() => onHitFrame?.Invoke());
+        
+        seq.Append(transform.DOMove(originalPos, returnDuration).SetEase(Ease.InQuad));
+        
+        return UnitAnimationConfig.GetTotalAttackDuration(speedMultiplier);
     }
 }
