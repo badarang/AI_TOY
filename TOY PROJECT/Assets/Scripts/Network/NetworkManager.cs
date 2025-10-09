@@ -187,7 +187,7 @@ public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
             else if (playerIndex == 2)
             {
                 // Second player (Client) - Player 2
-                unitType = UnitType.Player_Vrixa;
+                unitType = UnitType.Player_Hikai;
                 spawnPosition = new Vector2Int(0, 1); // TODO: Get from stage data
                 Debug.Log($"[NetworkManager] Spawning Player 2 (Client): {unitType} for {player} at {spawnPosition}");
             }
