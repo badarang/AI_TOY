@@ -132,6 +132,7 @@ public class WaitingRoomUIManager : MonoBehaviour, IManager
         }
 
         Debug.Log($"[WaitingRoomUI] Ready state: {isReady}");
+        waitingRoomManager.OnReadyButtonClicked();
     }
 
     private void OnStartGameButtonClick()

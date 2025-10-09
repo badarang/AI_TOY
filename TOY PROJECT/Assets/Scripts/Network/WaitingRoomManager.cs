@@ -57,9 +57,8 @@ public class WaitingRoomManager : NetworkBehaviour
         OnAllPlayersReadyStatusChanged?.Invoke(newValue);
     }
 
-    // --- 기존 로직 동일 ---
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    public void RPC_ToggleReady(RpcInfo info = default)
+    public void ToggleReadyRpc(RpcInfo info = default)
     {
         PlayerRef player = info.Source;
         bool currentState = PlayerReadyStates.TryGet(player, out var ready) && ready;
@@ -69,11 +68,11 @@ public class WaitingRoomManager : NetworkBehaviour
         Debug.Log($"[WaitingRoomManager] Player {player.PlayerId} ready state set to: {newState}");
 
         CheckAllPlayersReady();
-        RPC_NotifyReadyStateChanged(player, newState);
+        NotifyReadyStateChangedRpc(player, newState);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_NotifyReadyStateChanged(PlayerRef player, NetworkBool isReady)
+    private void NotifyReadyStateChangedRpc(PlayerRef player, NetworkBool isReady)
     {
         OnPlayerReadyStateChanged?.Invoke(player, isReady);
     }
@@ -101,14 +100,8 @@ public class WaitingRoomManager : NetworkBehaviour
         AllPlayersReady = true;
     }
 
-    public void OnStartButtonClicked()
-    {
-        Debug.Log("Start button clicked. Requesting game start...");
-        RPC_RequestGameStart();
-    }
-
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    private void RPC_RequestGameStart(RpcInfo info = default)
+    private void RequestGameStartRpc(RpcInfo info = default)
     {
         Debug.Log($"[Host] Received game start request from {info.Source.PlayerId}.");
         if (AllPlayersReady)
@@ -121,4 +114,16 @@ public class WaitingRoomManager : NetworkBehaviour
             Debug.LogWarning("[Host] Start request denied: Not all players are ready.");
         }
     }
+
+    public void OnReadyButtonClicked()
+    {
+        ToggleReadyRpc();
+    }
+
+    public void OnStartButtonClicked()
+    {
+        Debug.Log("Start button clicked. Requesting game start...");
+        RequestGameStartRpc();
+    }
+
 }
