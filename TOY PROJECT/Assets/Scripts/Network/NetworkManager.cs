@@ -1,7 +1,10 @@
 using UnityEngine;
 using Fusion;
+using System.Collections.Generic;
+using System.Linq;
+using Fusion.Sockets; // For INetworkRunnerCallbacks
 
-public class NetworkManager : MonoBehaviour, IManager
+public class NetworkManager : MonoBehaviour, IManager, INetworkRunnerCallbacks
 {
     public static NetworkManager Instance { get; private set; }
 
@@ -35,6 +38,7 @@ public class NetworkManager : MonoBehaviour, IManager
         }
 
         currentRunner = Instantiate(networkRunnerPrefab);
+        currentRunner.AddCallbacks(this);
         currentRunner.name = "NetworkRunner";
 
         var sceneManager = currentRunner.gameObject.AddComponent<NetworkSceneManagerDefault>();
@@ -69,6 +73,7 @@ public class NetworkManager : MonoBehaviour, IManager
         }
 
         currentRunner = Instantiate(networkRunnerPrefab);
+        currentRunner.AddCallbacks(this);
         currentRunner.name = "NetworkRunner";
 
         var sceneManager = currentRunner.gameObject.AddComponent<NetworkSceneManagerDefault>();
@@ -149,4 +154,74 @@ public class NetworkManager : MonoBehaviour, IManager
             Instance = null;
         }
     }
+
+    #region INetworkRunnerCallbacks
+
+public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
+    {
+        if (runner.IsServer)
+        {
+            Debug.Log($"[NetworkManager] OnPlayerJoined on Server. Player Ref: {player}. Total Players: {runner.ActivePlayers.Count()}");
+
+            // This logic assumes the InGame scene is already loaded.
+            // In a more complex flow, you might need to wait for the scene to be loaded.
+            var stageManager = Core.Instance?.StageManager;
+            if (stageManager == null)
+            {
+                Debug.LogError("[NetworkManager] StageManager not found, cannot spawn player. Make sure the game scene is loaded.");
+                return;
+            }
+
+            // Determine unit type and spawn position based on player order
+            UnitType unitType;
+            Vector2Int spawnPosition;
+            int playerIndex = runner.ActivePlayers.Count();
+
+            if (playerIndex == 1)
+            {
+                // First player (Host) - Player 1
+                unitType = UnitType.Player_Hikai;
+                spawnPosition = new Vector2Int(0, 0); // TODO: Get from stage data
+                Debug.Log($"[NetworkManager] Spawning Player 1 (Host): {unitType} for {player} at {spawnPosition}");
+            }
+            else if (playerIndex == 2)
+            {
+                // Second player (Client) - Player 2
+                unitType = UnitType.Player_Vrixa;
+                spawnPosition = new Vector2Int(0, 1); // TODO: Get from stage data
+                Debug.Log($"[NetworkManager] Spawning Player 2 (Client): {unitType} for {player} at {spawnPosition}");
+            }
+            else
+            {
+                Debug.LogWarning($"[NetworkManager] More than 2 players joined. Player {player} will not be spawned.");
+                return;
+            }
+            
+            stageManager.SpawnPlayer(player, unitType, spawnPosition);
+        }
+    }
+
+    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
+    public void OnInput(NetworkRunner runner, NetworkInput input) { }
+    public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
+    public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
+    public void OnConnectedToServer(NetworkRunner runner) { }
+    public void OnDisconnectedFromServer(NetworkRunner runner) { }
+    public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
+    public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
+    public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
+    public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }
+    public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
+    public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
+    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, System.ArraySegment<byte> data) { }
+    public void OnSceneLoadDone(NetworkRunner runner) { }
+    public void OnSceneLoadStart(NetworkRunner runner) { }
+    public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+    public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
+    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, System.ArraySegment<byte> data) { }
+    public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
+
+
+    #endregion
 }

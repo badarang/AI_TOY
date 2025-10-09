@@ -44,15 +44,25 @@ public class UnitBase : NetworkBehaviour
     protected GameAssetDatabase Database => Core.Instance?.GameDatabase;
 
 
+    public override void Spawned()
+    {
+        // Initialize networked properties on the StateAuthority (server).
+        // These values will be replicated to all clients.
+        if (HasStateAuthority)
+        {
+            if (unitData != null)
+            { 
+                HP = unitData.maxHp;
+                AP = unitData.maxAp;
+            }
+        }
+    }
+
     protected virtual void Awake()
     {
         if (unitData != null)
         {
-            hp = unitData.maxHp;
-            ap = unitData.maxAp;
-
-            // SkillData로부터 Skill 인스턴스 생성
-
+            // Non-networked initialization can stay here.
             _animator = GetComponent<Animator>();
             _renderer = GetComponentInChildren<Renderer>();
             if (_renderer != null)
@@ -60,6 +70,7 @@ public class UnitBase : NetworkBehaviour
                 _propertyBlock = new MaterialPropertyBlock();
             }
 
+            // Skills are local objects, so they can be created here.
             foreach (var skillData in unitData.skills)
             {
                 _skills.Add(new Skill(skillData));

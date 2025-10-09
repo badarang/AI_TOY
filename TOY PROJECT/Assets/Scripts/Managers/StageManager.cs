@@ -22,7 +22,6 @@ public class StageManager : NetworkBehaviour, IManager
 
     // --- Local State ---
     private StageData currentStageData;
-    private PlayerUnit player;
     private List<EnemyUnit> enemies = new List<EnemyUnit>();
     private List<GameObject> spawnedObstacles = new List<GameObject>();
     private List<GameObject> spawnedPortals = new List<GameObject>();
@@ -34,9 +33,10 @@ public class StageManager : NetworkBehaviour, IManager
 
     public override void Spawned()
     {
+        // On server, we signal the GameManager that we are ready to start the game flow.
         if (HasStateAuthority)
         {
-            LoadStageOnServerRpc("Stage_1");
+            Core.Instance.GameManager.OnStageManagerReady();
         }
     }
 
@@ -130,10 +130,11 @@ public class StageManager : NetworkBehaviour, IManager
         spawnedPortals.Clear();
 
         gridManager.ClearGrid();
-        if (Core.Instance?.TurnManager != null)
-        {
-            Core.Instance.TurnManager.ClearTurn();
-        }
+        // The new TurnManager resets automatically via its own logic.
+        // if (Core.Instance?.TurnManager != null)
+        // {
+        //     Core.Instance.TurnManager.ClearTurn();
+        // }
     }
 
     #endregion
@@ -198,20 +199,42 @@ public class StageManager : NetworkBehaviour, IManager
         }
     }
 
-    public async UniTask SpawnPlayer(Vector2Int spawnPosition)
+    public async UniTask SpawnPlayer(PlayerRef playerRef, UnitType unitType, Vector2Int spawnPosition)
     {
-        if (!HasStateAuthority || currentStageData == null) return;
+        if (!HasStateAuthority) return;
 
-        string prefabKey = GetPrefabName(currentStageData.playerType);
+        string prefabKey = GetPrefabName(unitType);
         var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Units/{prefabKey}.prefab");
-        await handle.Task;
-        if (handle.Status != AsyncOperationStatus.Succeeded) return;
+        GameObject prefabToSpawn = await handle.Task;
 
-        NetworkObject playerNO = Runner.Spawn(handle.Result, GridToWorld(spawnPosition), Quaternion.identity);
-        player = playerNO.GetComponent<PlayerUnit>();
-        player.position = spawnPosition;
+        if (prefabToSpawn == null)
+        {
+            Debug.LogError($"[StageManager] Addressables loaded successfully, but the resulting prefab is null for key: {prefabKey}");
+            Addressables.Release(handle);
+            return;
+        }
+
+        if (prefabToSpawn.GetComponent<NetworkObject>() == null)
+        {
+            Debug.LogError($"[StageManager] The prefab '{prefabKey}' is missing the NetworkObject component on its root.");
+            Addressables.Release(handle);
+            return;
+        }
+
+        // Use SpawnAsync to prevent sync-loading exceptions.
+        NetworkObject playerNO = await Runner.SpawnAsync(prefabToSpawn, GridToWorld(spawnPosition), Quaternion.identity, playerRef);
         
-        gridManager.RegisterUnit(player, spawnPosition);
+        if (playerNO == null)
+        {
+            Debug.LogError($"[StageManager] Runner.SpawnAsync returned null. Is the prefab '{prefabKey}' registered in your NetworkProjectConfig?");
+            Addressables.Release(handle);
+            return;
+        }
+
+        var playerUnit = playerNO.GetComponent<PlayerUnit>();
+        playerUnit.position = spawnPosition;
+        
+        gridManager.RegisterUnit(playerUnit, spawnPosition);
     }
 
     public async UniTask SpawnEnemiesForTurn(int turnNumber)
@@ -223,22 +246,51 @@ public class StageManager : NetworkBehaviour, IManager
 
         Debug.Log($"[Server] Spawning {enemiesToSpawn.Count} enemies for turn {turnNumber}");
 
+        List<UniTask> spawnTasks = new List<UniTask>();
+
         foreach (var spawnInfo in enemiesToSpawn)
         {
-            UnitType enemyType = (UnitType)spawnInfo.enemyTypeIndex;
-            string prefabKey = GetPrefabName(enemyType);
-            if (string.IsNullOrEmpty(prefabKey)) continue;
+            spawnTasks.Add(SpawnSingleEnemy(spawnInfo));
+        }
 
-            var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Units/{prefabKey}.prefab");
-            await handle.Task;
-            if (handle.Status != AsyncOperationStatus.Succeeded) continue;
+        await UniTask.WhenAll(spawnTasks);
+    }
 
-            NetworkObject enemyNO = Runner.Spawn(handle.Result, GridToWorld(spawnInfo.spawnPos), Quaternion.identity);
+    private async UniTask SpawnSingleEnemy(NetworkEnemySpawnInfo spawnInfo)
+    {
+        UnitType enemyType = (UnitType)spawnInfo.enemyTypeIndex;
+        string prefabKey = GetPrefabName(enemyType);
+        if (string.IsNullOrEmpty(prefabKey)) return;
+
+        var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Units/{prefabKey}.prefab");
+        GameObject prefabToSpawn = await handle.Task;
+
+        if (prefabToSpawn == null)
+        {
+            Debug.LogError($"[StageManager] Failed to load enemy prefab: {prefabKey}");
+            Addressables.Release(handle);
+            return;
+        }
+
+        // Use SpawnAsync here as well.
+        NetworkObject enemyNO = await Runner.SpawnAsync(prefabToSpawn, GridToWorld(spawnInfo.spawnPos), Quaternion.identity);
+        
+        if (enemyNO != null)
+        {
             EnemyUnit enemy = enemyNO.GetComponent<EnemyUnit>();
             enemy.position = spawnInfo.spawnPos;
             
-            enemies.Add(enemy);
+            // The authoritative list is still useful on the server.
+            if (HasStateAuthority)
+            {
+                enemies.Add(enemy);
+            }
             gridManager.RegisterUnit(enemy, spawnInfo.spawnPos);
+        }
+        else
+        {
+            Debug.LogError($"[StageManager] Failed to spawn enemy: {prefabKey}");
+            Addressables.Release(handle);
         }
     }
 
@@ -263,10 +315,43 @@ public class StageManager : NetworkBehaviour, IManager
 
     #region Getters & Helpers
 
-    public void RegisterEnemy(EnemyUnit enemy) { if (!enemies.Contains(enemy)) enemies.Add(enemy); }
-    public void UnregisterEnemy(EnemyUnit enemy) { if (enemies.Contains(enemy)) enemies.Remove(enemy); }
-    public PlayerUnit GetPlayer() { return player; }
-    public List<EnemyUnit> GetEnemies() { return enemies; }
+    public void RegisterEnemy(EnemyUnit enemy) 
+    {
+        if (HasStateAuthority)
+        {
+            if (!enemies.Contains(enemy)) enemies.Add(enemy);
+        }
+    }
+
+    public void UnregisterEnemy(EnemyUnit enemy) 
+    {
+        if (HasStateAuthority)
+        {
+            if (enemies.Contains(enemy)) enemies.Remove(enemy);
+        }
+    }
+
+    public List<PlayerUnit> GetAllPlayers() 
+    {
+        return new List<PlayerUnit>(FindObjectsOfType<PlayerUnit>());
+    }
+
+    public List<EnemyUnit> GetEnemies() 
+    {
+        // The Server (StateAuthority) maintains the definitive list of enemies.
+        if (HasStateAuthority)
+        {
+            // Clean up the list from any null references (e.g., despawned enemies).
+            enemies.RemoveAll(item => item == null);
+            return enemies;
+        }
+        else
+        {
+            // On clients, find all spawned enemies using Unity's API.
+            return new List<EnemyUnit>(FindObjectsOfType<EnemyUnit>());
+        }
+    }
+
     public StageData GetCurrentStageData() { return currentStageData; }
     public NetworkStageInfo GetCurrentStageInfo() { return CurrentStageInfo; }
 

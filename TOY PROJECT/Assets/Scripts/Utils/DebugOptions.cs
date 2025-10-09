@@ -14,7 +14,7 @@ public partial class SROptions
     {
         if (Core.Instance != null && Core.Instance.TurnManager != null)
         {
-            Core.Instance.TurnManager.EndTurn();
+            Core.Instance.TurnManager.RequestEndTurn();
             DebugPrinter.LogColor(LogType.Debug, "턴이 끝났습니다.");
         }
     }
@@ -23,17 +23,14 @@ public partial class SROptions
     [DisplayName("Add Player AP +1")]
     public void AddPlayerAP()
     {
-        var player = Core.Instance?.StageManager?.GetPlayer();
-        if (player != null)
+        var players = Core.Instance?.StageManager?.GetAllPlayers();
+        if (players != null)
         {
-            player.ap += 1;
-            DebugPrinter.LogColor(LogType.Debug, $"Player AP is now {player.ap}");
-
-            // If player is selected, refresh highlights
-            // if (Core.Instance.GridManager.GetSelectedUnit() == player)
-            // {
-            //     player.ShowAvailableActions();
-            // }
+            foreach(var player in players)
+            {
+                player.ap += 1;
+                DebugPrinter.LogColor(LogType.Debug, $"Player {player.name} AP is now {player.ap}");
+            }
         }
     }
 

@@ -132,9 +132,10 @@ public class InputManager : MonoBehaviour, IManager
         }
     }
 
-    private void ProcessTurnClick()
+private void ProcessTurnClick()
     {
-        if (turnManager.CurrentTurn != TurnManager.Turn.Player) return;
+        // Check if it's a player turn (not AI turn)
+        if (!turnManager.IsPlayerTurn) return;
 
         if (IsPointerOverUI())
         {
@@ -149,30 +150,11 @@ public class InputManager : MonoBehaviour, IManager
             Vector3 hitPoint = ray.GetPoint(distance);
             Vector2Int cell = new Vector2Int(Mathf.FloorToInt(hitPoint.x), Mathf.FloorToInt(hitPoint.z));
             
-            var gridManager = Core.Instance.GridManager;
-            var unitAtCell = gridManager.GetUnitAt(cell);
-            
-            if (unitAtCell != null)
-            {
-                var isPlayerActing = turnManager.CurrentPlayerState == TurnManager.PlayerTurnState.UnitSelected 
-                    && turnManager.SelectedUnit != null;
-                
-                var canAttackThisEnemy = isPlayerActing 
-                    && unitAtCell is EnemyUnit 
-                    && turnManager.SelectedUnit is PlayerUnit playerUnit
-                    && turnManager.CanAttackTarget(playerUnit, cell);
-                
-                if (!canAttackThisEnemy)
-                {
-                    Core.Instance.UIManager.ShowUnitInfo(unitAtCell);
-                }
-            }
-            
             turnManager.HandleCellClick(cell);
         }
         else
         {
-            turnManager.CancelSelection();
+            turnManager.ClearSelection();
         }
     }
 

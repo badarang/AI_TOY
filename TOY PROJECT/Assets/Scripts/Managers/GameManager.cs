@@ -37,7 +37,9 @@ public class GameManager : MonoBehaviour, IManager
 
     // --- 게임 상태 ---
     private int currentLayerIndex = -1;
-    private bool isPlayerSpawned = false;
+    // private bool isPlayerSpawned = false; // No longer used, player spawning is handled by NetworkManager.
+
+    private bool isGameStarted = false;
 
     public void BeforeInit() { }
 
@@ -46,6 +48,18 @@ public class GameManager : MonoBehaviour, IManager
         stageManager = Core.Instance.StageManager;
         turnManager = Core.Instance.TurnManager;
 
+        // We no longer start the game here. We wait for the StageManager to be ready.
+    }
+
+    /// <summary>
+    /// Called by StageManager once it has been spawned on the network.
+    /// This is the new entry point for starting the game logic.
+    /// </summary>
+    public void OnStageManagerReady()
+    {
+        if (isGameStarted) return;
+        isGameStarted = true;
+
         StartNewGame(startingChapter);
     }
 
@@ -53,7 +67,6 @@ public class GameManager : MonoBehaviour, IManager
     {
         Debug.Log($"새로운 챕터를 시작합니다: {chapter.chapterName}");
         currentLayerIndex = -1; // 다음 함수에서 0으로 증가하며 시작
-        isPlayerSpawned = false;
 
         // TODO: 기존 게임 데이터 초기화 (인벤토리, 플레이어 스탯 등)
 
@@ -115,13 +128,7 @@ public class GameManager : MonoBehaviour, IManager
         // 서버에게 스테이지 로드를 요청합니다. (이름으로)
         stageManager.LoadStageOnServerRpc(stageToLoad.name);
 
-        // 플레이어 스폰은 서버에서 한 번만 수행합니다.
-        if (!isPlayerSpawned)
-        {
-            // StageManager의 SpawnPlayer는 서버에서만 실행됩니다.
-            await stageManager.SpawnPlayer(stageToLoad.playerSpawn);
-            isPlayerSpawned = true;
-        }
+        // Player spawning is now handled by NetworkManager.
 
         // 전투 스테이지인 경우, 턴 매니저를 통해 첫 웨이브를 시작합니다.
         if (

@@ -19,19 +19,22 @@ public void BeforeInit()
     {
         Debug.Log("--- Enemy Turn Start ---");
         var enemies = Core.Instance.StageManager.GetEnemies();
-        var player = Core.Instance.StageManager.GetPlayer();
+        var players = Core.Instance.StageManager.GetAllPlayers();
 
-        if (player == null)
+        if (players == null || players.Count == 0)
         {
-            Debug.LogWarning("Player not found, ending enemy turn.");
+            Debug.LogWarning("No players found, ending enemy turn.");
             yield break;
         }
+
+        // Simple AI: Always target the first player (usually the host).
+        var targetPlayer = players[0];
 
         foreach (var enemy in enemies)
         {
             if (enemy == null) continue;
 
-            DecideAndExecuteAction(enemy, player);
+            DecideAndExecuteAction(enemy, targetPlayer);
 
             // 각 적의 행동 사이에 딜레이
             yield return new WaitForSeconds(1.0f);

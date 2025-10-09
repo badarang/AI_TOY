@@ -68,15 +68,11 @@ public class Skill
         }
 
         // Sub-Targeting 로직 처리
-        if (data.subTargetBehaviors != null && data.subTargetBehaviors.Length > 0)
-        {
-            Core.Instance.TurnManager.PausedSkill = this;
-            Core.Instance.TurnManager.PausedCaster = caster;
-            Core.Instance.TurnManager.SetPlayerState(
-                TurnManager.PlayerTurnState.AwaitingSkillSubTarget
-            );
-            Debug.Log("Sub-targeting skill used. TurnManager will handle the state.");
-        }
+        // Sub-Targeting 로직 처리 (현재 비활성화)
+        // if (data.subTargetBehaviors != null && data.subTargetBehaviors.Length > 0)
+        // {
+        //     Debug.Log("Sub-targeting skill used.");
+        // }
 
         return totalDuration;
     }

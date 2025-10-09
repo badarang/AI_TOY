@@ -1004,6 +1004,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53b692c8feb5a46868478a5773d75f8a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _TurnNumber: 0
+  _IsPlayerTurn:
+    _value: 0
 --- !u!4 &877073172
 Transform:
   m_ObjectHideFlags: 0
@@ -1456,6 +1459,7 @@ MonoBehaviour:
   popupUI: {fileID: 1906469300}
   skillPanelUI: {fileID: 1946080147}
   turnCounterText: {fileID: 2012989083}
+  endTurnButton: {fileID: 0}
   rewardScreenPanel: {fileID: 7691244260917197685, guid: 87e56ddc8cde54d2ba68793c525948ca, type: 3}
   rewardCardPrefab: {fileID: 7691244260917197685, guid: 87e56ddc8cde54d2ba68793c525948ca, type: 3}
   rewardCardsContainer: {fileID: 1677033858}
@@ -1993,6 +1997,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 42c077711deaf4ec09d0eacaa30e4a17, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  turnInfoText: {fileID: 0}
   turnManager: {fileID: 877073171}
 --- !u!114 &1749004298
 MonoBehaviour:

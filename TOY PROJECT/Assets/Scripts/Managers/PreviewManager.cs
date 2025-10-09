@@ -65,8 +65,9 @@ public void BeforeInit()
     {
         ClearAllPreviews();
         
-        var player = stageManager.GetPlayer();
-        if (player == null) return;
+        var players = stageManager.GetAllPlayers();
+        if (players == null || players.Count == 0) return;
+        var targetPlayer = players[0]; // Simple AI: always target the first player for previews
         
         var enemies = stageManager.GetEnemies();
         if (enemies == null || enemies.Count == 0) return;
@@ -75,7 +76,7 @@ public void BeforeInit()
         {
             if (enemy == null) continue;
             
-            var preview = SimulateEnemyAction(enemy, player.position);
+            var preview = SimulateEnemyAction(enemy, targetPlayer.position);
             if (preview != null)
             {
                 currentPreviews[enemy] = preview;

@@ -4,12 +4,51 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
+using Fusion;
+using Fusion.Sockets;
 
-public class TurnManager : MonoBehaviour, IManager
+// TurnManager is now a NetworkBehaviour to manage and sync turn state.
+public class TurnManager : NetworkBehaviour, IManager
 {
-    public void BeforeInit()
+    // --- NETWORKED STATE ---
+    [Networked] public PlayerRef CurrentTurnPlayer { get; private set; }
+    [Networked] public int TurnNumber { get; private set; }
+    [Networked] public NetworkBool IsPlayerTurn { get; set; }
+
+    // --- SERVER-ONLY STATE ---
+    private List<PlayerRef> _playerTurnOrder = new List<PlayerRef>();
+    private int _turnIndex = -1;
+
+    // --- LOCAL/CLIENT STATE ---
+    public enum PlayerTurnState
     {
+        AwaitingTurn, // Not this player's turn
+        AwaitingUnitSelection,
+        UnitSelected,
+        PerformingAction,
+        StageClear
     }
+    public PlayerTurnState CurrentPlayerState { get; private set; }
+
+    // --- EVENTS ---
+    public event Action OnPlayerTurnStart;
+    public event Action OnEnemyTurnStart;
+    public event Action OnPlayerActionEnd;
+
+    // --- MANAGER REFS ---
+    private UIManager uiManager;
+    private bool _isMyTurn = false;
+    public bool IsMyTurn => _isMyTurn;
+
+    private StageManager stageManager;
+    private GridManager gridManager;
+    
+    private PlayerUnit _localSelectedUnit;
+    public PlayerUnit SelectedUnit => _localSelectedUnit;
+
+    #region IManager & Lifecycle
+
+    public void BeforeInit() { }
 
     public void AfterInit()
     {
@@ -18,470 +57,376 @@ public class TurnManager : MonoBehaviour, IManager
         gridManager = Core.Instance.GridManager;
     }
 
-    public event Action OnPlayerTurnStart;
-    public event Action OnPlayerActionEnd; // 플레이어가 턴 안에서 무언가 액션을 했을 때
-    public event Action OnEnemyTurnStart;
-
-    public enum Turn
+    public override void Spawned()
     {
-        Player,
-        Enemy
+        // This component is part of the scene, so it will be spawned on all clients.
+        // We can initialize UI and other non-networked things here.
+        if (Core.Instance != null)
+        {
+            AfterInit();
+        }
     }
 
-    public Turn CurrentTurn { get; private set; }
-
-    public enum PlayerTurnState
+public override void FixedUpdateNetwork()
     {
-        AwaitingUnitSelection,
-        UnitSelected,
-        PerformingAction,
-        AwaitingSkillSubTarget,
-        StageClear
+        // Update the local player's state based on the synced network state
+        bool wasMyTurn = _isMyTurn;
+        _isMyTurn = (CurrentTurnPlayer == Runner.LocalPlayer);
+        
+        if (_isMyTurn && CurrentPlayerState == PlayerTurnState.AwaitingTurn)
+        {
+            Debug.Log("It is now my turn!");
+            SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
+            
+            // Refresh AP for all of this player's units
+            var myUnits = stageManager.GetAllPlayers().Where(p => p.Owner == Runner.LocalPlayer);
+            foreach (var unit in myUnits)
+            {
+                unit.OnTurnStart();
+            }
+            OnPlayerTurnStart?.Invoke();
+            
+            // Update UI to enable EndTurn button
+            if (uiManager != null)
+            {
+                uiManager.SetEndTurnButtonActive(true);
+            }
+        }
+        else if (!_isMyTurn && wasMyTurn)
+        {
+            Debug.Log($"It is now Player {CurrentTurnPlayer}'s turn. I am awaiting.");
+            SetPlayerState(PlayerTurnState.AwaitingTurn);
+            ClearSelection();
+            
+            // Update UI to disable EndTurn button
+            if (uiManager != null)
+            {
+                uiManager.SetEndTurnButtonActive(false);
+            }
+        }
     }
 
-    public PlayerTurnState CurrentPlayerState { get; private set; }
+    #endregion
 
-    // Wave & Turn Limit System
-    private int currentWave = 1;
-    private int turnInWave = 0;
+    #region Turn Flow Control (Server-Only)
 
-    // Paused Skill State
-    public Skill PausedSkill { get; set; }
-    public UnitBase PausedCaster { get; set; }
-
-    // Manager References
-    private UIManager uiManager;
-    private StageManager stageManager;
-    private GridManager gridManager;
-
-    private bool hasMovedThisTurn = false;
-    private bool hasAttackedThisTurn = false;
-    private PlayerUnit selectedUnit;
-    public PlayerUnit SelectedUnit => selectedUnit;
-    private int currentSkillIndex = -1;
-
-    public void ClearTurn()
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    public void RPC_EndTurn()
     {
-        StopAllCoroutines();
-        CurrentTurn = Turn.Player;
-        CurrentPlayerState = PlayerTurnState.AwaitingUnitSelection;
-        selectedUnit = null;
-        currentWave = 1;
-        turnInWave = 0;
-        PausedSkill = null;
-        PausedCaster = null;
-        if (gridManager != null) gridManager.ClearSelection();
-        Debug.Log("TurnManager state cleared.");
+        Debug.Log($"Server received EndTurn RPC from {CurrentTurnPlayer}.");
+        StartNextTurn();
     }
 
     public void StartFirstWave()
     {
-        currentWave = 1;
-        turnInWave = 0;
-        StartPlayerTurn();
-    }
+        if (!HasStateAuthority) return;
 
-    public async void StartPlayerTurn()
-    {
-        CurrentTurn = Turn.Player;
-        turnInWave++;
-        SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
-
-        hasMovedThisTurn = false;
-        hasAttackedThisTurn = false;
-
-        await stageManager.SpawnEnemiesForTurn(turnInWave);
-
-        var player = stageManager.GetPlayer();
-        if (player != null) player.OnTurnStart();
-
-        OnPlayerTurnStart?.Invoke();
-
-        int turnLimit = stageManager.GetCurrentStageData()?.waves[currentWave - 1].clearTurnLimit ?? 5;
-        uiManager.UpdateTurnUI(turnInWave, turnLimit);
-
-        ShowNextTurnEnemyPreview();
-    }
-
-    public void StartEnemyTurn()
-    {
-        CurrentTurn = Turn.Enemy;
-        SetPlayerState(PlayerTurnState.PerformingAction);
-
-        var enemies = stageManager.GetEnemies();
-        foreach (var enemy in enemies)
-            if (enemy != null)
-                enemy.OnTurnStart();
-
-        OnEnemyTurnStart?.Invoke();
-        StartCoroutine(EnemyTurnRoutine());
-    }
-
-    public void EndTurn()
-    {
-        if (CurrentPlayerState == PlayerTurnState.StageClear) return;
-
-        if (CurrentTurn == Turn.Player)
+        TurnNumber = 0;
+        
+        // Build the turn order
+        _playerTurnOrder.Clear();
+        var allPlayers = stageManager.GetAllPlayers().OrderBy(p => p.Owner.PlayerId).ToList();
+        foreach (var player in allPlayers)
         {
-            if (HasUsableSkills())
-            {
-                uiManager.ShowEndTurnConfirmPopup(() => { StartEnemyTurn(); });
-                return;
-            }
-            StartEnemyTurn();
+            _playerTurnOrder.Add(player.Owner);
+        }
+        
+        Debug.Log($"Starting first wave with {_playerTurnOrder.Count} players.");
+        _turnIndex = -1;
+        StartNextTurn();
+    }
+
+private async void StartNextTurn()
+    {
+        if (!HasStateAuthority) return;
+
+        _turnIndex++;
+
+        if (_turnIndex < _playerTurnOrder.Count)
+        {
+            // It's a player's turn
+            IsPlayerTurn = true;
+            CurrentTurnPlayer = _playerTurnOrder[_turnIndex];
+            Debug.Log($"[SERVER] Starting turn for Player {CurrentTurnPlayer}. Index: {_turnIndex}");
+            UpdateTurnOrderDisplay();
         }
         else
         {
-            int turnLimit = stageManager.GetCurrentStageData()?.waves[currentWave - 1].clearTurnLimit ?? 5;
-            if (turnInWave >= turnLimit)
-            {
-                Debug.Log("Turn limit reached! Advancing to penalty wave.");
-                stageManager.AdvanceToNextWave(); // Server prepares next wave data
-                currentWave++;
-                turnInWave = 0;
-            }
-            StartPlayerTurn();
+            // It's the AI's turn
+            IsPlayerTurn = false;
+            CurrentTurnPlayer = PlayerRef.None;
+            Debug.Log("[SERVER] All players have acted. Starting enemy turn.");
+            UpdateTurnOrderDisplay();
+            await StartEnemyTurn();
+            
+            // When enemy turn is over, start the next round
+            _turnIndex = -1;
+            TurnNumber++;
+            await stageManager.SpawnEnemiesForTurn(TurnNumber);
+            StartNextTurn();
         }
     }
 
-    private IEnumerator EnemyTurnRoutine()
+    private async UniTask StartEnemyTurn()
     {
-        yield return Core.Instance.EnemyAIManager.ExecuteEnemyTurns();
-        yield return CheckForWaveClearAsync().ToCoroutine();
+        OnEnemyTurnStart?.Invoke();
+        
+        var enemies = stageManager.GetEnemies();
+        foreach (var enemy in enemies)
+        {
+            if (enemy != null) enemy.OnTurnStart();
+        }
+
+        await Core.Instance.EnemyAIManager.ExecuteEnemyTurns().ToUniTask(this);
+        
+        await CheckForWaveClearAsync();
     }
 
     private async UniTask CheckForWaveClearAsync()
     {
-        if (stageManager.GetEnemies().Count > 0)
+        if (stageManager.GetEnemies().Count == 0)
         {
-            EndTurn();
-            return;
-        }
-
-        if (currentWave >= stageManager.GetCurrentStageData().waves.Length)
-        {
+            // For simplicity, we'll just log this. A full implementation would
+            // show rewards and proceed to the next stage.
             Debug.Log("All waves cleared! Stage complete!");
             SetPlayerState(PlayerTurnState.StageClear);
-            Core.Instance.GameManager.ProceedToNextLayer();
+            // In a real game, you'd have an RPC to notify clients of stage clear.
+        }
+    }
+
+    #endregion
+
+    #region Input & Actions (Client-Side)
+
+    public void RequestEndTurn()
+    {
+        if (CurrentTurnPlayer == Runner.LocalPlayer)
+        {
+            RPC_EndTurn();
         }
         else
         {
-            Debug.Log($"Wave {currentWave} cleared! Starting next wave.");
-            stageManager.AdvanceToNextWave(); // Server prepares next wave data
-            currentWave++;
-            turnInWave = 0;
-            StartPlayerTurn();
+            Debug.LogWarning("Cannot end turn when it's not my turn.");
         }
     }
 
-    private void ShowNextTurnEnemyPreview()
+public void HandleCellClick(Vector2Int cell)
     {
-        int nextTurnNumber = turnInWave + 1;
-        var upcomingEnemies = stageManager.GetEnemySpawnsForTurn(nextTurnNumber);
-
-        if (upcomingEnemies == null || upcomingEnemies.Count == 0)
-        {
-            Debug.Log($"No enemies spawning on next turn ({nextTurnNumber}).");
-            return;
-        }
-
-        Debug.Log($"[Preview] {upcomingEnemies.Count} enemies will spawn on turn {nextTurnNumber}!");
-
-        foreach (var enemySpawnInfo in upcomingEnemies)
-        {
-            Debug.Log($"  - {(UnitType)enemySpawnInfo.enemyTypeIndex} at {enemySpawnInfo.spawnPos}");
-        }
-    }
-
-    public void SetPlayerState(PlayerTurnState newState)
-    {
-        CurrentPlayerState = newState;
-        Debug.Log($"Player state changed to: {newState}");
-    }
-
-    public void SelectPlayerUnit(PlayerUnit unit)
-    {
-        if (selectedUnit != null) ClearSelection();
-        selectedUnit = unit;
-        SetPlayerState(PlayerTurnState.UnitSelected);
-        Debug.Log($"Player unit selected: {unit.name}");
-        ShowAvailableActionsForUnit(unit);
-        Core.Instance.UIManager.ShowUnitInfo(unit);
-        uiManager.skillPanelUI?.UpdateSkillDisplay(unit);
-    }
-
-    public void RequestSkillUse(int skillIndex)
-    {
-        if (CurrentTurn != Turn.Player || CurrentPlayerState != PlayerTurnState.UnitSelected) return;
-        if (selectedUnit == null) return;
-        if (skillIndex < 0 || skillIndex >= selectedUnit.unitData.skills.Length) return;
-
-        var skill = selectedUnit.unitData.skills[skillIndex];
-        if (selectedUnit.GetSkillCooldown(skillIndex) > 0) return;
-        if (selectedUnit.ap < skill.apCost) return;
-
-        if (skill.skillType == SkillType.Attack) StartSkillTargeting(skillIndex);
-    }
-
-    private void StartSkillTargeting(int skillIndex)
-    {
-        currentSkillIndex = skillIndex;
-        var skill = selectedUnit.unitData.skills[skillIndex];
-        var targetableTiles = new List<Vector2Int>();
-
-        foreach (var potentialTarget in gridManager.GetAllUnits())
-        {
-            if (potentialTarget.factionData == selectedUnit.factionData) continue;
-            if (GridUtils.ChebyshevDistance(selectedUnit.position, potentialTarget.position) <= skill.range)
-            {
-                targetableTiles.Add(potentialTarget.position);
-            }
-        }
-
-        gridManager.ClearAllHighlights();
-        gridManager.HighlightAttackableTiles(targetableTiles);
-        SetPlayerState(PlayerTurnState.AwaitingSkillSubTarget);
-    }
-
-    private void ExecuteSkillOnTarget(int skillIndex, Vector2Int targetCell)
-    {
-        var skill = selectedUnit.unitData.skills[skillIndex];
-        if (GridUtils.ChebyshevDistance(selectedUnit.position, targetCell) > skill.range)
-        {
-            SetPlayerState(PlayerTurnState.UnitSelected);
-            ShowAvailableActionsForUnit(selectedUnit);
-            currentSkillIndex = -1;
-            return;
-        }
-
-        SetPlayerState(PlayerTurnState.PerformingAction);
-        selectedUnit.UseSkill(skillIndex, targetCell);
-        if (skill.skillType == SkillType.Attack) hasAttackedThisTurn = true;
-        OnPlayerActionEnd?.Invoke();
-        currentSkillIndex = -1;
-
-        if (hasMovedThisTurn && hasAttackedThisTurn) ClearSelection();
-        else
-        {
-            SetPlayerState(PlayerTurnState.UnitSelected);
-            ShowAvailableActionsForUnit(selectedUnit);
-        }
-    }
-
-    private void ShowAvailableActionsForUnit(PlayerUnit unit)
-    {
-        var allUnits = gridManager.GetAllUnits();
-        var attackableTiles = new List<Vector2Int>();
-        var movableTiles = new List<Vector2Int>();
-
-        if (!hasMovedThisTurn)
-        {
-            int moveSkillIndex = unit.GetMoveSkillIndex();
-            if (moveSkillIndex >= 0)
-            {
-                var moveSkill = unit.unitData.skills[moveSkillIndex];
-                if (unit.GetSkillCooldown(moveSkillIndex) == 0 && unit.ap >= moveSkill.apCost)
-                {
-                    movableTiles = gridManager.GetWalkableTilesInRange(unit.position, moveSkill.range);
-                }
-            }
-        }
-
-        if (!hasAttackedThisTurn)
-        {
-            for (int i = 0; i < unit.unitData.skills.Length; i++)
-            {
-                var skill = unit.unitData.skills[i];
-                if (skill.skillType != SkillType.Attack || unit.GetSkillCooldown(i) > 0 || unit.ap < skill.apCost) continue;
-
-                foreach (var potentialTarget in allUnits)
-                {
-                    if (potentialTarget.factionData != unit.factionData && GridUtils.ChebyshevDistance(unit.position, potentialTarget.position) <= skill.range)
-                    {
-                        if (!attackableTiles.Contains(potentialTarget.position)) attackableTiles.Add(potentialTarget.position);
-                    }
-                }
-            }
-        }
-
-        var pureMovableTiles = movableTiles.Where(tile => !attackableTiles.Contains(tile)).ToList();
-        gridManager.HighlightMovableTiles(pureMovableTiles);
-        gridManager.HighlightAttackableTiles(attackableTiles);
-    }
-
-    public void ClearSelection()
-    {
-        if (CurrentPlayerState == PlayerTurnState.StageClear) return;
-        selectedUnit = null;
-        hasMovedThisTurn = false;
-        hasAttackedThisTurn = false;
-        SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
-        gridManager.ClearSelection();
-        Core.Instance.UIManager.HideUnitInfo();
-        Core.Instance.UIManager.HideSkillPanel();
-    }
-
-    public void HandleCellClick(Vector2Int cell)
-    {
-        if (CurrentTurn != Turn.Player) return;
         var unitAtCell = gridManager.GetUnitAt(cell);
 
+        // 다른 플레이어의 턴일 때는 유닛 정보만 볼 수 있음
+        if (CurrentTurnPlayer != Runner.LocalPlayer)
+        {
+            if (unitAtCell != null)
+            {
+                Debug.Log($"Viewing unit info (not my turn): {unitAtCell.name}");
+                uiManager.ShowUnitInfo(unitAtCell);
+            }
+            else
+            {
+                uiManager.HideUnitInfo();
+            }
+            return;
+        }
+
+        // 내 턴일 때는 정상적으로 유닛 선택 및 행동 가능
         switch (CurrentPlayerState)
         {
             case PlayerTurnState.AwaitingUnitSelection:
-                if (unitAtCell is PlayerUnit playerUnit) SelectPlayerUnit(playerUnit);
-                else if (unitAtCell is EnemyUnit enemyUnit)
+                if (unitAtCell is PlayerUnit playerUnit && playerUnit.Owner == Runner.LocalPlayer)
                 {
-                    gridManager.ClearAllHighlights();
-                    Core.Instance.UIManager.ShowUnitInfo(enemyUnit);
+                    SelectPlayerUnit(playerUnit);
                 }
-                else ClearSelection();
+                else if (unitAtCell != null)
+                {
+                    // 적 유닛이나 다른 플레이어 유닛 정보 보기
+                    uiManager.ShowUnitInfo(unitAtCell);
+                }
+                else
+                {
+                    ClearSelection();
+                }
                 break;
 
             case PlayerTurnState.UnitSelected:
-                if (selectedUnit == null) { SetPlayerState(PlayerTurnState.AwaitingUnitSelection); return; }
-                gridManager.ClearAllHighlights();
-                if (unitAtCell == null) { if (!TryMoveUnit(selectedUnit, cell)) ClearSelection(); }
-                else if (unitAtCell is PlayerUnit p) SelectPlayerUnit(p);
-                else if (unitAtCell.factionData != selectedUnit.factionData) TryAttackUnit(selectedUnit, cell);
-                break;
+                if (_localSelectedUnit == null) 
+                { 
+                    SetPlayerState(PlayerTurnState.AwaitingUnitSelection); 
+                    return; 
+                }
 
-            case PlayerTurnState.AwaitingSkillSubTarget:
-                if (selectedUnit == null || currentSkillIndex < 0) { SetPlayerState(PlayerTurnState.AwaitingUnitSelection); return; }
-                gridManager.ClearAllHighlights();
-                if (unitAtCell != null && unitAtCell.factionData != selectedUnit.factionData) ExecuteSkillOnTarget(currentSkillIndex, cell);
-                else
+                if (unitAtCell == null)
                 {
-                    SetPlayerState(PlayerTurnState.UnitSelected);
-                    ShowAvailableActionsForUnit(selectedUnit);
+                    // Clicked on an empty cell - try to move
+                    TryMoveUnit(_localSelectedUnit, cell);
+                }
+                else if (unitAtCell.Owner != Runner.LocalPlayer)
+                {
+                    // Clicked on an enemy or other player's unit - try to attack
+                    TryAttackUnit(_localSelectedUnit, cell);
+                }
+                else if (unitAtCell is PlayerUnit friendlyUnit && friendlyUnit.Owner == Runner.LocalPlayer)
+                {
+                    // Clicked on another friendly unit - switch selection
+                    SelectPlayerUnit(friendlyUnit);
                 }
                 break;
         }
+    }
+    
+    private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
+    {
+        int moveSkillIndex = unit.GetMoveSkillIndex();
+        if (moveSkillIndex < 0)
+        {
+            Debug.LogWarning("Selected unit has no move skill.");
+            return;
+        }
+        
+        // Note: We are not checking range on the client. The server will validate this.
+        // The client simply requests the action.
+        Debug.Log($"Requesting move for {unit.name} to {targetCell}");
+        unit.RequestSkillUse(moveSkillIndex, targetCell);
+        
+        // After an action, we deselect and wait for the server to update the state.
+        ClearSelection();
+        SetPlayerState(PlayerTurnState.PerformingAction);
     }
 
     private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
     {
-        if (hasAttackedThisTurn) return;
+        // For simplicity, find the first available attack skill.
         int attackSkillIndex = -1;
-        for (int i = 0; i < unit.unitData.skills.Length; i++)
+        for (int i = 0; i < unit.GetSkills().Count; i++)
         {
-            var skill = unit.unitData.skills[i];
-            if (skill.skillType == SkillType.Attack && GridUtils.ChebyshevDistance(unit.position, targetCell) <= skill.range)
+            if (unit.GetSkills()[i].data.skillType == SkillType.Attack)
             {
                 attackSkillIndex = i;
                 break;
             }
         }
 
-        if (attackSkillIndex >= 0)
+        if (attackSkillIndex < 0)
         {
-            SetPlayerState(PlayerTurnState.PerformingAction);
-            unit.UseSkill(attackSkillIndex, targetCell);
-            hasAttackedThisTurn = true;
-            OnPlayerActionEnd?.Invoke();
-            if (hasMovedThisTurn) ClearSelection();
+            Debug.LogWarning("Selected unit has no attack skill.");
+            return;
+        }
+        
+        Debug.Log($"Requesting attack for {unit.name} on {targetCell}");
+        unit.RequestSkillUse(attackSkillIndex, targetCell);
+
+        // After an action, we deselect and wait for the server to update the state.
+        ClearSelection();
+        SetPlayerState(PlayerTurnState.PerformingAction);
+    }
+
+    public void SelectPlayerUnit(PlayerUnit unit)
+    {
+        if (unit.Owner != Runner.LocalPlayer)
+        {
+            Debug.LogWarning("Cannot select a unit that is not mine.");
+            return;
+        }
+        
+        if (_localSelectedUnit != null)
+        {
+            _localSelectedUnit.Deselect();
+        }
+        
+        _localSelectedUnit = unit;
+        _localSelectedUnit.Select();
+        
+        SetPlayerState(PlayerTurnState.UnitSelected);
+        Debug.Log($"Player unit selected: {unit.name}");
+        
+        uiManager.ShowUnitInfo(unit);
+        uiManager.skillPanelUI?.UpdateSkillDisplay(unit);
+    }
+
+    public void ClearSelection()
+    {
+        if (_localSelectedUnit != null)
+        {
+            _localSelectedUnit.Deselect();
+        }
+        _localSelectedUnit = null;
+        gridManager.ClearSelection();
+        uiManager.HideUnitInfo();
+        uiManager.HideSkillPanel();
+        
+        if (CurrentTurnPlayer == Runner.LocalPlayer && CurrentPlayerState != PlayerTurnState.AwaitingTurn)
+        {
+            SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
+        }
+    }
+
+    #endregion
+
+    #region Helpers
+
+    public void SetPlayerState(PlayerTurnState newState)
+    {
+        CurrentPlayerState = newState;
+        Debug.Log($"Local player state changed to: {newState}");
+    }
+    
+public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
+{
+}
+
+public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
+{
+}
+
+public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason)
+{
+}
+
+public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data)
+{
+}
+
+public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress)
+{
+}
+    #endregion
+
+
+public void UpdateTurnOrderDisplay()
+    {
+        if (uiManager != null && uiManager.turnOrderUI != null)
+        {
+            // Display current turn information
+            string turnInfo = $"Turn {TurnNumber + 1}\n";
+            
+            if (IsPlayerTurn)
+            {
+                if (_isMyTurn)
+                {
+                    turnInfo += "<color=green>Your Turn</color>";
+                }
+                else
+                {
+                    turnInfo += $"<color=yellow>Player {CurrentTurnPlayer.PlayerId + 1}'s Turn</color>";
+                }
+            }
             else
             {
-                SetPlayerState(PlayerTurnState.UnitSelected);
-                ShowAvailableActionsForUnit(unit);
+                turnInfo += "<color=red>Enemy Turn</color>";
             }
+            
+            Debug.Log($"[TurnManager] {turnInfo}");
         }
     }
 
-    private bool TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
+
+public void TriggerUnitActionEnd()
     {
-        if (hasMovedThisTurn) return false;
-        int moveSkillIndex = unit.GetMoveSkillIndex();
-        if (moveSkillIndex < 0) return false;
-
-        var moveSkill = unit.unitData.skills[moveSkillIndex];
-        if (!gridManager.GetWalkableTilesInRange(unit.position, moveSkill.range).Contains(targetCell)) return false;
-
-        MoveUnitToCell(unit, targetCell);
-        return true;
-    }
-
-    private async void MoveUnitToCell(PlayerUnit unit, Vector2Int targetCell)
-    {
-        SetPlayerState(PlayerTurnState.PerformingAction);
-        int moveSkillIndex = unit.GetMoveSkillIndex();
-        if (moveSkillIndex < 0) { SetPlayerState(PlayerTurnState.UnitSelected); return; }
-
-        float duration = unit.UseSkill(moveSkillIndex, targetCell);
-        if (duration > 0) await UniTask.Delay(TimeSpan.FromSeconds(duration));
-
-        hasMovedThisTurn = true;
+        // Called when a unit finishes an action (like using a skill)
+        if (CurrentPlayerState == PlayerTurnState.PerformingAction)
+        {
+            SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
+        }
         OnPlayerActionEnd?.Invoke();
-
-        if (hasAttackedThisTurn) ClearSelection();
-        else
-        {
-            SetPlayerState(PlayerTurnState.UnitSelected);
-            ShowAvailableActionsForUnit(unit);
-        }
-    }
-
-    public void CancelSelection() => ClearSelection();
-
-    public void FinalizeRewardSelection()
-    {
-        Debug.Log("Reward selection finalized.");
-        if (currentWave >= stageManager.GetCurrentStageData().waves.Length)
-        {
-            Core.Instance.GameManager.ProceedToNextLayer();
-        }
-        else
-        {
-            stageManager.AdvanceToNextWave();
-            currentWave++;
-            StartPlayerTurn();
-        }
-    }
-
-    public void TriggerUnitActionEnd() => OnPlayerActionEnd?.Invoke();
-
-    public bool CanAttackTarget(PlayerUnit unit, Vector2Int targetCell)
-    {
-        if (unit == null || hasAttackedThisTurn) return false;
-
-        var targetUnit = gridManager.GetUnitAt(targetCell);
-        if (targetUnit == null || targetUnit.factionData == unit.factionData)
-        {
-            return false;
-        }
-
-        for (int i = 0; i < unit.unitData.skills.Length; i++)
-        {
-            var skill = unit.unitData.skills[i];
-            if (skill.skillType == SkillType.Attack)
-            {
-                if (unit.GetSkillCooldown(i) > 0 || unit.ap < skill.apCost)
-                {
-                    continue;
-                }
-
-                if (GridUtils.ChebyshevDistance(unit.position, targetCell) <= skill.range)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    public bool HasUsableSkills()
-    {
-        var player = stageManager.GetPlayer();
-        if (player == null) return false;
-        for (int i = 0; i < player.unitData.skills.Length; i++)
-        {
-            var skill = player.unitData.skills[i];
-            if (player.GetSkillCooldown(i) == 0 && player.ap >= skill.apCost)
-            {
-                return true;
-            }
-        }
-        return false;
     }
 }

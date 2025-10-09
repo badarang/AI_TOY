@@ -20,6 +20,10 @@ public class UIManager : MonoBehaviour, IManager
     [SerializeField]
     private TextMeshProUGUI turnCounterText;
 
+    [SerializeField]
+    private UnityEngine.UI.Button endTurnButton;
+
+
     [Header("Reward Screen")]
     [SerializeField]
     private GameObject rewardScreenPanel;
@@ -173,6 +177,16 @@ public void ShowEndTurnConfirmPopup(UnityAction onConfirm)
                 onConfirm,
                 () => { }
             );
+        }
+    }
+
+
+public void SetEndTurnButtonActive(bool active)
+    {
+        if (endTurnButton != null)
+        {
+            endTurnButton.interactable = active;
+            Debug.Log($"[UIManager] EndTurn button set to: {(active ? "enabled" : "disabled")}");
         }
     }
 }

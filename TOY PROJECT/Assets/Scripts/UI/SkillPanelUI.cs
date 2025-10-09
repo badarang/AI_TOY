@@ -56,9 +56,13 @@ private void OnSkillButtonClicked(int skillIndex)
     {
         Debug.Log($"스킬 버튼 클릭: {skillIndex}");
         
-        if (Core.Instance != null && Core.Instance.TurnManager != null)
+        // 이제 스킬은 PlayerUnit에서 직접 사용합니다
+        // TurnManager에서 SelectedUnit을 통해 처리
+        var turnManager = Core.Instance?.TurnManager;
+        if (turnManager != null && turnManager.SelectedUnit != null)
         {
-            Core.Instance.TurnManager.RequestSkillUse(skillIndex);
+            // UI에서는 스킬 정보만 표시, 실제 사용은 HandleCellClick에서 처리
+            Debug.Log($"Skill {skillIndex} button clicked for unit {turnManager.SelectedUnit.name}");
         }
     }
 

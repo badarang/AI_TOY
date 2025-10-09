@@ -60,6 +60,5 @@ private void OnCardSelected()
         }
 
         Core.Instance.UIManager.HideRewardScreen();
-        Core.Instance.TurnManager.FinalizeRewardSelection();
     }
 }
