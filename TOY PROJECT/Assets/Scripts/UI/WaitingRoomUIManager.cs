@@ -7,6 +7,8 @@ using System.Linq;
 
 public class WaitingRoomUIManager : MonoBehaviour, IManager
 {
+    [SerializeField] private WaitingRoomManager waitingRoomManager;
+
     [Header("UI References")]
     [SerializeField] private Transform playerListContainer;
     [SerializeField] private GameObject playerSlotPrefab;
@@ -135,7 +137,7 @@ public class WaitingRoomUIManager : MonoBehaviour, IManager
     private void OnStartGameButtonClick()
     {
         Debug.Log("[WaitingRoomUI] Starting game...");
-        PersistentCore.Instance.NetworkManager.LoadSceneNetwork("InGame");
+        waitingRoomManager.OnStartButtonClicked();
     }
 
     private void OnDestroy()

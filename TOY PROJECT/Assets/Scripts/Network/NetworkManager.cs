@@ -1,8 +1,10 @@
-using UnityEngine;
-using Fusion;
+
 using System.Collections.Generic;
 using System.Linq;
-using Fusion.Sockets; // For INetworkRunnerCallbacks
+using Fusion;
+using Fusion.Sockets;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class NetworkManager : MonoBehaviour, IManager, INetworkRunnerCallbacks
 {
@@ -10,7 +12,8 @@ public class NetworkManager : MonoBehaviour, IManager, INetworkRunnerCallbacks
 
     [Header("Network Settings")]
     [SerializeField] private NetworkRunner networkRunnerPrefab;
-    
+    [SerializeField] private NetworkObject playerPrefab; // 플레이어 프리팹 참조
+
     private NetworkRunner currentRunner;
 
     public NetworkRunner CurrentRunner => currentRunner;
@@ -47,7 +50,7 @@ public class NetworkManager : MonoBehaviour, IManager, INetworkRunnerCallbacks
         {
             GameMode = GameMode.Host,
             SessionName = roomName,
-            SceneManager = sceneManager
+            SceneManager = sceneManager,
         };
 
         var result = await currentRunner.StartGame(startGameArgs);
@@ -82,7 +85,7 @@ public class NetworkManager : MonoBehaviour, IManager, INetworkRunnerCallbacks
         {
             GameMode = GameMode.Client,
             SessionName = roomName,
-            SceneManager = sceneManager
+            SceneManager = sceneManager,
         };
 
         var result = await currentRunner.StartGame(startGameArgs);
@@ -120,9 +123,9 @@ public class NetworkManager : MonoBehaviour, IManager, INetworkRunnerCallbacks
 
     private int GetSceneIndex(string sceneName)
     {
-        for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings; i++)
+        for (int i = 0; i < SceneManager.sceneCountInBuildSettings; i++)
         {
-            string scenePath = UnityEngine.SceneManagement.SceneUtility.GetScenePathByBuildIndex(i);
+            string scenePath = SceneUtility.GetScenePathByBuildIndex(i);
             string name = System.IO.Path.GetFileNameWithoutExtension(scenePath);
 
             if (name == sceneName)
@@ -130,7 +133,6 @@ public class NetworkManager : MonoBehaviour, IManager, INetworkRunnerCallbacks
                 return i;
             }
         }
-
         return -1;
     }
 
@@ -148,80 +150,84 @@ public class NetworkManager : MonoBehaviour, IManager, INetworkRunnerCallbacks
     private void OnDestroy()
     {
         LeaveRoom();
-
         if (Instance == this)
         {
             Instance = null;
         }
     }
 
+    // --- 사용자 변경 3: SpawnAllPlayers ---
+    public void SpawnAllPlayers()
+    {
+        if (!currentRunner.IsServer) return;
+        if (SceneManager.GetActiveScene().name != "InGame") return;
+
+        Debug.Log("Spawning all players...");
+        foreach (PlayerRef player in currentRunner.ActivePlayers)
+        {
+            Vector3 spawnPosition = GetSpawnPosition(player.PlayerId);
+            Debug.Log($"Spawning player {player.PlayerId} at {spawnPosition}");
+            // 플레이어에게 입력 권한을 부여하여 스폰합니다.
+            currentRunner.Spawn(playerPrefab, spawnPosition, Quaternion.identity, player);
+        }
+    }
+    
+    private Vector3 GetSpawnPosition(int playerActorNumber)
+    {
+        // 스폰 위치 로직을 위한 플레이스홀더입니다.
+        return new Vector3((playerActorNumber - 1) * 3.0f, 1, 0);
+    }
+
     #region INetworkRunnerCallbacks
 
-public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
+    // --- 사용자 변경 1: OnPlayerJoined ---
+    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-        if (runner.IsServer)
+        Debug.Log($"Player joined: {player.PlayerId}");
+
+        // 호스트이고 첫 번째 플레이어인 경우 WaitingRoom으로 이동합니다.
+        if (runner.IsServer && runner.ActivePlayers.Count() == 1)
         {
-            Debug.Log($"[NetworkManager] OnPlayerJoined on Server. Player Ref: {player}. Total Players: {runner.ActivePlayers.Count()}");
-
-            // This logic assumes the InGame scene is already loaded.
-            // In a more complex flow, you might need to wait for the scene to be loaded.
-            var stageManager = Core.Instance?.StageManager;
-            if (stageManager == null)
-            {
-                Debug.LogError("[NetworkManager] StageManager not found, cannot spawn player. Make sure the game scene is loaded.");
-                return;
-            }
-
-            // Determine unit type and spawn position based on player order
-            UnitType unitType;
-            Vector2Int spawnPosition;
-            int playerIndex = runner.ActivePlayers.Count();
-
-            if (playerIndex == 1)
-            {
-                // First player (Host) - Player 1
-                unitType = UnitType.Player_Hikai;
-                spawnPosition = new Vector2Int(0, 0); // TODO: Get from stage data
-                Debug.Log($"[NetworkManager] Spawning Player 1 (Host): {unitType} for {player} at {spawnPosition}");
-            }
-            else if (playerIndex == 2)
-            {
-                // Second player (Client) - Player 2
-                unitType = UnitType.Player_Hikai;
-                spawnPosition = new Vector2Int(0, 1); // TODO: Get from stage data
-                Debug.Log($"[NetworkManager] Spawning Player 2 (Client): {unitType} for {player} at {spawnPosition}");
-            }
-            else
-            {
-                Debug.LogWarning($"[NetworkManager] More than 2 players joined. Player {player} will not be spawned.");
-                return;
-            }
-            
-            stageManager.SpawnPlayer(player, unitType, spawnPosition);
+            Debug.Log("First player joined, loading WaitingRoom...");
+            LoadSceneNetwork("WaitingRoom");
         }
     }
 
-    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
+    // --- 사용자 변경 3: OnSceneLoadDone ---
+    public void OnSceneLoadDone(NetworkRunner runner)
+    {
+        Debug.Log($"Scene load done. Current scene: {SceneManager.GetActiveScene().name}");
+        if (SceneManager.GetActiveScene().name == "InGame")
+        {
+            // 호스트만 플레이어를 스폰합니다.
+            if (runner.IsServer)
+            {
+                SpawnAllPlayers();
+            }
+        }
+    }
+
+    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) 
+    {
+        Debug.Log($"Player left: {player.PlayerId}");
+    }
+
     public void OnInput(NetworkRunner runner, NetworkInput input) { }
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
     public void OnConnectedToServer(NetworkRunner runner) { }
-    public void OnDisconnectedFromServer(NetworkRunner runner) { }
+    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
     public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
     public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }
     public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
     public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
-    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, System.ArraySegment<byte> data) { }
-    public void OnSceneLoadDone(NetworkRunner runner) { }
+    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, System.ArraySegment<byte> data) { }
+    public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
     public void OnSceneLoadStart(NetworkRunner runner) { }
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
-    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
-    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, System.ArraySegment<byte> data) { }
-    public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
-
-
+    
     #endregion
 }
