@@ -15,7 +15,7 @@ public class StageManager : MonoBehaviour, IManager
     [SerializeField] private GameAssetDatabase gameDatabase;
 
     [Header("Settings")]
-    [SerializeField] private string firstStageName = "Stage_1_1";
+    [SerializeField] private string firstStageName = "Stage_1";
 
     private NetworkManager _networkManager;
     private GameSession _session;
@@ -42,8 +42,6 @@ public class StageManager : MonoBehaviour, IManager
         _session = GameSession.Instance;
         _session.OnStageChanged += OnStageChanged;
 
-        // Host loads the first stage if no stage is currently loaded.
-        // This logic now works because the GameSession data is correctly persisted across scenes.
         if (_networkManager.IsHost && string.IsNullOrEmpty(_session.CurrentStageName.Value))
         {
             RequestLoadStage(firstStageName);
@@ -93,7 +91,10 @@ public class StageManager : MonoBehaviour, IManager
                     return;
                 }
                 await unitManager.SpawnPlayers();
-                await unitManager.SpawnEnemiesForTurn(1); // Spawn enemies for the first turn
+                await unitManager.SpawnEnemiesForTurn(1);
+
+                // 모든 유닛 생성이 끝난 후, 전투 시작을 알립니다.
+                Core.Instance.TurnManager.StartCombat();
             }
         }
 

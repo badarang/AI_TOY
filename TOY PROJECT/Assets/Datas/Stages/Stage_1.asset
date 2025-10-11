@@ -15,26 +15,19 @@ MonoBehaviour:
   stageType: 0
   width: 7
   height: 7
-  playerSpawn: {x: 3, y: 3}
-  playerType: 1
-  difficulty: 6
+  difficulty: 2
   waves:
   - waveName: Wave 1
+    turnSpawns:
+    - turnNumber: 1
+      enemies:
+      - enemyType: 3
+        spawnPos: {x: 5, y: 5}
     enemySpawns:
     - enemyType: 3
       spawnPos: {x: 2, y: 5}
     - enemyType: 3
       spawnPos: {x: 3, y: 4}
-    clearTurnLimit: 5
-    bonusRewardId: 
-  - waveName: Wave 2
-    enemySpawns:
-    - enemyType: 3
-      spawnPos: {x: 3, y: 5}
-    - enemyType: 3
-      spawnPos: {x: 1, y: 5}
-    - enemyType: 3
-      spawnPos: {x: 5, y: 5}
     clearTurnLimit: 5
     bonusRewardId: 
   obstacleSpawns: []

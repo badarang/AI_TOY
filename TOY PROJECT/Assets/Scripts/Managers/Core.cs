@@ -1,6 +1,4 @@
-using UnityEditor.Localization.Plugins.XLIFF.V20;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class Core : MonoBehaviour
 {
@@ -84,8 +82,8 @@ public class Core : MonoBehaviour
         Debug.Log("[Core] === Phase 1: BeforeInit ===");
         CallBeforeInit(poolManager);
         CallBeforeInit(gridManager);
-        CallBeforeInit(stageManager);
         CallBeforeInit(unitManager);
+        CallBeforeInit(stageManager);
         CallBeforeInit(uiManager);
         CallBeforeInit(enemyAIManager);
         CallBeforeInit(rewardManager);
@@ -97,8 +95,8 @@ public class Core : MonoBehaviour
         Debug.Log("[Core] === Phase 2: AfterInit ===");
         CallAfterInit(poolManager);
         CallAfterInit(gridManager);
-        CallAfterInit(stageManager);
         CallAfterInit(unitManager);
+        CallAfterInit(stageManager);
         CallAfterInit(uiManager);
         CallAfterInit(enemyAIManager);
         CallAfterInit(rewardManager);
@@ -114,7 +112,6 @@ public class Core : MonoBehaviour
     {
         if (manager is IManager iManager)
         {
-            Debug.Log($"[Core] BeforeInit: {manager.GetType().Name}");
             iManager.BeforeInit();
         }
     }
@@ -123,7 +120,6 @@ public class Core : MonoBehaviour
     {
         if (manager is IManager iManager)
         {
-            Debug.Log($"[Core] AfterInit: {manager.GetType().Name}");
             iManager.AfterInit();
         }
     }

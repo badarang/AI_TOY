@@ -2,10 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-/// <summary>
-/// 게임의 전체적인 흐름과 상태를 관리하는 최상위 매니저입니다.
-/// ChapterData를 기반으로 게임의 진행을 총괄합니다.
-/// </summary>
 public class GameManager : MonoBehaviour, IManager
 {
     [Header("챕터 및 스테이지 데이터")]
@@ -33,12 +29,9 @@ public class GameManager : MonoBehaviour, IManager
 
     // --- 매니저 참조 ---
     private StageManager stageManager;
-    private TurnManager turnManager;
 
     // --- 게임 상태 ---
     private int currentLayerIndex = -1;
-    // private bool isPlayerSpawned = false; // No longer used, player spawning is handled by NetworkManager.
-
     private bool isGameStarted = false;
 
     public void BeforeInit() { }
@@ -46,36 +39,30 @@ public class GameManager : MonoBehaviour, IManager
     public void AfterInit()
     {
         stageManager = Core.Instance.StageManager;
-        turnManager = Core.Instance.TurnManager;
 
-        // We no longer start the game here. We wait for the StageManager to be ready.
+        // OnStageManagerReady가 호출될 때까지 대기합니다.
     }
 
     /// <summary>
-    /// Called by StageManager once it has been spawned on the network.
-    /// This is the new entry point for starting the game logic.
+    /// 이 메서드는 현재 아키텍처에서는 직접 호출되지 않을 수 있습니다.
+    /// StageManager가 첫 스테이지를 시작하는 역할을 담당합니다.
     /// </summary>
     public void OnStageManagerReady()
     {
         if (isGameStarted) return;
         isGameStarted = true;
 
-        StartNewGame(startingChapter);
+        // StartNewGame(startingChapter);
     }
 
     public void StartNewGame(ChapterData chapter)
     {
         Debug.Log($"새로운 챕터를 시작합니다: {chapter.chapterName}");
-        currentLayerIndex = -1; // 다음 함수에서 0으로 증가하며 시작
-
-        // TODO: 기존 게임 데이터 초기화 (인벤토리, 플레이어 스탯 등)
+        currentLayerIndex = -1; 
 
         ProceedToNextLayer();
     }
 
-    /// <summary>
-    /// 스테이지 클리어 또는 포탈 선택 후 다음 층으로 진행합니다.
-    /// </summary>
     public void ProceedToNextLayer()
     {
         currentLayerIndex++;
@@ -83,7 +70,6 @@ public class GameManager : MonoBehaviour, IManager
         if (currentLayerIndex >= startingChapter.layers.Count)
         {
             Debug.Log("챕터 클리어! 축하합니다!");
-            // TODO: 챕터 클리어 로직 (결과 화면, 메인 메뉴로 돌아가기 등)
             return;
         }
 
@@ -91,57 +77,36 @@ public class GameManager : MonoBehaviour, IManager
 
         if (currentLayer.possibleStageTypes.Count == 1)
         {
-            // 선택지가 하나뿐이면 바로 해당 타입의 스테이지 시작
             StageType type = currentLayer.possibleStageTypes[0];
             StartStage(type);
         }
         else
         {
-            // 선택지가 여러 개이면, 플레이어가 선택할 수 있도록 포탈 생성 요청
             Debug.Log($"다음 선택지: {string.Join(", ", currentLayer.possibleStageTypes)}");
-            //stageManager.CreatePortals(currentLayer.possibleStageTypes);
-            // TODO: 게임 상태를 '자유 이동'으로 변경
+            // stageManager.CreatePortals(currentLayer.possibleStageTypes);
         }
     }
 
-    /// <summary>
-    /// 플레이어가 포탈에 진입했을 때 호출됩니다. (StageManager가 호출해 줄 예정)
-    /// </summary>
     public void OnPortalSelected(StageType selectedType)
     {
         Debug.Log($"플레이어가 포탈을 선택했습니다: {selectedType}");
         StartStage(selectedType);
     }
 
-private async void StartStage(StageType type)
+    private void StartStage(StageType type)
     {
         StageData stageToLoad = GetRandomStage(type);
         if (stageToLoad == null)
         {
-            Debug.LogError(
-                $"{type} 타입의 스테이지를 찾을 수 없습니다! StageData를 할당했는지 확인해주세요."
-            );
+            Debug.LogError($"{type} 타입의 스테이지를 찾을 수 없습니다! StageData를 할당했는지 확인해주세요.");
             return;
         }
 
-        Debug.Log($"{type} 타입의 스테이지를 로드합니다: {stageToLoad.name}");
+        Debug.Log($"[GameManager] {type} 타입의 스테이지 로드를 요청합니다: {stageToLoad.name}");
+        
+        // GameManager의 역할은 스테이지 로드를 "요청"하는 것까지입니다.
+        // 스테이지를 구성하고 전투를 시작하는 것은 StageManager와 TurnManager의 책임입니다.
         stageManager.RequestLoadStage(stageToLoad.name);
-
-        await Cysharp.Threading.Tasks.UniTask.WaitUntil(() => stageManager.IsStageLoaded);
-        Debug.Log($"[GameManager] Stage load confirmed. Proceeding with game logic.");
-
-        if (
-            stageToLoad.stageType == StageType.Battle
-            || stageToLoad.stageType == StageType.EliteBattle
-            || stageToLoad.stageType == StageType.Boss
-        )
-        {
-            turnManager.StartFirstWave();
-        }
-        else
-        {
-            Debug.Log($"{stageToLoad.stageType} 타입의 스테이지에 진입했습니다. (전투 아님)");
-        }
     }
 
     private StageData GetRandomStage(StageType type)

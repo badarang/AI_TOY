@@ -87,6 +87,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7518791335084594423, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
       insertIndex: -1
       addedObject: {fileID: -6900583323308403334}
+    - targetCorrespondingSourceObject: {fileID: 7518791335084594423, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -3893908100120561211}
   m_SourcePrefab: {fileID: 100100000, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}
 --- !u!1 &4974377369650710997 stripped
 GameObject:
@@ -107,9 +110,36 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   unitData: {fileID: 11400000, guid: 8139dccf9c56f47e28300aac92025046, type: 2}
   factionData: {fileID: 11400000, guid: 9e963a79be8964c29a46a65e5a812f0f, type: 2}
-  hp: 1
-  ap: 1
-  position: {x: 0, y: 0}
+  _HP: 0
+  _AP: 0
+  _Position: {x: 0, y: 0}
+  _HasActedThisTurn:
+    _value: 0
+  buildData:
+    learnedSkills: []
+    learnedSkillNames: []
+    skillUpgrades: []
+    generalUpgrades: []
+    generalUpgradeNames: []
+--- !u!114 &-3893908100120561211
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4974377369650710997}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 2243780896
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: -6900583323308403334}
+  ForceRemoteRenderTimeframe: 0
 --- !u!4 &7896321439564049630 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4667360603751412220, guid: f502b9d28126143bfabcce499dc9faa7, type: 3}

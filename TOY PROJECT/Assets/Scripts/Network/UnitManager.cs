@@ -73,7 +73,7 @@ public class UnitManager : MonoBehaviour, IManager
 
         if (prefab == null || prefab.GetComponent<NetworkObject>() == null)
         {
-            Debug.LogError($"[UnitSpawner] Invalid prefab: {prefabKey}");
+            Debug.LogError($"[UnitSpawner] Invalid prefab or missing NetworkObject: {prefabKey}");
             Addressables.Release(handle);
             return;
         }
@@ -107,10 +107,14 @@ public class UnitManager : MonoBehaviour, IManager
             return;
 
         var enemySpawns = GetEnemySpawnsForTurn(turnNumber);
-        if (enemySpawns.Count == 0)
+        if (enemySpawns == null || enemySpawns.Count == 0)
+        {
+            // 이 로그가 출력된다면, GetEnemySpawnsForTurn 내부의 진단 로그를 확인해야 합니다.
+            Debug.LogWarning($"[UnitManager] No enemies found to spawn for turn {turnNumber}. Check StageData asset.");
             return;
+        }
 
-        Debug.Log($"[UnitSpawner] Spawning {enemySpawns.Count} enemies for turn {turnNumber}");
+        Debug.Log($"[UnitManager] Found {enemySpawns.Count} enemies to spawn for turn {turnNumber}");
 
         List<UniTask> tasks = new List<UniTask>();
         foreach (var spawnData in enemySpawns)
@@ -130,9 +134,9 @@ public class UnitManager : MonoBehaviour, IManager
         var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Units/{prefabKey}.prefab");
         GameObject prefab = await handle.Task;
 
-        if (prefab == null)
+        if (prefab == null || prefab.GetComponent<NetworkObject>() == null)
         {
-            Debug.LogError($"[UnitSpawner] Failed to load enemy prefab: {prefabKey}");
+            Debug.LogError($"[UnitManager] Failed to load enemy prefab or it's missing a NetworkObject component: {prefabKey}");
             Addressables.Release(handle);
             return;
         }
@@ -148,13 +152,13 @@ public class UnitManager : MonoBehaviour, IManager
         if (enemyNO != null)
         {
             EnemyUnit enemy = enemyNO.GetComponent<EnemyUnit>();
-            enemy.position = spawnPos;
+            enemy.Initialize(spawnPos);
             _spawnedEnemies.Add(enemy);
             gridManager.RegisterUnit(enemy, spawnPos);
         }
         else
         {
-            Debug.LogError($"[UnitSpawner] Failed to spawn enemy: {prefabKey}");
+            Debug.LogError($"[UnitManager] Failed to spawn enemy: {prefabKey}");
         }
     }
 
@@ -214,24 +218,40 @@ public class UnitManager : MonoBehaviour, IManager
     {
         var spawns = new List<EnemySpawnData>();
         var stageData = stageManager.CurrentStageData;
-        if (stageData == null || _session == null)
+        if (stageData == null) {
+            Debug.LogError("[UnitManager-Diagnosis] stageData is NULL.");
             return spawns;
+        }
 
         int waveIndex = _session.CurrentWaveIndex;
-        if (waveIndex >= stageData.waves.Length)
+        if (waveIndex >= stageData.waves.Length) {
+            Debug.LogError($"[UnitManager-Diagnosis] CurrentWaveIndex ({waveIndex}) is out of bounds. StageData only has {stageData.waves.Length} waves.");
             return spawns;
+        }
 
         var wave = stageData.waves[waveIndex];
+        if (wave.turnSpawns == null || wave.turnSpawns.Length == 0) {
+            Debug.LogError("[UnitManager-Diagnosis] The first wave in StageData has an empty 'turnSpawns' array.");
+            return spawns;
+        }
 
-        if (wave.turnSpawns != null)
+        bool foundTurnData = false;
+        foreach (var turnSpawn in wave.turnSpawns)
         {
-            foreach (var turnSpawn in wave.turnSpawns)
+            if (turnSpawn.turnNumber == turnNumber)
             {
-                if (turnSpawn.turnNumber == turnNumber)
-                {
+                foundTurnData = true;
+                if (turnSpawn.enemies == null || turnSpawn.enemies.Length == 0) {
+                    Debug.LogError($"[UnitManager-Diagnosis] Found data for Turn {turnNumber}, but its 'enemies' array is empty.");
+                } else {
                     spawns.AddRange(turnSpawn.enemies);
                 }
+                break; // 해당 턴 데이터를 찾았으므로 루프 종료
             }
+        }
+
+        if (!foundTurnData) {
+            Debug.LogError($"[UnitManager-Diagnosis] Could not find any data for Turn {turnNumber} in the first wave.");
         }
 
         return spawns;
