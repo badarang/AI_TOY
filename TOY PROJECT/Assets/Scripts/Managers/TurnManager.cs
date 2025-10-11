@@ -126,14 +126,20 @@ public override void FixedUpdateNetwork()
         // Build the turn order
         _playerTurnOrder.Clear();
         var allPlayers = stageManager.GetAllPlayers().OrderBy(p => p.Owner.PlayerId).ToList();
-        foreach (var player in allPlayers)
+        if (allPlayers.Count == 0)
+        {
+            Debug.LogError("[TurnManager] No players found! Cannot start wave.");
+            return;
+        }
+        
+        allPlayers = allPlayers.OrderBy(p => p.Owner.PlayerId).ToList();        foreach (var player in allPlayers)
         {
             _playerTurnOrder.Add(player.Owner);
         }
         
         Debug.Log($"Starting first wave with {_playerTurnOrder.Count} players.");
         _turnIndex = -1;
-        StartNextTurn();
+Debug.Log($"[TurnManager] Starting first wave with {_playerTurnOrder.Count} players.");        StartNextTurn();
     }
 
 private async void StartNextTurn()

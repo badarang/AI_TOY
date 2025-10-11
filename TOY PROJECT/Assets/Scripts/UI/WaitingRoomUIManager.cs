@@ -21,8 +21,17 @@ public class WaitingRoomUIManager : MonoBehaviour, IManager
 
     public void BeforeInit() { }
 
-    public void AfterInit()
+public void AfterInit()
     {
+        if (waitingRoomManager == null)
+        {
+            waitingRoomManager = FindObjectOfType<WaitingRoomManager>();
+            if (waitingRoomManager == null)
+            {
+                Debug.LogError("[WaitingRoomUIManager] WaitingRoomManager not found in scene!");
+            }
+        }
+        
         SetupUI();
         UpdatePlayerList();
     }
@@ -118,8 +127,14 @@ public class WaitingRoomUIManager : MonoBehaviour, IManager
         }
     }
 
-    private void OnReadyButtonClick()
+private void OnReadyButtonClick()
     {
+        if (waitingRoomManager == null)
+        {
+            Debug.LogError("[WaitingRoomUIManager] WaitingRoomManager is null! Cannot toggle ready state.");
+            return;
+        }
+        
         isReady = !isReady;
 
         if (readyButton != null)
@@ -135,8 +150,14 @@ public class WaitingRoomUIManager : MonoBehaviour, IManager
         waitingRoomManager.OnReadyButtonClicked();
     }
 
-    private void OnStartGameButtonClick()
+private void OnStartGameButtonClick()
     {
+        if (waitingRoomManager == null)
+        {
+            Debug.LogError("[WaitingRoomUIManager] WaitingRoomManager is null! Cannot start game.");
+            return;
+        }
+        
         Debug.Log("[WaitingRoomUI] Starting game...");
         waitingRoomManager.OnStartButtonClicked();
     }

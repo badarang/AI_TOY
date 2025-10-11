@@ -24,21 +24,64 @@ public class StageManager : NetworkBehaviour, IManager
     private StageData currentStageData;
     private List<EnemyUnit> enemies = new List<EnemyUnit>();
     private List<GameObject> spawnedObstacles = new List<GameObject>();
-    private List<GameObject> spawnedPortals = new List<GameObject>();
+    
+    private bool _isStageLoaded = false;
+    public bool IsStageLoaded => _isStageLoaded;
+private List<GameObject> spawnedPortals = new List<GameObject>();
 
     #region IManager & Fusion Lifecycle
 
     public void BeforeInit() { }
     public void AfterInit() { }
 
-    public override void Spawned()
+public override void Spawned()
     {
-        // On server, we signal the GameManager that we are ready to start the game flow.
-        if (HasStateAuthority)
-        {
-            Core.Instance.GameManager.OnStageManagerReady();
-        }
+        Debug.Log("[StageManager] StageManager NetworkBehaviour spawned.");
     }
+
+[Rpc(RpcSources.StateAuthority, RpcTargets.StateAuthority)]
+    public async void InitializePlayersRpc()
+    {
+        if (!HasStateAuthority) return;
+
+        Debug.Log("[StageManager] Initializing players...");
+        
+        int playerIndex = 0;
+        foreach (PlayerRef player in Runner.ActivePlayers)
+        {
+            UnitType unitType = GetUnitTypeForPlayer(player);
+            Vector2Int spawnPos = GetPlayerSpawnPosition(playerIndex);
+            
+            Debug.Log($"[StageManager] Spawning Player {player.PlayerId} as {unitType} at {spawnPos}");
+            await SpawnPlayer(player, unitType, spawnPos);
+            playerIndex++;
+        }
+        
+        Debug.Log("[StageManager] All players spawned. Signaling GameManager.");
+        Core.Instance.GameManager.OnStageManagerReady();
+    }
+
+    private UnitType GetUnitTypeForPlayer(PlayerRef player)
+    {
+        return player.PlayerId == 0 ? UnitType.Player_Hikai : UnitType.Player_Vrixa;
+    }
+
+    private Vector2Int GetPlayerSpawnPosition(int playerIndex)
+    {
+        Vector2Int[] spawnPositions = new Vector2Int[]
+        {
+            new Vector2Int(1, 1),
+            new Vector2Int(2, 1)
+        };
+        
+        if (playerIndex < spawnPositions.Length)
+        {
+            return spawnPositions[playerIndex];
+        }
+        
+        return new Vector2Int(playerIndex, 1);
+    }
+
 
     #endregion
 
@@ -100,13 +143,18 @@ public class StageManager : NetworkBehaviour, IManager
 
         ClearCurrentStage();
         currentStageData = stageData;
-
+ClearCurrentStage();
+        currentStageData = stageData;
+        _isStageLoaded = false;
         if (IsBattleType(stageData.stageType))
         {
             gridManager.GenerateGrid(currentStageData);
             SetupCamera(currentStageData.width, currentStageData.height);
             SpawnObstacles(currentStageData);
-        }
+
+        
+        _isStageLoaded = true;
+        Debug.Log($"[StageManager] Stage '{stageData.name}' loaded successfully.");        }
     }
 
     private void ClearCurrentStage()
@@ -232,10 +280,17 @@ public class StageManager : NetworkBehaviour, IManager
         }
 
         var playerUnit = playerNO.GetComponent<PlayerUnit>();
-        playerUnit.position = spawnPosition;
-        
-        gridManager.RegisterUnit(playerUnit, spawnPosition);
-    }
+        if (playerUnit != null)
+        {
+            playerUnit.Initialize(spawnPosition, playerRef);
+            gridManager.RegisterUnit(playerUnit, spawnPosition);
+            Debug.Log($"[StageManager] Player {playerRef.PlayerId} spawned at {spawnPosition}");
+        }
+        else
+        {
+            Debug.LogError($"[StageManager] Spawned object does not have PlayerUnit component!");
+        }
+        }
 
     public async UniTask SpawnEnemiesForTurn(int turnNumber)
     {

@@ -129,9 +129,10 @@ public class GameManager : MonoBehaviour, IManager
         stageManager.LoadStageOnServerRpc(stageToLoad.name);
 
         // Player spawning is now handled by NetworkManager.
+await Cysharp.Threading.Tasks.UniTask.WaitUntil(() => stageManager.IsStageLoaded);
+        Debug.Log($"[GameManager] Stage load confirmed. Proceeding with game logic.");
 
-        // 전투 스테이지인 경우, 턴 매니저를 통해 첫 웨이브를 시작합니다.
-        if (
+                if (
             stageToLoad.stageType == StageType.Battle
             || stageToLoad.stageType == StageType.EliteBattle
             || stageToLoad.stageType == StageType.Boss

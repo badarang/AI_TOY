@@ -62,8 +62,12 @@ public class NetworkManager : MonoBehaviour, IManager, INetworkRunnerCallbacks
         else
         {
             Debug.LogError($"[NetworkManager] Failed to start Host: {result.ShutdownReason}");
-            Destroy(currentRunner.gameObject);
-            currentRunner = null;
+            if (currentRunner != null)
+            {
+                Destroy(currentRunner.gameObject);
+                currentRunner = null;
+            }
+            return;
         }
     }
 
@@ -156,36 +160,14 @@ public class NetworkManager : MonoBehaviour, IManager, INetworkRunnerCallbacks
         }
     }
 
-    // --- 사용자 변경 3: SpawnAllPlayers ---
-    public void SpawnAllPlayers()
-    {
-        if (!currentRunner.IsServer) return;
-        if (SceneManager.GetActiveScene().name != "InGame") return;
-
-        Debug.Log("Spawning all players...");
-        foreach (PlayerRef player in currentRunner.ActivePlayers)
-        {
-            Vector3 spawnPosition = GetSpawnPosition(player.PlayerId);
-            Debug.Log($"Spawning player {player.PlayerId} at {spawnPosition}");
-            // 플레이어에게 입력 권한을 부여하여 스폰합니다.
-            currentRunner.Spawn(playerPrefab, spawnPosition, Quaternion.identity, player);
-        }
-    }
-    
-    private Vector3 GetSpawnPosition(int playerActorNumber)
-    {
-        // 스폰 위치 로직을 위한 플레이스홀더입니다.
-        return new Vector3((playerActorNumber - 1) * 3.0f, 1, 0);
-    }
 
     #region INetworkRunnerCallbacks
 
-    // --- 사용자 변경 1: OnPlayerJoined ---
+
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
         Debug.Log($"Player joined: {player.PlayerId}");
 
-        // 호스트이고 첫 번째 플레이어인 경우 WaitingRoom으로 이동합니다.
         if (runner.IsServer && runner.ActivePlayers.Count() == 1)
         {
             Debug.Log("First player joined, loading WaitingRoom...");
@@ -193,16 +175,15 @@ public class NetworkManager : MonoBehaviour, IManager, INetworkRunnerCallbacks
         }
     }
 
-    // --- 사용자 변경 3: OnSceneLoadDone ---
     public void OnSceneLoadDone(NetworkRunner runner)
     {
         Debug.Log($"Scene load done. Current scene: {SceneManager.GetActiveScene().name}");
         if (SceneManager.GetActiveScene().name == "InGame")
         {
-            // 호스트만 플레이어를 스폰합니다.
             if (runner.IsServer)
             {
-                SpawnAllPlayers();
+                Debug.Log("[NetworkManager] InGame scene loaded. Requesting StageManager to spawn players.");
+                Core.Instance.StageManager.InitializePlayersRpc();
             }
         }
     }

@@ -384,6 +384,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   networkRunnerPrefab: {fileID: 8020386030368276730, guid: 9390b5d96b2c94b558a784573ddb1c55, type: 3}
   playerPrefab: {fileID: 6562410421025266001, guid: abde3b5da2f074872a14dcd2089a0130, type: 3}
+  waitingRoomManagerPrefab: {fileID: 4322858676875726744, guid: a766e5c59a0d94ff3b8cfa2d076423cb, type: 3}
 --- !u!1 &578147161
 GameObject:
   m_ObjectHideFlags: 0
