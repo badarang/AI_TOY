@@ -36,8 +36,6 @@ public class UnitManager : MonoBehaviour, IManager
         if (!_networkManager.IsHost)
             return;
 
-        Debug.Log("[UnitSpawner] Spawning players...");
-
         int playerIndex = 0;
         foreach (PlayerRef player in _networkManager.Runner.ActivePlayers)
         {
@@ -52,8 +50,6 @@ public class UnitManager : MonoBehaviour, IManager
             await SpawnPlayer(player, unitType, spawnPos);
             playerIndex++;
         }
-
-        Debug.Log("[UnitSpawner] All players spawned");
     }
 
     public async UniTask SpawnPlayer(
@@ -88,11 +84,12 @@ public class UnitManager : MonoBehaviour, IManager
             Quaternion.identity,
             playerRef
         );
+        
+        Addressables.Release(handle);
 
         if (playerNO == null)
         {
             Debug.LogError($"[UnitSpawner] Failed to spawn player");
-            Addressables.Release(handle);
             return;
         }
 
@@ -101,7 +98,6 @@ public class UnitManager : MonoBehaviour, IManager
         {
             playerUnit.Initialize(spawnPosition, playerRef);
             gridManager.RegisterUnit(playerUnit, spawnPosition);
-            Debug.Log($"[UnitSpawner] Player {playerRef} spawned at {spawnPosition}");
         }
     }
     
@@ -147,19 +143,18 @@ public class UnitManager : MonoBehaviour, IManager
             Quaternion.identity
         );
 
+        Addressables.Release(handle);
+
         if (enemyNO != null)
         {
             EnemyUnit enemy = enemyNO.GetComponent<EnemyUnit>();
             enemy.position = spawnPos;
             _spawnedEnemies.Add(enemy);
             gridManager.RegisterUnit(enemy, spawnPos);
-
-            Debug.Log($"[UnitSpawner] Enemy {enemyType} spawned at {spawnPos}");
         }
         else
         {
             Debug.LogError($"[UnitSpawner] Failed to spawn enemy: {prefabKey}");
-            Addressables.Release(handle);
         }
     }
 

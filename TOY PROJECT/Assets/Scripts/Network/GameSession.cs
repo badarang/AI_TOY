@@ -195,15 +195,9 @@ namespace Network
             Debug.Log($"[GameSession] Player {player} ready: {isReady}");
         }
 
-        [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-        public void StartGameRpc(RpcInfo info = default)
+        [Rpc(RpcSources.StateAuthority, RpcTargets.StateAuthority)]
+        public void StartGameRpc()
         {
-            if (info.Source != PlayerSlots[0].PlayerRef)
-            {
-                Debug.LogWarning($"Player {info.Source} tried to start the game but is not the host.");
-                return;
-            }
-
             if (!AllPlayersReady())
             {
                 Debug.LogWarning("Host tried to start game, but not all players are ready.");

@@ -1,4 +1,3 @@
-using UnityEngine;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -6,14 +5,20 @@ using System.Linq;
 using Cysharp.Threading.Tasks;
 using Fusion;
 using Fusion.Sockets;
+using UnityEngine;
 
 // TurnManager is now a NetworkBehaviour to manage and sync turn state.
 public class TurnManager : NetworkBehaviour, IManager
 {
     // --- NETWORKED STATE ---
-    [Networked] public PlayerRef CurrentTurnPlayer { get; private set; }
-    [Networked] public int TurnNumber { get; private set; }
-    [Networked] public NetworkBool IsPlayerTurn { get; set; }
+    [Networked]
+    public PlayerRef CurrentTurnPlayer { get; private set; }
+
+    [Networked]
+    public int TurnNumber { get; private set; }
+
+    [Networked]
+    public NetworkBool IsPlayerTurn { get; set; }
 
     // --- SERVER-ONLY STATE ---
     private List<PlayerRef> _playerTurnOrder = new List<PlayerRef>();
@@ -26,8 +31,9 @@ public class TurnManager : NetworkBehaviour, IManager
         AwaitingUnitSelection,
         UnitSelected,
         PerformingAction,
-        StageClear
+        StageClear,
     }
+
     public PlayerTurnState CurrentPlayerState { get; private set; }
 
     // --- EVENTS ---
@@ -40,10 +46,11 @@ public class TurnManager : NetworkBehaviour, IManager
     private bool _isMyTurn = false;
     public bool IsMyTurn => _isMyTurn;
 
-    private StageManager stageManager;    private UnitManager _unitManager;
+    private StageManager stageManager;
+    private UnitManager unitManager;
 
     private GridManager gridManager;
-    
+
     private PlayerUnit _localSelectedUnit;
     public PlayerUnit SelectedUnit => _localSelectedUnit;
 
@@ -51,17 +58,12 @@ public class TurnManager : NetworkBehaviour, IManager
 
     public void BeforeInit() { }
 
-public void AfterInit()
+    public void AfterInit()
     {
         uiManager = Core.Instance.UIManager;
         stageManager = Core.Instance.StageManager;
         gridManager = Core.Instance.GridManager;
-        _unitManager = FindObjectOfType<UnitManager>();
-        
-        if (_unitManager == null)
-        {
-            Debug.LogError("[TurnManager] UnitSpawner not found in scene!");
-        }
+        unitManager = Core.Instance.UnitManager;
     }
 
     public override void Spawned()
@@ -74,23 +76,26 @@ public void AfterInit()
         }
     }
 
-public override void FixedUpdateNetwork()
+    public override void FixedUpdateNetwork()
     {
         bool wasMyTurn = _isMyTurn;
         _isMyTurn = (CurrentTurnPlayer == Runner.LocalPlayer);
-        
+
         if (_isMyTurn && CurrentPlayerState == PlayerTurnState.AwaitingTurn)
         {
             Debug.Log("It is now my turn!");
             SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
-            
-            var myUnits = System.Linq.Enumerable.Where(FindObjectsOfType<PlayerUnit>(), p => p.Owner == Runner.LocalPlayer);
+
+            var myUnits = System.Linq.Enumerable.Where(
+                FindObjectsOfType<PlayerUnit>(),
+                p => p.Owner == Runner.LocalPlayer
+            );
             foreach (var unit in myUnits)
             {
                 unit.OnTurnStart();
             }
             OnPlayerTurnStart?.Invoke();
-            
+
             if (uiManager != null)
             {
                 uiManager.SetEndTurnButtonActive(true);
@@ -101,7 +106,7 @@ public override void FixedUpdateNetwork()
             Debug.Log($"It is now Player {CurrentTurnPlayer}'s turn. I am awaiting.");
             SetPlayerState(PlayerTurnState.AwaitingTurn);
             ClearSelection();
-            
+
             if (uiManager != null)
             {
                 uiManager.SetEndTurnButtonActive(false);
@@ -120,12 +125,13 @@ public override void FixedUpdateNetwork()
         StartNextTurn();
     }
 
-public void StartFirstWave()
+    public void StartFirstWave()
     {
-        if (!HasStateAuthority) return;
+        if (!HasStateAuthority)
+            return;
 
         TurnNumber = 0;
-        
+
         _playerTurnOrder.Clear();
         var allPlayers = FindObjectsOfType<PlayerUnit>();
         if (allPlayers.Length == 0)
@@ -133,21 +139,24 @@ public void StartFirstWave()
             Debug.LogError("[TurnManager] No players found! Cannot start wave.");
             return;
         }
-        
-        var sortedPlayers = System.Linq.Enumerable.OrderBy(allPlayers, p => p.Owner.PlayerId).ToList();
+
+        var sortedPlayers = System
+            .Linq.Enumerable.OrderBy(allPlayers, p => p.Owner.PlayerId)
+            .ToList();
         foreach (var player in sortedPlayers)
         {
             _playerTurnOrder.Add(player.Owner);
         }
-        
+
         Debug.Log($"[TurnManager] Starting first wave with {_playerTurnOrder.Count} players.");
         _turnIndex = -1;
         StartNextTurn();
     }
 
-private async void StartNextTurn()
+    private async void StartNextTurn()
     {
-        if (!HasStateAuthority) return;
+        if (!HasStateAuthority)
+            return;
 
         _turnIndex++;
 
@@ -155,7 +164,9 @@ private async void StartNextTurn()
         {
             IsPlayerTurn = true;
             CurrentTurnPlayer = _playerTurnOrder[_turnIndex];
-            Debug.Log($"[SERVER] Starting turn for Player {CurrentTurnPlayer}. Index: {_turnIndex}");
+            Debug.Log(
+                $"[SERVER] Starting turn for Player {CurrentTurnPlayer}. Index: {_turnIndex}"
+            );
             UpdateTurnOrderDisplay();
         }
         else
@@ -165,15 +176,15 @@ private async void StartNextTurn()
             Debug.Log("[SERVER] All players have acted. Starting enemy turn.");
             UpdateTurnOrderDisplay();
             await StartEnemyTurn();
-            
+
             _turnIndex = -1;
             TurnNumber++;
-            
-            if (_unitManager != null)
+
+            if (unitManager != null)
             {
-                await _unitManager.SpawnEnemiesForTurn(TurnNumber);
+                await unitManager.SpawnEnemiesForTurn(TurnNumber);
             }
-            
+
             StartNextTurn();
         }
     }
@@ -182,20 +193,21 @@ private async void StartNextTurn()
     {
         OnEnemyTurnStart?.Invoke();
 
-        var enemies = _unitManager != null ? _unitManager.SpawnedEnemies : new List<EnemyUnit>();
+        var enemies = unitManager != null ? unitManager.SpawnedEnemies : new List<EnemyUnit>();
         foreach (var enemy in enemies)
         {
-            if (enemy != null) enemy.OnTurnStart();
+            if (enemy != null)
+                enemy.OnTurnStart();
         }
 
         await Core.Instance.EnemyAIManager.ExecuteEnemyTurns().ToUniTask(this);
-        
+
         await CheckForWaveClearAsync();
     }
 
     private async UniTask CheckForWaveClearAsync()
     {
-        if ((_unitManager != null ? _unitManager.SpawnedEnemies.Count : 0) == 0)
+        if ((unitManager != null ? unitManager.SpawnedEnemies.Count : 0) == 0)
         {
             // For simplicity, we'll just log this. A full implementation would
             // show rewards and proceed to the next stage.
@@ -221,7 +233,7 @@ private async void StartNextTurn()
         }
     }
 
-public void HandleCellClick(Vector2Int cell)
+    public void HandleCellClick(Vector2Int cell)
     {
         var unitAtCell = gridManager.GetUnitAt(cell);
 
@@ -260,10 +272,10 @@ public void HandleCellClick(Vector2Int cell)
                 break;
 
             case PlayerTurnState.UnitSelected:
-                if (_localSelectedUnit == null) 
-                { 
-                    SetPlayerState(PlayerTurnState.AwaitingUnitSelection); 
-                    return; 
+                if (_localSelectedUnit == null)
+                {
+                    SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
+                    return;
                 }
 
                 if (unitAtCell == null)
@@ -276,7 +288,10 @@ public void HandleCellClick(Vector2Int cell)
                     // Clicked on an enemy or other player's unit - try to attack
                     TryAttackUnit(_localSelectedUnit, cell);
                 }
-                else if (unitAtCell is PlayerUnit friendlyUnit && friendlyUnit.Owner == Runner.LocalPlayer)
+                else if (
+                    unitAtCell is PlayerUnit friendlyUnit
+                    && friendlyUnit.Owner == Runner.LocalPlayer
+                )
                 {
                     // Clicked on another friendly unit - switch selection
                     SelectPlayerUnit(friendlyUnit);
@@ -284,7 +299,7 @@ public void HandleCellClick(Vector2Int cell)
                 break;
         }
     }
-    
+
     private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         int moveSkillIndex = unit.GetMoveSkillIndex();
@@ -293,12 +308,12 @@ public void HandleCellClick(Vector2Int cell)
             Debug.LogWarning("Selected unit has no move skill.");
             return;
         }
-        
+
         // Note: We are not checking range on the client. The server will validate this.
         // The client simply requests the action.
         Debug.Log($"Requesting move for {unit.name} to {targetCell}");
         unit.RequestSkillUse(moveSkillIndex, targetCell);
-        
+
         // After an action, we deselect and wait for the server to update the state.
         ClearSelection();
         SetPlayerState(PlayerTurnState.PerformingAction);
@@ -322,7 +337,7 @@ public void HandleCellClick(Vector2Int cell)
             Debug.LogWarning("Selected unit has no attack skill.");
             return;
         }
-        
+
         Debug.Log($"Requesting attack for {unit.name} on {targetCell}");
         unit.RequestSkillUse(attackSkillIndex, targetCell);
 
@@ -338,18 +353,18 @@ public void HandleCellClick(Vector2Int cell)
             Debug.LogWarning("Cannot select a unit that is not mine.");
             return;
         }
-        
+
         if (_localSelectedUnit != null)
         {
             _localSelectedUnit.Deselect();
         }
-        
+
         _localSelectedUnit = unit;
         _localSelectedUnit.Select();
-        
+
         SetPlayerState(PlayerTurnState.UnitSelected);
         Debug.Log($"Player unit selected: {unit.name}");
-        
+
         uiManager.ShowUnitInfo(unit);
         uiManager.skillPanelUI?.UpdateSkillDisplay(unit);
     }
@@ -364,8 +379,11 @@ public void HandleCellClick(Vector2Int cell)
         gridManager.ClearSelection();
         uiManager.HideUnitInfo();
         uiManager.HideSkillPanel();
-        
-        if (CurrentTurnPlayer == Runner.LocalPlayer && CurrentPlayerState != PlayerTurnState.AwaitingTurn)
+
+        if (
+            CurrentTurnPlayer == Runner.LocalPlayer
+            && CurrentPlayerState != PlayerTurnState.AwaitingTurn
+        )
         {
             SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
         }
@@ -380,36 +398,36 @@ public void HandleCellClick(Vector2Int cell)
         CurrentPlayerState = newState;
         Debug.Log($"Local player state changed to: {newState}");
     }
-    
-public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
-{
-}
 
-public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
-{
-}
+    public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
 
-public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason)
-{
-}
+    public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
 
-public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data)
-{
-}
+    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
 
-public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress)
-{
-}
+    public void OnReliableDataReceived(
+        NetworkRunner runner,
+        PlayerRef player,
+        ReliableKey key,
+        ArraySegment<byte> data
+    ) { }
+
+    public void OnReliableDataProgress(
+        NetworkRunner runner,
+        PlayerRef player,
+        ReliableKey key,
+        float progress
+    ) { }
     #endregion
 
 
-public void UpdateTurnOrderDisplay()
+    public void UpdateTurnOrderDisplay()
     {
         if (uiManager != null && uiManager.turnOrderUI != null)
         {
             // Display current turn information
             string turnInfo = $"Turn {TurnNumber + 1}\n";
-            
+
             if (IsPlayerTurn)
             {
                 if (_isMyTurn)
@@ -418,20 +436,20 @@ public void UpdateTurnOrderDisplay()
                 }
                 else
                 {
-                    turnInfo += $"<color=yellow>Player {CurrentTurnPlayer.PlayerId + 1}'s Turn</color>";
+                    turnInfo +=
+                        $"<color=yellow>Player {CurrentTurnPlayer.PlayerId + 1}'s Turn</color>";
                 }
             }
             else
             {
                 turnInfo += "<color=red>Enemy Turn</color>";
             }
-            
+
             Debug.Log($"[TurnManager] {turnInfo}");
         }
     }
 
-
-public void TriggerUnitActionEnd()
+    public void TriggerUnitActionEnd()
     {
         // Called when a unit finishes an action (like using a skill)
         if (CurrentPlayerState == PlayerTurnState.PerformingAction)

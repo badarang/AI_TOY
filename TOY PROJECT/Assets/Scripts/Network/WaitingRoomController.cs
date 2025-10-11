@@ -34,7 +34,6 @@ namespace Network
         private void Start()
         {
             RegisterCallbacks();
-            // InitializeSession(); // This call is premature and causes the spawn exception.
         }
 
         private void RegisterCallbacks()
@@ -203,7 +202,9 @@ namespace Network
             {
                 _gameSession.OnSessionDataChanged -= OnSessionDataChanged;
 
-                if (_localPlayer != PlayerRef.None && _gameSession.Object != null && _gameSession.Object.IsValid)
+                // Only unregister if we are NOT in the process of starting the game.
+                // This prevents unregistering during the scene transition to the InGame scene.
+                if (_gameSession.Phase != WaitingRoomPhase.Starting && _localPlayer != PlayerRef.None && _gameSession.Object.IsValid)
                 {
                     _gameSession.UnregisterPlayerRpc(_localPlayer);
                 }

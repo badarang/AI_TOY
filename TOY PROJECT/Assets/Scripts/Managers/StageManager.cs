@@ -10,8 +10,12 @@ public class StageManager : MonoBehaviour, IManager
 {
     [Header("Dependencies")]
     [SerializeField] private GridManager gridManager;
+    [SerializeField] private UnitManager unitManager;
     [SerializeField] private GameObject portalPrefab;
     [SerializeField] private GameAssetDatabase gameDatabase;
+
+    [Header("Settings")]
+    [SerializeField] private string firstStageName = "Stage_1_1";
 
     private NetworkManager _networkManager;
     private GameSession _session;
@@ -29,34 +33,38 @@ public class StageManager : MonoBehaviour, IManager
 
     public void AfterInit()
     {
-        if (GameSession.Instance != null)
+        if (GameSession.Instance == null)
         {
-            _session = GameSession.Instance;
-            _session.OnStageChanged += OnStageChanged;
+            Debug.LogWarning("[StageManager] GameSession.Instance is null in AfterInit.");
+            return;
+        }
+
+        _session = GameSession.Instance;
+        _session.OnStageChanged += OnStageChanged;
+
+        // Host loads the first stage if no stage is currently loaded.
+        // This logic now works because the GameSession data is correctly persisted across scenes.
+        if (_networkManager.IsHost && string.IsNullOrEmpty(_session.CurrentStageName.Value))
+        {
+            RequestLoadStage(firstStageName);
         }
     }
 
     private void OnStageChanged(string stageName)
     {
+        if (_currentStageData != null && _currentStageData.name == stageName) return;
+        
         LoadStageLocal(stageName);
     }
 
     public void RequestLoadStage(string stageName)
     {
-        if (_networkManager == null || !_networkManager.IsHost)
+        if (_networkManager == null || !_networkManager.IsHost || _session == null)
         {
-            Debug.LogWarning("[StageManager] Only host can load stages");
-            return;
-        }
-
-        if (_session == null)
-        {
-            Debug.LogError("[StageManager] GameSession not found");
             return;
         }
 
         _session.LoadStageRpc(stageName);
-        LoadStageLocal(stageName);
     }
 
     private async void LoadStageLocal(string stageName)
@@ -76,9 +84,20 @@ public class StageManager : MonoBehaviour, IManager
             gridManager.GenerateGrid(stageData);
             SetupCamera(stageData.width, stageData.height);
             await SpawnObstacles(stageData);
+
+            if (_networkManager.IsHost)
+            {
+                if (unitManager == null)
+                {
+                    Debug.LogError("[StageManager] UnitManager is not assigned!");
+                    return;
+                }
+                await unitManager.SpawnPlayers();
+                await unitManager.SpawnEnemiesForTurn(1); // Spawn enemies for the first turn
+            }
         }
 
-        if (_networkManager.IsHost && _session != null)
+        if (_session != null)
         {
             _session.SetStageLoadedRpc(true);
         }
