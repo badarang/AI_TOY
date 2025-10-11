@@ -65,11 +65,11 @@ public void BeforeInit()
     {
         ClearAllPreviews();
         
-        var players = stageManager.GetAllPlayers();
+        var players = Core.Instance.UnitManager.GetAllPlayers();
         if (players == null || players.Count == 0) return;
         var targetPlayer = players[0]; // Simple AI: always target the first player for previews
         
-        var enemies = stageManager.GetEnemies();
+        var enemies = Core.Instance.UnitManager.GetEnemies();
         if (enemies == null || enemies.Count == 0) return;
         
         foreach (var enemy in enemies)

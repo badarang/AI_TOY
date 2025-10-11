@@ -2,8 +2,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class LobbyUIManager : MonoBehaviour, IManager
+public class LobbyUIController : MonoBehaviour
 {
+    [SerializeField] private LobbyController lobbyController;
+
     [Header("UI References")]
     [SerializeField] private Button hostButton;
     [SerializeField] private Button joinButton;
@@ -14,16 +16,7 @@ public class LobbyUIManager : MonoBehaviour, IManager
 
     private string defaultRoomName = "MyGameRoom";
 
-    public void BeforeInit()
-    {
-    }
-
-    public void AfterInit()
-    {
-        SetupUI();
-    }
-
-    private void SetupUI()
+    public void SetupUI()
     {
         if (hostButton != null)
             hostButton.onClick.AddListener(OnHostButtonClick);
@@ -40,27 +33,43 @@ public class LobbyUIManager : MonoBehaviour, IManager
     private void OnHostButtonClick()
     {
         string roomName = GetRoomName();
-        
+
+        if (!ValidateInput(roomName))
+            return;
+
         Debug.Log($"[LobbyUI] Creating room: {roomName}");
-        
-        PersistentCore.Instance.NetworkManager.StartHost(roomName);
-        
-        ShowWaitingPanel("Hosting room...");
-        
-        Invoke(nameof(LoadGameScene), 2f);
+        ShowWaitingPanel("Creating room...");
+
+        lobbyController.CreateRoom(roomName);
     }
 
     private void OnJoinButtonClick()
     {
         string roomName = GetRoomName();
-        
+
+        if (!ValidateInput(roomName))
+            return;
+
         Debug.Log($"[LobbyUI] Joining room: {roomName}");
-        
-        PersistentCore.Instance.NetworkManager.JoinRoom(roomName);
-        
         ShowWaitingPanel("Joining room...");
-        
-        Invoke(nameof(LoadGameScene), 2f);
+
+        lobbyController.JoinRoom(roomName);
+    }
+
+    private bool ValidateInput(string roomName)
+    {
+        if (lobbyController.ValidateRoomName(roomName, out string error))
+        {
+            return true;
+        }
+
+        if (statusText != null)
+        {
+            statusText.text = error;
+        }
+
+        Debug.LogWarning($"[LobbyUI] Validation failed: {error}");
+        return false;
     }
 
     private string GetRoomName()
@@ -91,11 +100,6 @@ public class LobbyUIManager : MonoBehaviour, IManager
         
         if (statusText != null)
             statusText.text = message;
-    }
-
-    private void LoadGameScene()
-    {
-        UnityEngine.SceneManagement.SceneManager.LoadScene("WaitingRoom");
     }
 
     private void OnDestroy()

@@ -75,12 +75,6 @@ public class StageData : ScriptableObject
     public int height = 7;
 
     [ShowIf("IsBattleType")]
-    public Vector2Int playerSpawn;
-
-    [ShowIf("IsBattleType")]
-    public UnitType playerType;
-
-    [ShowIf("IsBattleType")]
     [ReadOnly]
     public int difficulty;
 

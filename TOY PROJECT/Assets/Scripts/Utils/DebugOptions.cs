@@ -23,7 +23,7 @@ public partial class SROptions
     [DisplayName("Add Player AP +1")]
     public void AddPlayerAP()
     {
-        var players = Core.Instance?.StageManager?.GetAllPlayers();
+        var players = Core.Instance?.UnitManager?.GetAllPlayers();
         if (players != null)
         {
             foreach(var player in players)
@@ -38,7 +38,7 @@ public partial class SROptions
     [DisplayName("Damage All Enemies (10)")]
     public void DamageAllEnemies()
     {
-        var enemies = Core.Instance?.StageManager?.GetEnemies();
+        var enemies = Core.Instance?.UnitManager?.GetEnemies();
         if (enemies != null)
         {
             int count = 0;

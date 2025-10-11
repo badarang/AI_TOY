@@ -18,7 +18,6 @@ public class StageDataEditor : OdinEditor
     // Style Constants
     private const int CELL_SIZE = 42;
     private const int CELL_PADDING = 5;
-    private static readonly Color PLAYER_COLOR = new Color(0.2f, 0.8f, 0.2f, 1f);
     private static readonly Color ENEMY_COLOR = new Color(0.9f, 0.3f, 0.3f, 1f);
     private static readonly Color HOVER_COLOR = new Color(0.3f, 0.6f, 1f, 0.15f);
 
@@ -30,14 +29,11 @@ public class StageDataEditor : OdinEditor
 
     public override void OnInspectorGUI()
     {
-        // First, let Odin draw all the properties defined in StageData,
-        // which automatically handles showing/hiding fields based on StageType.
         base.OnInspectorGUI();
 
         var data = (StageData)target;
         var battleTypes = new[] { StageType.Battle, StageType.EliteBattle, StageType.Boss };
 
-        // Only show the custom grid editor and difficulty calculator for battle types
         if (battleTypes.Contains(data.stageType))
         {
             EditorGUILayout.Space(20);
@@ -45,8 +41,6 @@ public class StageDataEditor : OdinEditor
             GUILayout.Label("Battle Grid Visual Editor", headerStyle);
             EditorGUILayout.Space(5);
 
-            // Wrap our custom GUI in a change check.
-            // If any value is changed by our GUI, recalculate difficulty and save.
             EditorGUI.BeginChangeCheck();
 
             DrawWaveSelector();
@@ -106,7 +100,6 @@ public class StageDataEditor : OdinEditor
             for (int x = 0; x < data.width; x++)
             {
                 Vector2Int pos = new Vector2Int(x, data.height - y - 1);
-                bool isPlayer = data.playerSpawn == pos;
                 var enemy = currentEnemies.FirstOrDefault(es => es.spawnPos == pos);
                 var obstacle = data.obstacleSpawns?.FirstOrDefault(os => os.spawnPos == pos);
                 bool isHovered = hoveredCell == new Vector2Int(x, y);
@@ -115,16 +108,16 @@ public class StageDataEditor : OdinEditor
                 float py = gridRect.y + gridStartY + y * (CELL_SIZE + CELL_PADDING) + CELL_PADDING / 2f;
                 Rect cellRect = new Rect(px, py, CELL_SIZE, CELL_SIZE);
 
-                DrawCellBackground(cellRect, isPlayer, enemy != null, obstacle != null, isHovered);
-                DrawCellBorder(cellRect, isPlayer, enemy != null);
-                RenderUnit(cellRect, isPlayer, enemy, obstacle, data.playerType);
+                DrawCellBackground(cellRect, enemy != null, obstacle != null, isHovered);
+                DrawCellBorder(cellRect, enemy != null);
+                RenderUnit(cellRect, enemy, obstacle);
 
-                HandleContextMenu(cellRect, pos, isPlayer, enemy, obstacle, e);
+                HandleContextMenu(cellRect, pos, enemy, obstacle, e);
             }
         }
     }
 
-    private void HandleContextMenu(Rect cellRect, Vector2Int pos, bool isPlayer, EnemySpawnData enemy, ObstacleSpawnData obstacle, Event e)
+    private void HandleContextMenu(Rect cellRect, Vector2Int pos, EnemySpawnData enemy, ObstacleSpawnData obstacle, Event e)
     {
         if (e.type != EventType.ContextClick || !cellRect.Contains(e.mousePosition)) return;
 
@@ -133,14 +126,7 @@ public class StageDataEditor : OdinEditor
         var data = (StageData)target;
         bool isWaveValid = data.waves != null && data.waves.Length > 0 && _selectedWaveIndex < data.waves.Length;
 
-        // Player spawn logic
-        if (!isPlayer && enemy == null && obstacle == null) menu.AddItem(new GUIContent("👤 Set Player Spawn"), false, () => { serializedObject.FindProperty("playerSpawn").vector2IntValue = _contextMenuPos; serializedObject.ApplyModifiedProperties(); });
-        else menu.AddDisabledItem(new GUIContent("👤 Cell Occupied"));
-
-        menu.AddSeparator("");
-
-        // Enemy spawn logic
-        if (enemy == null && !isPlayer && obstacle == null)
+        if (enemy == null && obstacle == null)
         {
             if (!isWaveValid) { menu.AddDisabledItem(new GUIContent("👹 Add Enemy (No Wave)")); }
             else
@@ -263,20 +249,18 @@ public class StageDataEditor : OdinEditor
         return new Vector2Int(-1, -1);
     }
 
-    private void DrawCellBackground(Rect cellRect, bool isPlayer, bool hasEnemy, bool hasObstacle, bool isHovered)
+    private void DrawCellBackground(Rect cellRect, bool hasEnemy, bool hasObstacle, bool isHovered)
     {
         Color cellBg = EditorGUIUtility.isProSkin ? new Color(0.25f, 0.25f, 0.25f, 1f) : new Color(0.97f, 0.97f, 0.99f, 1f);
-        if (isPlayer) cellBg = Color.Lerp(cellBg, PLAYER_COLOR, 0.10f);
-        else if (hasEnemy) cellBg = Color.Lerp(cellBg, ENEMY_COLOR, 0.10f);
+        if (hasEnemy) cellBg = Color.Lerp(cellBg, ENEMY_COLOR, 0.10f);
         else if (hasObstacle) cellBg = Color.Lerp(cellBg, new Color(0.5f, 0.3f, 0.1f, 1f), 0.20f);
         EditorGUI.DrawRect(cellRect, cellBg);
         if (isHovered) EditorGUI.DrawRect(cellRect, HOVER_COLOR);
     }
 
-    private void RenderUnit(Rect cellRect, bool isPlayer, EnemySpawnData enemy, ObstacleSpawnData obstacle, UnitType playerType)
+    private void RenderUnit(Rect cellRect, EnemySpawnData enemy, ObstacleSpawnData obstacle)
     {
-        if (isPlayer) DrawUnitLabel(cellRect, GetShortName(playerType.ToString()), PLAYER_COLOR, "👤");
-        else if (enemy != null) DrawUnitLabel(cellRect, GetShortName(enemy.enemyType.ToString()), ENEMY_COLOR, "👹");
+        if (enemy != null) DrawUnitLabel(cellRect, GetShortName(enemy.enemyType.ToString()), ENEMY_COLOR, "👹");
         else if (obstacle != null) GUI.Label(new Rect(cellRect.x, cellRect.y + 2, cellRect.width, cellRect.height - 4), "🌲", new GUIStyle(EditorStyles.boldLabel) { alignment = TextAnchor.MiddleCenter, fontSize = 16 });
     }
 
@@ -288,11 +272,10 @@ public class StageDataEditor : OdinEditor
         GUI.Label(new Rect(cellRect.x, cellRect.y + cellRect.height / 2 - 2, cellRect.width, cellRect.height / 2), shortName, style);
     }
 
-    private void DrawCellBorder(Rect cellRect, bool isPlayer, bool hasEnemy)
+    private void DrawCellBorder(Rect cellRect, bool hasEnemy)
     {
         Color finalBorderCol = EditorGUIUtility.isProSkin ? new Color(0.4f, 0.4f, 0.4f, 1f) : new Color(0.7f, 0.7f, 0.7f, 1f);
-        if (isPlayer) finalBorderCol = PLAYER_COLOR;
-        else if (hasEnemy) finalBorderCol = ENEMY_COLOR;
+        if (hasEnemy) finalBorderCol = ENEMY_COLOR;
         Handles.BeginGUI();
         Handles.color = finalBorderCol;
         Handles.DrawSolidRectangleWithOutline(new Vector3[] { new Vector3(cellRect.x, cellRect.y), new Vector3(cellRect.xMax, cellRect.y), new Vector3(cellRect.xMax, cellRect.yMax), new Vector3(cellRect.x, cellRect.yMax), }, Color.clear, finalBorderCol);
@@ -304,11 +287,6 @@ public class StageDataEditor : OdinEditor
         EditorGUILayout.Space(8);
         EditorGUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
-        EditorGUILayout.BeginHorizontal();
-        EditorGUI.DrawRect(GUILayoutUtility.GetRect(12, 12), PLAYER_COLOR);
-        GUILayout.Label("Player", EditorStyles.miniLabel);
-        EditorGUILayout.EndHorizontal();
-        GUILayout.Space(15);
         EditorGUILayout.BeginHorizontal();
         EditorGUI.DrawRect(GUILayoutUtility.GetRect(12, 12), ENEMY_COLOR);
         GUILayout.Label("Enemy", EditorStyles.miniLabel);

@@ -113,7 +113,7 @@ public class GameManager : MonoBehaviour, IManager
         StartStage(selectedType);
     }
 
-    private async void StartStage(StageType type)
+private async void StartStage(StageType type)
     {
         StageData stageToLoad = GetRandomStage(type);
         if (stageToLoad == null)
@@ -125,14 +125,12 @@ public class GameManager : MonoBehaviour, IManager
         }
 
         Debug.Log($"{type} 타입의 스테이지를 로드합니다: {stageToLoad.name}");
-        // 서버에게 스테이지 로드를 요청합니다. (이름으로)
-        stageManager.LoadStageOnServerRpc(stageToLoad.name);
+        stageManager.RequestLoadStage(stageToLoad.name);
 
-        // Player spawning is now handled by NetworkManager.
-await Cysharp.Threading.Tasks.UniTask.WaitUntil(() => stageManager.IsStageLoaded);
+        await Cysharp.Threading.Tasks.UniTask.WaitUntil(() => stageManager.IsStageLoaded);
         Debug.Log($"[GameManager] Stage load confirmed. Proceeding with game logic.");
 
-                if (
+        if (
             stageToLoad.stageType == StageType.Battle
             || stageToLoad.stageType == StageType.EliteBattle
             || stageToLoad.stageType == StageType.Boss

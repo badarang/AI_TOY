@@ -1,0 +1,277 @@
+using System.Collections.Generic;
+using System.Linq;
+using Cysharp.Threading.Tasks;
+using Fusion;
+using Network;
+using UnityEngine;
+using UnityEngine.AddressableAssets;
+
+public class UnitManager : MonoBehaviour, IManager
+{
+    [Header("Dependencies")]
+    [SerializeField]
+    private GridManager gridManager;
+
+    [SerializeField]
+    private StageManager stageManager;
+
+    private NetworkManager _networkManager;
+    private GameSession _session;
+    private List<EnemyUnit> _spawnedEnemies = new List<EnemyUnit>();
+
+    public List<EnemyUnit> SpawnedEnemies => _spawnedEnemies;
+
+    public void BeforeInit()
+    {
+        _networkManager = PersistentCore.Instance.NetworkManager;
+    }
+
+    public void AfterInit()
+    {
+        _session = GameSession.Instance;
+    }
+
+    public async UniTask SpawnPlayers()
+    {
+        if (!_networkManager.IsHost)
+            return;
+
+        Debug.Log("[UnitSpawner] Spawning players...");
+
+        int playerIndex = 0;
+        foreach (PlayerRef player in _networkManager.Runner.ActivePlayers)
+        {
+            int slotIndex = _session.GetPlayerSlotIndex(player);
+            if (slotIndex == -1)
+                continue;
+
+            var slot = _session.PlayerSlots[slotIndex];
+            UnitType unitType = slot.SelectedUnit;
+            Vector2Int spawnPos = GetPlayerSpawnPosition(playerIndex);
+
+            await SpawnPlayer(player, unitType, spawnPos);
+            playerIndex++;
+        }
+
+        Debug.Log("[UnitSpawner] All players spawned");
+    }
+
+    public async UniTask SpawnPlayer(
+        PlayerRef playerRef,
+        UnitType unitType,
+        Vector2Int spawnPosition
+    )
+    {
+        if (!_networkManager.IsHost)
+            return;
+
+        string prefabKey = GetPrefabName(unitType);
+        if (string.IsNullOrEmpty(prefabKey))
+        {
+            Debug.LogError($"[UnitSpawner] Invalid unit type: {unitType}");
+            return;
+        }
+
+        var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Units/{prefabKey}.prefab");
+        GameObject prefab = await handle.Task;
+
+        if (prefab == null || prefab.GetComponent<NetworkObject>() == null)
+        {
+            Debug.LogError($"[UnitSpawner] Invalid prefab: {prefabKey}");
+            Addressables.Release(handle);
+            return;
+        }
+
+        NetworkObject playerNO = await _networkManager.Runner.SpawnAsync(
+            prefab,
+            GridToWorld(spawnPosition),
+            Quaternion.identity,
+            playerRef
+        );
+
+        if (playerNO == null)
+        {
+            Debug.LogError($"[UnitSpawner] Failed to spawn player");
+            Addressables.Release(handle);
+            return;
+        }
+
+        var playerUnit = playerNO.GetComponent<PlayerUnit>();
+        if (playerUnit != null)
+        {
+            playerUnit.Initialize(spawnPosition, playerRef);
+            gridManager.RegisterUnit(playerUnit, spawnPosition);
+            Debug.Log($"[UnitSpawner] Player {playerRef} spawned at {spawnPosition}");
+        }
+    }
+    
+    public async UniTask SpawnEnemiesForTurn(int turnNumber)
+    {
+        if (!_networkManager.IsHost)
+            return;
+
+        var enemySpawns = GetEnemySpawnsForTurn(turnNumber);
+        if (enemySpawns.Count == 0)
+            return;
+
+        Debug.Log($"[UnitSpawner] Spawning {enemySpawns.Count} enemies for turn {turnNumber}");
+
+        List<UniTask> tasks = new List<UniTask>();
+        foreach (var spawnData in enemySpawns)
+        {
+            tasks.Add(SpawnEnemy(spawnData.enemyType, spawnData.spawnPos));
+        }
+
+        await UniTask.WhenAll(tasks);
+    }
+
+    private async UniTask SpawnEnemy(UnitType enemyType, Vector2Int spawnPos)
+    {
+        string prefabKey = GetPrefabName(enemyType);
+        if (string.IsNullOrEmpty(prefabKey))
+            return;
+
+        var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Units/{prefabKey}.prefab");
+        GameObject prefab = await handle.Task;
+
+        if (prefab == null)
+        {
+            Debug.LogError($"[UnitSpawner] Failed to load enemy prefab: {prefabKey}");
+            Addressables.Release(handle);
+            return;
+        }
+
+        NetworkObject enemyNO = await _networkManager.Runner.SpawnAsync(
+            prefab,
+            GridToWorld(spawnPos),
+            Quaternion.identity
+        );
+
+        if (enemyNO != null)
+        {
+            EnemyUnit enemy = enemyNO.GetComponent<EnemyUnit>();
+            enemy.position = spawnPos;
+            _spawnedEnemies.Add(enemy);
+            gridManager.RegisterUnit(enemy, spawnPos);
+
+            Debug.Log($"[UnitSpawner] Enemy {enemyType} spawned at {spawnPos}");
+        }
+        else
+        {
+            Debug.LogError($"[UnitSpawner] Failed to spawn enemy: {prefabKey}");
+            Addressables.Release(handle);
+        }
+    }
+
+    public void DespawnEnemy(EnemyUnit enemy)
+    {
+        if (!_networkManager.IsHost)
+            return;
+
+        if (_spawnedEnemies.Contains(enemy))
+        {
+            _spawnedEnemies.Remove(enemy);
+        }
+
+        if (enemy.Object != null)
+        {
+            _networkManager.Runner.Despawn(enemy.Object);
+        }
+    }
+
+    public void ClearAllEnemies()
+    {
+        if (!_networkManager.IsHost)
+            return;
+
+        foreach (var enemy in _spawnedEnemies)
+        {
+            if (enemy != null && enemy.Object != null)
+            {
+                _networkManager.Runner.Despawn(enemy.Object);
+            }
+        }
+        _spawnedEnemies.Clear();
+    }
+
+    public void UnregisterEnemy(EnemyUnit enemy)
+    {
+        if (enemy == null) return;
+
+        if (_spawnedEnemies.Contains(enemy))
+        {
+            _spawnedEnemies.Remove(enemy);
+        }
+        gridManager.UnregisterUnit(enemy.position);
+    }
+
+    public List<PlayerUnit> GetAllPlayers()
+    {
+        return gridManager.GetAllUnits().OfType<PlayerUnit>().ToList();
+    }
+
+    public List<EnemyUnit> GetEnemies()
+    {
+        return _spawnedEnemies;
+    }
+
+    private List<EnemySpawnData> GetEnemySpawnsForTurn(int turnNumber)
+    {
+        var spawns = new List<EnemySpawnData>();
+        var stageData = stageManager.CurrentStageData;
+        if (stageData == null || _session == null)
+            return spawns;
+
+        int waveIndex = _session.CurrentWaveIndex;
+        if (waveIndex >= stageData.waves.Length)
+            return spawns;
+
+        var wave = stageData.waves[waveIndex];
+
+        if (wave.turnSpawns != null)
+        {
+            foreach (var turnSpawn in wave.turnSpawns)
+            {
+                if (turnSpawn.turnNumber == turnNumber)
+                {
+                    spawns.AddRange(turnSpawn.enemies);
+                }
+            }
+        }
+
+        return spawns;
+    }
+
+    private Vector2Int GetPlayerSpawnPosition(int playerIndex)
+    {
+        Vector2Int[] spawnPositions = new Vector2Int[]
+        {
+            new Vector2Int(1, 1),
+            new Vector2Int(2, 1),
+        };
+
+        return playerIndex < spawnPositions.Length
+            ? spawnPositions[playerIndex]
+            : new Vector2Int(playerIndex, 1);
+    }
+
+    private string GetPrefabName(UnitType type)
+    {
+        switch (type)
+        {
+            case UnitType.Hikai:
+                return "Player_Hikai";
+            case UnitType.Vrixa:
+                return "Player_Vrixa";
+            case UnitType.Enemy_Goose:
+                return "Enemy_Goose";
+            default:
+                return null;
+        }
+    }
+
+    private Vector3 GridToWorld(Vector2Int gridPos)
+    {
+        return new Vector3(gridPos.x + 0.5f, 0, gridPos.y + 0.5f);
+    }
+}

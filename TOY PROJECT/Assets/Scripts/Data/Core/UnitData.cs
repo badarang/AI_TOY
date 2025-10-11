@@ -4,8 +4,8 @@ using System.Collections.Generic;
 public enum UnitType
 {
     None,
-    Player_Hikai,
-    Player_Vrixa,
+    Hikai,
+    Vrixa,
     Enemy_Goose,
 }
 

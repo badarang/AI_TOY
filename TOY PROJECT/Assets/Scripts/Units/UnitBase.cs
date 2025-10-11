@@ -238,9 +238,9 @@ protected virtual void Die()
             Core.Instance.GridManager.UnregisterUnit(position);
         }
 
-        if (this is EnemyUnit enemyUnit && Core.Instance?.StageManager != null)
+        if (this is EnemyUnit enemyUnit && Core.Instance?.UnitManager != null)
         {
-            Core.Instance.StageManager.UnregisterEnemy(enemyUnit);
+            Core.Instance.UnitManager.UnregisterEnemy(enemyUnit);
         }
 
         if (HasStateAuthority && Runner != null)

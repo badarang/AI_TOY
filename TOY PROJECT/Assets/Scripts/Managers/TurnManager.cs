@@ -40,7 +40,8 @@ public class TurnManager : NetworkBehaviour, IManager
     private bool _isMyTurn = false;
     public bool IsMyTurn => _isMyTurn;
 
-    private StageManager stageManager;
+    private StageManager stageManager;    private UnitManager _unitManager;
+
     private GridManager gridManager;
     
     private PlayerUnit _localSelectedUnit;
@@ -50,11 +51,17 @@ public class TurnManager : NetworkBehaviour, IManager
 
     public void BeforeInit() { }
 
-    public void AfterInit()
+public void AfterInit()
     {
         uiManager = Core.Instance.UIManager;
         stageManager = Core.Instance.StageManager;
         gridManager = Core.Instance.GridManager;
+        _unitManager = FindObjectOfType<UnitManager>();
+        
+        if (_unitManager == null)
+        {
+            Debug.LogError("[TurnManager] UnitSpawner not found in scene!");
+        }
     }
 
     public override void Spawned()
@@ -69,7 +76,6 @@ public class TurnManager : NetworkBehaviour, IManager
 
 public override void FixedUpdateNetwork()
     {
-        // Update the local player's state based on the synced network state
         bool wasMyTurn = _isMyTurn;
         _isMyTurn = (CurrentTurnPlayer == Runner.LocalPlayer);
         
@@ -78,15 +84,13 @@ public override void FixedUpdateNetwork()
             Debug.Log("It is now my turn!");
             SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
             
-            // Refresh AP for all of this player's units
-            var myUnits = stageManager.GetAllPlayers().Where(p => p.Owner == Runner.LocalPlayer);
+            var myUnits = System.Linq.Enumerable.Where(FindObjectsOfType<PlayerUnit>(), p => p.Owner == Runner.LocalPlayer);
             foreach (var unit in myUnits)
             {
                 unit.OnTurnStart();
             }
             OnPlayerTurnStart?.Invoke();
             
-            // Update UI to enable EndTurn button
             if (uiManager != null)
             {
                 uiManager.SetEndTurnButtonActive(true);
@@ -98,7 +102,6 @@ public override void FixedUpdateNetwork()
             SetPlayerState(PlayerTurnState.AwaitingTurn);
             ClearSelection();
             
-            // Update UI to disable EndTurn button
             if (uiManager != null)
             {
                 uiManager.SetEndTurnButtonActive(false);
@@ -117,29 +120,29 @@ public override void FixedUpdateNetwork()
         StartNextTurn();
     }
 
-    public void StartFirstWave()
+public void StartFirstWave()
     {
         if (!HasStateAuthority) return;
 
         TurnNumber = 0;
         
-        // Build the turn order
         _playerTurnOrder.Clear();
-        var allPlayers = stageManager.GetAllPlayers().OrderBy(p => p.Owner.PlayerId).ToList();
-        if (allPlayers.Count == 0)
+        var allPlayers = FindObjectsOfType<PlayerUnit>();
+        if (allPlayers.Length == 0)
         {
             Debug.LogError("[TurnManager] No players found! Cannot start wave.");
             return;
         }
         
-        allPlayers = allPlayers.OrderBy(p => p.Owner.PlayerId).ToList();        foreach (var player in allPlayers)
+        var sortedPlayers = System.Linq.Enumerable.OrderBy(allPlayers, p => p.Owner.PlayerId).ToList();
+        foreach (var player in sortedPlayers)
         {
             _playerTurnOrder.Add(player.Owner);
         }
         
-        Debug.Log($"Starting first wave with {_playerTurnOrder.Count} players.");
+        Debug.Log($"[TurnManager] Starting first wave with {_playerTurnOrder.Count} players.");
         _turnIndex = -1;
-Debug.Log($"[TurnManager] Starting first wave with {_playerTurnOrder.Count} players.");        StartNextTurn();
+        StartNextTurn();
     }
 
 private async void StartNextTurn()
@@ -150,7 +153,6 @@ private async void StartNextTurn()
 
         if (_turnIndex < _playerTurnOrder.Count)
         {
-            // It's a player's turn
             IsPlayerTurn = true;
             CurrentTurnPlayer = _playerTurnOrder[_turnIndex];
             Debug.Log($"[SERVER] Starting turn for Player {CurrentTurnPlayer}. Index: {_turnIndex}");
@@ -158,17 +160,20 @@ private async void StartNextTurn()
         }
         else
         {
-            // It's the AI's turn
             IsPlayerTurn = false;
             CurrentTurnPlayer = PlayerRef.None;
             Debug.Log("[SERVER] All players have acted. Starting enemy turn.");
             UpdateTurnOrderDisplay();
             await StartEnemyTurn();
             
-            // When enemy turn is over, start the next round
             _turnIndex = -1;
             TurnNumber++;
-            await stageManager.SpawnEnemiesForTurn(TurnNumber);
+            
+            if (_unitManager != null)
+            {
+                await _unitManager.SpawnEnemiesForTurn(TurnNumber);
+            }
+            
             StartNextTurn();
         }
     }
@@ -176,8 +181,8 @@ private async void StartNextTurn()
     private async UniTask StartEnemyTurn()
     {
         OnEnemyTurnStart?.Invoke();
-        
-        var enemies = stageManager.GetEnemies();
+
+        var enemies = _unitManager != null ? _unitManager.SpawnedEnemies : new List<EnemyUnit>();
         foreach (var enemy in enemies)
         {
             if (enemy != null) enemy.OnTurnStart();
@@ -190,7 +195,7 @@ private async void StartNextTurn()
 
     private async UniTask CheckForWaveClearAsync()
     {
-        if (stageManager.GetEnemies().Count == 0)
+        if ((_unitManager != null ? _unitManager.SpawnedEnemies.Count : 0) == 0)
         {
             // For simplicity, we'll just log this. A full implementation would
             // show rewards and proceed to the next stage.
