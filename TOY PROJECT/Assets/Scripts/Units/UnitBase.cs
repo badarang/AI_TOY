@@ -143,11 +143,11 @@ public void RequestSkillUse(int skillIndex, Vector2Int targetPos)
     {
         if (!HasInputAuthority && !(this is EnemyUnit)) return;
 
-        RPC_UseSkill(skillIndex, targetPos);
+        UseSkillRpc(skillIndex, targetPos);
     }
 
     [Rpc(RpcSources.InputAuthority | RpcSources.StateAuthority, RpcTargets.StateAuthority)]
-    private void RPC_UseSkill(int skillIndex, Vector2Int targetPos)
+    private void UseSkillRpc(int skillIndex, Vector2Int targetPos)
     {
         if (skillIndex < 0 || skillIndex >= _skills.Count)
         {
@@ -170,7 +170,16 @@ public void RequestSkillUse(int skillIndex, Vector2Int targetPos)
             return;
         }
 
-        DebugPrinter.LogColor(LogType.Unit, $"Using skill '{skill.data.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {apCost}");
+        
+        // 스킬 실행 가능 여부 체크 (사거리, 이동 패턴, behavior 검증 등)
+        if (!skill.CanExecute(this, targetPos))
+        {
+            Debug.LogWarning($"Cannot execute skill '{skill.data.skillMeta.nameKey}' at {targetPos}. Invalid target or out of range.");
+            return;
+        }
+
+        
+DebugPrinter.LogColor(LogType.Unit, $"Using skill '{skill.data.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {apCost}");
 
         ap -= apCost;
 
