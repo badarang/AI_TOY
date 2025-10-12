@@ -275,6 +275,10 @@ public void HandleCellClick(Vector2Int cell)
                 {
                     SelectPlayerUnit(friendlyUnit);
                 }
+                else if (unitAtCell is EnemyUnit)
+                {
+                    TryAttackUnit(_localSelectedUnit, cell);
+                }
                 break;
         }
     }
@@ -309,20 +313,35 @@ private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
         SetPlayerState(PlayerTurnState.PerformingAction);
     }
 
-    private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
+private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         int attackSkillIndex = -1;
-        for (int i = 0; i < unit.GetSkills().Count; i++)
+        var skills = unit.GetSkills();
+        
+        for (int i = 0; i < skills.Count; i++)
         {
-            if (unit.GetSkills()[i].data.skillType == SkillType.Attack)
+            if (skills[i].data.skillType == SkillType.Attack)
             {
                 attackSkillIndex = i;
                 break;
             }
         }
 
-        if (attackSkillIndex < 0) return;
+        if (attackSkillIndex < 0)
+        {
+            Debug.LogWarning("[TurnManager] No attack skill found");
+            return;
+        }
 
+        // 스킬 사용 가능 여부를 먼저 확인
+        var attackSkill = skills[attackSkillIndex];
+        if (!attackSkill.CanExecute(unit, targetCell))
+        {
+            Debug.LogWarning($"[TurnManager] Cannot attack {targetCell}. Out of range or invalid target.");
+            return;
+        }
+
+        // 스킬 사용 가능하면 요청 및 상태 변경
         unit.RequestSkillUse(attackSkillIndex, targetCell);
         ClearSelection();
         SetPlayerState(PlayerTurnState.PerformingAction);
