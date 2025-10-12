@@ -26,13 +26,25 @@ public class StageManager : MonoBehaviour, IManager
     public StageData CurrentStageData => _currentStageData;
     public bool IsStageLoaded => _session != null && _session.IsStageLoaded;
 
-    public void BeforeInit()
+public void BeforeInit()
     {
-        _networkManager = PersistentCore.Instance.NetworkManager;
+        if (PersistentCore.Instance != null)
+        {
+            _networkManager = PersistentCore.Instance.NetworkManager;
+        }
+        else
+        {
+            Debug.LogWarning("[StageManager] PersistentCore not available during BeforeInit. Will retry in AfterInit.");
+        }
     }
 
-    public void AfterInit()
+public void AfterInit()
     {
+        if (_networkManager == null && PersistentCore.Instance != null)
+        {
+            _networkManager = PersistentCore.Instance.NetworkManager;
+        }
+
         if (GameSession.Instance == null)
         {
             Debug.LogWarning("[StageManager] GameSession.Instance is null in AfterInit.");
@@ -42,7 +54,7 @@ public class StageManager : MonoBehaviour, IManager
         _session = GameSession.Instance;
         _session.OnStageChanged += OnStageChanged;
 
-        if (_networkManager.IsHost && string.IsNullOrEmpty(_session.CurrentStageName.Value))
+        if (_networkManager != null && _networkManager.IsHost && string.IsNullOrEmpty(_session.CurrentStageName.Value))
         {
             RequestLoadStage(firstStageName);
         }

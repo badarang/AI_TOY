@@ -8,7 +8,7 @@ namespace Network
     {
         [Header("Settings")]
         [SerializeField] private int inGameSceneIndex = 2;
-        [SerializeField] private float gameStartDelay = 2f;
+        [SerializeField] private float gameStartDelay = 0.3f;
 
         [Header("Prefabs")]
         [SerializeField] private GameSession gameSessionPrefab;
@@ -202,8 +202,6 @@ namespace Network
             {
                 _gameSession.OnSessionDataChanged -= OnSessionDataChanged;
 
-                // Only unregister if we are NOT in the process of starting the game.
-                // This prevents unregistering during the scene transition to the InGame scene.
                 if (_gameSession.Phase != WaitingRoomPhase.Starting && _localPlayer != PlayerRef.None && _gameSession.Object.IsValid)
                 {
                     _gameSession.UnregisterPlayerRpc(_localPlayer);

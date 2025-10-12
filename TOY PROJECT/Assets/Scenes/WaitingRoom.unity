@@ -394,7 +394,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inGameSceneIndex: 2
-  gameStartDelay: 2
+  gameStartDelay: 0.1
   gameSessionPrefab: {fileID: 7011087552934743201, guid: e37001a273eed46a6af0ffe15beb9342, type: 3}
 --- !u!1001 &462160141
 PrefabInstance:

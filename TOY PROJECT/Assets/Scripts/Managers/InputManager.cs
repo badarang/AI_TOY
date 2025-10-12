@@ -36,12 +36,17 @@ public class InputManager : MonoBehaviour, IManager
         inputActions = new PlayerInputActions();
     }
 
-    void Start()
+    
+    private void UpdateTurnManagerReference()
     {
         if (Core.Instance != null)
         {
             turnManager = Core.Instance.TurnManager;
         }
+    }
+void Start()
+    {
+        UpdateTurnManagerReference();
         SetupInputEvents();
     }
 
@@ -81,8 +86,13 @@ public class InputManager : MonoBehaviour, IManager
         }
     }
 
-    void Update()
+void Update()
     {
+        if (turnManager == null)
+        {
+            UpdateTurnManagerReference();
+        }
+
         UpdateCurrentInputPosition();
 
         if (IsDragging)

@@ -114,7 +114,7 @@ public class TurnManager : NetworkBehaviour, IManager
     #region Turn Flow Control (Server-Only)
 
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    public void RPC_EndTurn()
+    public void EndTurnRpc()
     {
         Debug.Log($"Server received EndTurn RPC from {CurrentTurnPlayer}.");
         StartNextTurn();
@@ -211,7 +211,7 @@ public class TurnManager : NetworkBehaviour, IManager
     {
         if (CurrentTurnPlayer == Runner.LocalPlayer)
         {
-            RPC_EndTurn();
+            EndTurnRpc();
         }
         else
         {
@@ -361,13 +361,21 @@ private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
         uiManager.skillPanelUI?.UpdateSkillDisplay(unit);
     }
 
-    public void ClearSelection()
+public void ClearSelection()
     {
         if (_localSelectedUnit != null) _localSelectedUnit.Deselect();
         _localSelectedUnit = null;
-        gridManager.ClearSelection();
-        uiManager.HideUnitInfo();
-        uiManager.HideSkillPanel();
+        
+        if (gridManager != null)
+        {
+            gridManager.ClearSelection();
+        }
+        
+        if (uiManager != null)
+        {
+            uiManager.HideUnitInfo();
+            uiManager.HideSkillPanel();
+        }
 
         if (CurrentTurnPlayer == Runner.LocalPlayer && CurrentPlayerState != PlayerTurnState.AwaitingTurn)
         {

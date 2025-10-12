@@ -21,13 +21,25 @@ public class UnitManager : MonoBehaviour, IManager
 
     public List<EnemyUnit> SpawnedEnemies => _spawnedEnemies;
 
-    public void BeforeInit()
+public void BeforeInit()
     {
-        _networkManager = PersistentCore.Instance.NetworkManager;
+        if (PersistentCore.Instance != null)
+        {
+            _networkManager = PersistentCore.Instance.NetworkManager;
+        }
+        else
+        {
+            Debug.LogWarning("[UnitManager] PersistentCore not available during BeforeInit. Will retry in AfterInit.");
+        }
     }
 
-    public void AfterInit()
+public void AfterInit()
     {
+        if (_networkManager == null && PersistentCore.Instance != null)
+        {
+            _networkManager = PersistentCore.Instance.NetworkManager;
+        }
+        
         _session = GameSession.Instance;
     }
 
