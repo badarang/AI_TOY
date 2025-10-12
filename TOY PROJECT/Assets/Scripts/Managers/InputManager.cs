@@ -134,8 +134,7 @@ public class InputManager : MonoBehaviour, IManager
 
 private void ProcessTurnClick()
     {
-        // Check if it's a player turn (not AI turn)
-        if (!turnManager.IsPlayerTurn) return;
+        if (turnManager == null) return;
 
         if (IsPointerOverUI())
         {

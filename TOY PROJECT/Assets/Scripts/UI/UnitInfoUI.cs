@@ -17,44 +17,99 @@ public class UnitInfoUI : MonoBehaviour
     private UnitBase currentUnit;
     private List<GameObject> skillInfoItems = new List<GameObject>();
 
-    void Start()
+    private void Update()
     {
-        Hide();
+        if (panel.activeSelf && currentUnit != null)
+        {
+            UpdateDisplay();
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (currentUnit != null)
+        {
+            // currentUnit.OnStateChanged -= UpdateDisplay;
+        }
     }
 
     public void Show(UnitBase unit)
     {
-        if (unit == null) return;
+        if (unit == null) 
+        {
+            Hide();
+            return;
+        }
         
         currentUnit = unit;
         panel.SetActive(true);
-        UpdateDisplay();
+        UpdateDisplay(); // 즉시 호출하여 UI 업데이트
     }
 
     public void Hide()
     {
+        if (currentUnit != null)
+        {
+            // currentUnit.OnStateChanged -= UpdateDisplay;
+        }
+
         panel.SetActive(false);
         currentUnit = null;
     }
 
     public void UpdateDisplay()
     {
-        if (currentUnit == null) return;
+        if (currentUnit == null)
+        {
+            Debug.LogWarning("[UnitInfoUI] UpdateDisplay called but currentUnit is null");
+            return;
+        }
 
-        unitNameText.text = currentUnit.unitData.unitMeta.nameKey;
-        hpText.text = $"HP: {currentUnit.hp}/{currentUnit.unitData.maxHp}";
-        apText.text = $"AP: {currentUnit.ap}/{currentUnit.unitData.maxAp}";
+        Debug.Log($"[UnitInfoUI] Updating display for: {currentUnit.unitData.unitMeta.nameKey}");
+        Debug.Log($"[UnitInfoUI] UI Components - unitNameText: {unitNameText != null}, hpText: {hpText != null}, apText: {apText != null}");
+
+        if (unitNameText != null)
+        {
+            unitNameText.text = currentUnit.unitData.unitMeta.nameKey;
+            Debug.Log($"[UnitInfoUI] Set name to: {unitNameText.text}");
+        }
+        else
+        {
+            Debug.LogError("[UnitInfoUI] unitNameText is NULL! Check Inspector assignment!");
+        }
+
+        if (hpText != null)
+        {
+            hpText.text = $"HP: {currentUnit.hp}/{currentUnit.unitData.maxHp}";
+            Debug.Log($"[UnitInfoUI] Set HP to: {hpText.text}");
+        }
+        else
+        {
+            Debug.LogError("[UnitInfoUI] hpText is NULL! Check Inspector assignment!");
+        }
+
+        if (apText != null)
+        {
+            apText.text = $"AP: {currentUnit.ap}/{currentUnit.unitData.maxAp}";
+            Debug.Log($"[UnitInfoUI] Set AP to: {apText.text}");
+        }
+        else
+        {
+            Debug.LogError("[UnitInfoUI] apText is NULL! Check Inspector assignment!");
+        }
 
         if (unitIcon != null && currentUnit.unitData.unitMeta.icon != null)
         {
             unitIcon.sprite = currentUnit.unitData.unitMeta.icon;
+            Debug.Log("[UnitInfoUI] Set unit icon");
         }
 
         UpdateSkillList();
     }
 
-private void UpdateSkillList()
+    private void UpdateSkillList()
     {
+        // Clear existing skill items before creating new ones
         foreach (var item in skillInfoItems)
         {
             if (item != null)
@@ -87,14 +142,6 @@ private void UpdateSkillList()
             }
 
             skillInfoItems.Add(skillItem);
-        }
-    }
-
-    void Update()
-    {
-        if (currentUnit != null && panel.activeSelf)
-        {
-            UpdateDisplay();
         }
     }
 }

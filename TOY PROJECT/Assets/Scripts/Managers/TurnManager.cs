@@ -120,7 +120,6 @@ public class TurnManager : NetworkBehaviour, IManager
         StartNextTurn();
     }
 
-    // Renamed from StartFirstWave for clarity
     public void StartCombat()
     {
         if (!HasStateAuthority) return;
@@ -135,7 +134,6 @@ public class TurnManager : NetworkBehaviour, IManager
             return;
         }
 
-        // Sort players by their PlayerId to ensure consistent turn order
         var sortedPlayers = allPlayers.OrderBy(p => p.Owner.PlayerId).ToList();
         foreach (var player in sortedPlayers)
         {
@@ -172,10 +170,8 @@ public class TurnManager : NetworkBehaviour, IManager
             _turnIndex = -1;
             TurnNumber++;
 
-            if (unitManager != null)
-            {
-                await unitManager.SpawnEnemiesForTurn(TurnNumber);
-            }
+            // This was the problematic line. Enemy spawning is the StageManager's job at the start.
+            // await unitManager.SpawnEnemiesForTurn(TurnNumber);
 
             StartNextTurn();
         }
@@ -223,14 +219,23 @@ public class TurnManager : NetworkBehaviour, IManager
         }
     }
 
-    public void HandleCellClick(Vector2Int cell)
+public void HandleCellClick(Vector2Int cell)
     {
         var unitAtCell = gridManager.GetUnitAt(cell);
 
+        // 항상 유닛을 클릭하면 정보를 표시 (클라이언트 단 처리)
+        if (unitAtCell != null)
+        {
+            uiManager.ShowUnitInfo(unitAtCell);
+        }
+        else
+        {
+            uiManager.HideUnitInfo();
+        }
+
+        // 내 턴이 아니면 여기서 종료 (정보 표시만 하고 다른 행동 불가)
         if (CurrentTurnPlayer != Runner.LocalPlayer)
         {
-            if (unitAtCell != null) uiManager.ShowUnitInfo(unitAtCell);
-            else uiManager.HideUnitInfo();
             return;
         }
 
@@ -241,11 +246,7 @@ public class TurnManager : NetworkBehaviour, IManager
                 {
                     SelectPlayerUnit(playerUnit);
                 }
-                else if (unitAtCell != null)
-                {
-                    uiManager.ShowUnitInfo(unitAtCell);
-                }
-                else
+                else if (unitAtCell == null)
                 {
                     ClearSelection();
                 }
@@ -261,10 +262,6 @@ public class TurnManager : NetworkBehaviour, IManager
                 if (unitAtCell == null)
                 {
                     TryMoveUnit(_localSelectedUnit, cell);
-                }
-                else if (unitAtCell.Owner != Runner.LocalPlayer)
-                {
-                    TryAttackUnit(_localSelectedUnit, cell);
                 }
                 else if (unitAtCell is PlayerUnit friendlyUnit && friendlyUnit.Owner == Runner.LocalPlayer)
                 {
