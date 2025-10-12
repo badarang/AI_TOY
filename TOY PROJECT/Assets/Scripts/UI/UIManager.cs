@@ -5,9 +5,31 @@ using UnityEngine.Events;
 
 public class UIManager : MonoBehaviour, IManager
 {
-    public void BeforeInit() { }
+    
+    private void OnDestroy()
+    {
+        if (Core.Instance != null && Core.Instance.TurnManager != null)
+        {
+            Core.Instance.TurnManager.OnPlayerActionEnd -= RefreshUnitInfoIfVisible;
+        }
+    }
 
-    public void AfterInit() { }
+    private void RefreshUnitInfoIfVisible()
+    {
+        if (unitInfoUI != null)
+        {
+            unitInfoUI.UpdateDisplay();
+        }
+    }
+public void BeforeInit() { }
+
+public void AfterInit()
+    {
+        if (Core.Instance.TurnManager != null)
+        {
+            Core.Instance.TurnManager.OnPlayerActionEnd += RefreshUnitInfoIfVisible;
+        }
+    }
 
     [Header("Component References")]
     public TurnOrderUI turnOrderUI;
