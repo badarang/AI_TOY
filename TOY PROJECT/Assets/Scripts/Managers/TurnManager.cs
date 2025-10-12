@@ -221,6 +221,14 @@ public class TurnManager : NetworkBehaviour, IManager
 
 public void HandleCellClick(Vector2Int cell)
     {
+        // 그리드 범위 체크 - 범위 밖이면 선택 해제
+        if (!gridManager.IsValidTile(cell))
+        {
+            Debug.Log($"[TurnManager] Clicked outside grid bounds: {cell}");
+            ClearSelection();
+            return;
+        }
+
         var unitAtCell = gridManager.GetUnitAt(cell);
 
         // 항상 유닛을 클릭하면 정보를 표시 (클라이언트 단 처리)
@@ -271,11 +279,31 @@ public void HandleCellClick(Vector2Int cell)
         }
     }
 
-    private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
+private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         int moveSkillIndex = unit.GetMoveSkillIndex();
-        if (moveSkillIndex < 0) return;
+        if (moveSkillIndex < 0)
+        {
+            Debug.LogWarning("[TurnManager] No move skill found");
+            return;
+        }
 
+        // 스킬 사용 가능 여부를 먼저 확인
+        var skills = unit.GetSkills();
+        if (moveSkillIndex >= skills.Count)
+        {
+            Debug.LogWarning("[TurnManager] Invalid move skill index");
+            return;
+        }
+
+        var moveSkill = skills[moveSkillIndex];
+        if (!moveSkill.CanExecute(unit, targetCell))
+        {
+            Debug.LogWarning($"[TurnManager] Cannot move to {targetCell}. Out of range or invalid tile.");
+            return;
+        }
+
+        // 스킬 사용 가능하면 요청 및 상태 변경
         unit.RequestSkillUse(moveSkillIndex, targetCell);
         ClearSelection();
         SetPlayerState(PlayerTurnState.PerformingAction);
