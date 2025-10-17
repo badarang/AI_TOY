@@ -4,7 +4,7 @@ using UnityEngine;
 using System.Linq;
 using System.Collections.Generic;
 
-[CustomEditor(typeof(StageData))]
+[CustomEditor(typeof(Room))]
 public class StageDataEditor : OdinEditor
 {
     // State for the visual grid editor
@@ -24,17 +24,17 @@ public class StageDataEditor : OdinEditor
     protected override void OnEnable()
     {
         base.OnEnable();
-        CalculateDifficulty((StageData)target);
+        CalculateDifficulty((Room)target);
     }
 
     public override void OnInspectorGUI()
     {
         base.OnInspectorGUI();
 
-        var data = (StageData)target;
-        var battleTypes = new[] { StageType.Battle, StageType.EliteBattle, StageType.Boss };
+        var data = (Room)target;
+        var battleTypes = new[] { RoomType.Battle, RoomType.EliteBattle, RoomType.Boss };
 
-        if (battleTypes.Contains(data.stageType))
+        if (battleTypes.Contains(data.type))
         {
             EditorGUILayout.Space(20);
             var headerStyle = new GUIStyle(EditorStyles.largeLabel) { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
@@ -58,7 +58,7 @@ public class StageDataEditor : OdinEditor
 
     private void DrawWaveSelector()
     {
-        var data = (StageData)target;
+        var data = (Room)target;
         EditorGUILayout.BeginVertical(CreateBoxStyle());
         
         if (data.waves == null) data.waves = new EnemyWave[0];
@@ -72,7 +72,7 @@ public class StageDataEditor : OdinEditor
 
     private void DrawMainGrid()
     {
-        var data = (StageData)target;
+        var data = (Room)target;
         float totalWidth = data.width * (CELL_SIZE + CELL_PADDING) + CELL_PADDING;
         float inspectorWidth = EditorGUIUtility.currentViewWidth - 36f;
         Rect bgRect = GUILayoutUtility.GetRect(inspectorWidth, totalWidth + 32f);
@@ -83,7 +83,7 @@ public class StageDataEditor : OdinEditor
 
     private void RenderGrid(Rect gridRect)
     {
-        var data = (StageData)target;
+        var data = (Room)target;
         float gridStartX = (gridRect.width - (data.width * (CELL_SIZE + CELL_PADDING) + CELL_PADDING)) / 2f;
         float gridStartY = 12f;
         Event e = Event.current;
@@ -123,7 +123,7 @@ public class StageDataEditor : OdinEditor
 
         _contextMenuPos = pos;
         GenericMenu menu = new GenericMenu();
-        var data = (StageData)target;
+        var data = (Room)target;
         bool isWaveValid = data.waves != null && data.waves.Length > 0 && _selectedWaveIndex < data.waves.Length;
 
         if (enemy == null && obstacle == null)
@@ -187,7 +187,7 @@ public class StageDataEditor : OdinEditor
 
     #region Difficulty Calculation
 
-    private void CalculateDifficulty(StageData data)
+    private void CalculateDifficulty(Room data)
     {
         if (_unitScoreCache == null) CacheUnitDataScores();
 
@@ -237,7 +237,7 @@ public class StageDataEditor : OdinEditor
 
     private Vector2Int GetHoveredCell(float startX, float startY, Vector2 mousePos)
     {
-        var data = (StageData)target;
+        var data = (Room)target;
         for (int y = 0; y < data.height; y++)
         {
             for (int x = 0; x < data.width; x++)

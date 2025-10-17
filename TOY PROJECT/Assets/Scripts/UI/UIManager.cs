@@ -160,27 +160,6 @@ public void AfterInit()
     }
 
     /// <summary>
-    /// 갈림길 선택 화면을 표시합니다. TurnManager가 호출합니다.
-    /// </summary>
-    public void ShowNodeSelectionScreen(List<MapNodeData> nextNodes)
-    {
-        if (nodeSelectionScreenPanel == null)
-            return;
-
-        foreach (Transform child in nodeButtonsContainer)
-            Destroy(child.gameObject);
-
-        nodeSelectionScreenPanel.SetActive(true);
-
-        foreach (var nodeData in nextNodes)
-        {
-            GameObject buttonInstance = Instantiate(nodeButtonPrefab, nodeButtonsContainer);
-            // TODO: NodeButtonUI 스크립트를 가져와서 데이터를 설정해야 합니다.
-            // 예시: buttonInstance.GetComponent<NodeButtonUI>().Setup(nodeData);
-        }
-    }
-
-    /// <summary>
     /// 갈림길 선택 화면을 숨깁니다.
     /// </summary>
     public void HideNodeSelectionScreen()

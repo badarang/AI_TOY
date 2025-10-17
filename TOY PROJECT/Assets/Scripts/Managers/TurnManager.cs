@@ -146,7 +146,7 @@ public class TurnManager : NetworkBehaviour, IManager
         StartNextTurn();
     }
 
-    private async void StartNextTurn()
+private async void StartNextTurn()
     {
         if (!HasStateAuthority) return;
 
@@ -169,9 +169,8 @@ public class TurnManager : NetworkBehaviour, IManager
 
             _turnIndex = -1;
             TurnNumber++;
-
-            // This was the problematic line. Enemy spawning is the StageManager's job at the start.
-            // await unitManager.SpawnEnemiesForTurn(TurnNumber);
+            
+            Core.Instance.StageManager.IncrementTurn();
 
             StartNextTurn();
         }
@@ -196,10 +195,16 @@ public class TurnManager : NetworkBehaviour, IManager
 
     private async UniTask CheckForWaveClearAsync()
     {
+        await UniTask.Delay(500);
+        
         if ((unitManager != null ? unitManager.GetEnemies().Count : 0) == 0)
         {
-            Debug.Log("All enemies cleared! Stage complete!");
-            SetPlayerState(PlayerTurnState.StageClear);
+            Debug.Log("[TurnManager] All enemies cleared! Wave complete!");
+            
+            if (HasStateAuthority)
+            {
+                Core.Instance.StageManager.OnWaveComplete();
+            }
         }
     }
 

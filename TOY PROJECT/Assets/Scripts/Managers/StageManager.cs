@@ -15,54 +15,54 @@ public class StageManager : MonoBehaviour, IManager
     [SerializeField] private GameAssetDatabase gameDatabase;
 
     [Header("Settings")]
-    [SerializeField] private string firstStageName = "Stage_1";
+    [SerializeField] private string firstStageName = "Room_1";
 
     private NetworkManager _networkManager;
     private GameSession _session;
-    private StageData _currentStageData;
+    private Room _currentRoom;
     private List<GameObject> _spawnedObstacles = new List<GameObject>();
     private List<GameObject> _spawnedPortals = new List<GameObject>();
 
-    public StageData CurrentStageData => _currentStageData;
+    public Room CurrentRoom => _currentRoom;
     public bool IsStageLoaded => _session != null && _session.IsStageLoaded;
 
-public void BeforeInit()
-    {
-        if (PersistentCore.Instance != null)
+    public void BeforeInit()
         {
-            _networkManager = PersistentCore.Instance.NetworkManager;
-        }
-        else
-        {
-            Debug.LogWarning("[StageManager] PersistentCore not available during BeforeInit. Will retry in AfterInit.");
-        }
-    }
-
-public void AfterInit()
-    {
-        if (_networkManager == null && PersistentCore.Instance != null)
-        {
-            _networkManager = PersistentCore.Instance.NetworkManager;
+            if (PersistentCore.Instance != null)
+            {
+                _networkManager = PersistentCore.Instance.NetworkManager;
+            }
+            else
+            {
+                Debug.LogWarning("[StageManager] PersistentCore not available during BeforeInit. Will retry in AfterInit.");
+            }
         }
 
-        if (GameSession.Instance == null)
+    public void AfterInit()
         {
-            Debug.LogWarning("[StageManager] GameSession.Instance is null in AfterInit.");
-            return;
-        }
+            if (_networkManager == null && PersistentCore.Instance != null)
+            {
+                _networkManager = PersistentCore.Instance.NetworkManager;
+            }
 
-        _session = GameSession.Instance;
-        _session.OnStageChanged += OnStageChanged;
+            if (GameSession.Instance == null)
+            {
+                Debug.LogWarning("[StageManager] GameSession.Instance is null in AfterInit.");
+                return;
+            }
 
-        if (_networkManager != null && _networkManager.IsHost && string.IsNullOrEmpty(_session.CurrentStageName.Value))
-        {
-            RequestLoadStage(firstStageName);
+            _session = GameSession.Instance;
+            _session.OnStageChanged += OnStageChanged;
+
+            if (_networkManager != null && _networkManager.IsHost && string.IsNullOrEmpty(_session.CurrentStageName.Value))
+            {
+                RequestLoadStage(firstStageName);
+            }
         }
-    }
 
     private void OnStageChanged(string stageName)
     {
-        if (_currentStageData != null && _currentStageData.name == stageName) return;
+        if (_currentRoom != null && _currentRoom.name == stageName) return;
         
         LoadStageLocal(stageName);
     }
@@ -77,9 +77,9 @@ public void AfterInit()
         _session.LoadStageRpc(stageName);
     }
 
-    private async void LoadStageLocal(string stageName)
+private async void LoadStageLocal(string stageName)
     {
-        var stageData = gameDatabase.GetStageByName(stageName);
+        var stageData = gameDatabase.GetRoomByName(stageName);
         if (stageData == null)
         {
             Debug.LogError($"[StageManager] Stage not found: {stageName}");
@@ -87,9 +87,9 @@ public void AfterInit()
         }
 
         ClearStage();
-        _currentStageData = stageData;
+        _currentRoom = stageData;
 
-        if (IsBattleStage(stageData.stageType))
+        if (IsBattleStage(stageData.type))
         {
             gridManager.GenerateGrid(stageData);
             SetupCamera(stageData.width, stageData.height);
@@ -103,7 +103,12 @@ public void AfterInit()
                     return;
                 }
                 await unitManager.SpawnPlayers();
-                await unitManager.SpawnEnemiesForTurn(1);
+                
+                // Spawn first wave enemies
+                if (stageData.waves != null && stageData.waves.Length > 0)
+                {
+                    await unitManager.SpawnEnemiesImmediate(stageData.waves[0].enemySpawns);
+                }
 
                 // 모든 유닛 생성이 끝난 후, 전투 시작을 알립니다.
                 Core.Instance.TurnManager.StartCombat();
@@ -137,12 +142,12 @@ public void AfterInit()
         gridManager.ClearGrid();
     }
 
-    private async UniTask SpawnObstacles(StageData stage)
+    private async UniTask SpawnObstacles(Room room)
     {
-        if (stage.obstacleSpawns == null)
+        if (room.obstacleSpawns == null)
             return;
 
-        foreach (var obsData in stage.obstacleSpawns)
+        foreach (var obsData in room.obstacleSpawns)
         {
             if (obsData.obstacleData == null)
                 continue;
@@ -170,7 +175,7 @@ public void AfterInit()
         }
     }
 
-    public void CreatePortals(List<StageType> portalTypes)
+public void CreatePortals(List<RoomType> portalTypes)
     {
         if (portalPrefab == null)
         {
@@ -179,16 +184,23 @@ public void AfterInit()
         }
 
         Vector3[] spawnPositions = {
-            new Vector3(_currentStageData.width / 2f, 0.5f, _currentStageData.height + 1),
-            new Vector3(-1, 0.5f, _currentStageData.height / 2f),
-            new Vector3(_currentStageData.width + 1, 0.5f, _currentStageData.height / 2f)
+            new Vector3(_currentRoom.width / 2f, 0.5f, _currentRoom.height + 1),
+            new Vector3(-1, 0.5f, _currentRoom.height / 2f),
+            new Vector3(_currentRoom.width + 1, 0.5f, _currentRoom.height / 2f)
         };
 
         for (int i = 0; i < portalTypes.Count && i < spawnPositions.Length; i++)
         {
             GameObject portalObj = Instantiate(portalPrefab, spawnPositions[i], Quaternion.identity);
             Portal portal = portalObj.GetComponent<Portal>();
-            portal.Initialize(portalTypes[i]);
+            
+            // TODO: Create PortalData based on RoomType and set up proper callback
+            // For now, this is a placeholder - implement proper portal setup
+            if (portal != null)
+            {
+                Debug.LogWarning($"[StageManager] Portal setup not fully implemented for type {portalTypes[i]}");
+            }
+            
             _spawnedPortals.Add(portalObj);
         }
     }
@@ -223,11 +235,11 @@ public void AfterInit()
         controller.orthographicSize = maxDim * 0.75f;
     }
 
-    private bool IsBattleStage(StageType type)
+private bool IsBattleStage(RoomType type)
     {
-        return type == StageType.Battle ||
-               type == StageType.EliteBattle ||
-               type == StageType.Boss;
+        return type == RoomType.Battle ||
+               type == RoomType.EliteBattle ||
+               type == RoomType.Boss;
     }
 
     private Vector3 GridToWorld(Vector2Int gridPos)
@@ -241,5 +253,21 @@ public void AfterInit()
         {
             _session.OnStageChanged -= OnStageChanged;
         }
+    }
+
+
+public void OnWaveComplete()
+    {
+        Debug.Log("[StageManager] Wave complete!");
+        // TODO: Implement wave completion logic
+        // Example: Display rewards, trigger next wave, or move to next room
+    }
+
+
+public void IncrementTurn()
+    {
+        Debug.Log("[StageManager] Incrementing turn - this could trigger next wave or stage progression");
+        // TODO: Implement wave progression logic here
+        // Example: Spawn next wave enemies if available
     }
 }

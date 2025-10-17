@@ -57,10 +57,10 @@ public void BeforeInit()
         UpdateCellHover();
     }
 
-public async void GenerateGrid(StageData stageData)
+public async void GenerateGrid(Room room)
     {
-        width = stageData.width;
-        height = stageData.height;
+        width = room.width;
+        height = room.height;
         
         ClearGrid();
 

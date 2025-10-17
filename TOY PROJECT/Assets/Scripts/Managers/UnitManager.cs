@@ -9,11 +9,7 @@ using UnityEngine.AddressableAssets;
 public class UnitManager : MonoBehaviour, IManager
 {
     [Header("Dependencies")]
-    [SerializeField]
-    private GridManager gridManager;
-
-    [SerializeField]
-    private StageManager stageManager;
+    [SerializeField] private GridManager gridManager;
 
     private NetworkManager _networkManager;
     private GameSession _session;
@@ -21,7 +17,7 @@ public class UnitManager : MonoBehaviour, IManager
 
     public List<EnemyUnit> SpawnedEnemies => _spawnedEnemies;
 
-public void BeforeInit()
+    public void BeforeInit()
     {
         if (PersistentCore.Instance != null)
         {
@@ -33,7 +29,7 @@ public void BeforeInit()
         }
     }
 
-public void AfterInit()
+    public void AfterInit()
     {
         if (_networkManager == null && PersistentCore.Instance != null)
         {
@@ -67,8 +63,7 @@ public void AfterInit()
     public async UniTask SpawnPlayer(
         PlayerRef playerRef,
         UnitType unitType,
-        Vector2Int spawnPosition
-    )
+        Vector2Int spawnPosition)
     {
         if (!_networkManager.IsHost)
             return;
@@ -76,7 +71,7 @@ public void AfterInit()
         string prefabKey = GetPrefabName(unitType);
         if (string.IsNullOrEmpty(prefabKey))
         {
-            Debug.LogError($"[UnitSpawner] Invalid unit type: {unitType}");
+            Debug.LogError($"[UnitManager] Invalid unit type: {unitType}");
             return;
         }
 
@@ -85,7 +80,7 @@ public void AfterInit()
 
         if (prefab == null || prefab.GetComponent<NetworkObject>() == null)
         {
-            Debug.LogError($"[UnitSpawner] Invalid prefab or missing NetworkObject: {prefabKey}");
+            Debug.LogError($"[UnitManager] Invalid prefab or missing NetworkObject: {prefabKey}");
             Addressables.Release(handle);
             return;
         }
@@ -96,12 +91,12 @@ public void AfterInit()
             Quaternion.identity,
             playerRef
         );
-        
+
         Addressables.Release(handle);
 
         if (playerNO == null)
         {
-            Debug.LogError($"[UnitSpawner] Failed to spawn player");
+            Debug.LogError($"[UnitManager] Failed to spawn player");
             return;
         }
 
@@ -112,26 +107,18 @@ public void AfterInit()
             gridManager.RegisterUnit(playerUnit, spawnPosition);
         }
     }
-    
-    public async UniTask SpawnEnemiesForTurn(int turnNumber)
+
+    public async UniTask SpawnEnemiesImmediate(EnemySpawnData[] enemies)
     {
         if (!_networkManager.IsHost)
             return;
 
-        var enemySpawns = GetEnemySpawnsForTurn(turnNumber);
-        if (enemySpawns == null || enemySpawns.Count == 0)
-        {
-            // 이 로그가 출력된다면, GetEnemySpawnsForTurn 내부의 진단 로그를 확인해야 합니다.
-            Debug.LogWarning($"[UnitManager] No enemies found to spawn for turn {turnNumber}. Check StageData asset.");
-            return;
-        }
-
-        Debug.Log($"[UnitManager] Found {enemySpawns.Count} enemies to spawn for turn {turnNumber}");
+        Debug.Log($"[UnitManager] Spawning {enemies.Length} enemies immediately");
 
         List<UniTask> tasks = new List<UniTask>();
-        foreach (var spawnData in enemySpawns)
+        foreach (var enemy in enemies)
         {
-            tasks.Add(SpawnEnemy(spawnData.enemyType, spawnData.spawnPos));
+            tasks.Add(SpawnEnemy(enemy.enemyType, enemy.spawnPos));
         }
 
         await UniTask.WhenAll(tasks);
@@ -224,49 +211,6 @@ public void AfterInit()
     public List<EnemyUnit> GetEnemies()
     {
         return _spawnedEnemies;
-    }
-
-    private List<EnemySpawnData> GetEnemySpawnsForTurn(int turnNumber)
-    {
-        var spawns = new List<EnemySpawnData>();
-        var stageData = stageManager.CurrentStageData;
-        if (stageData == null) {
-            Debug.LogError("[UnitManager-Diagnosis] stageData is NULL.");
-            return spawns;
-        }
-
-        int waveIndex = _session.CurrentWaveIndex;
-        if (waveIndex >= stageData.waves.Length) {
-            Debug.LogError($"[UnitManager-Diagnosis] CurrentWaveIndex ({waveIndex}) is out of bounds. StageData only has {stageData.waves.Length} waves.");
-            return spawns;
-        }
-
-        var wave = stageData.waves[waveIndex];
-        if (wave.turnSpawns == null || wave.turnSpawns.Length == 0) {
-            Debug.LogError("[UnitManager-Diagnosis] The first wave in StageData has an empty 'turnSpawns' array.");
-            return spawns;
-        }
-
-        bool foundTurnData = false;
-        foreach (var turnSpawn in wave.turnSpawns)
-        {
-            if (turnSpawn.turnNumber == turnNumber)
-            {
-                foundTurnData = true;
-                if (turnSpawn.enemies == null || turnSpawn.enemies.Length == 0) {
-                    Debug.LogError($"[UnitManager-Diagnosis] Found data for Turn {turnNumber}, but its 'enemies' array is empty.");
-                } else {
-                    spawns.AddRange(turnSpawn.enemies);
-                }
-                break; // 해당 턴 데이터를 찾았으므로 루프 종료
-            }
-        }
-
-        if (!foundTurnData) {
-            Debug.LogError($"[UnitManager-Diagnosis] Could not find any data for Turn {turnNumber} in the first wave.");
-        }
-
-        return spawns;
     }
 
     private Vector2Int GetPlayerSpawnPosition(int playerIndex)

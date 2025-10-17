@@ -10,7 +10,7 @@ public class NodeButtonUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI fanGainText;  // "팬 +250" 등
     [SerializeField] private Button selectButton;
 
-    private MapNodeData currentNodeData;
+    private RoomNode currentNodeData;
 
     private void Start()
     {
@@ -20,13 +20,13 @@ public class NodeButtonUI : MonoBehaviour
     /// <summary>
     /// UIManager가 노드 데이터를 받아 이 버튼을 설정할 때 호출합니다.
     /// </summary>
-    public void Setup(MapNodeData nodeData)
+    public void Setup(RoomNode nodeData)
     {
         currentNodeData = nodeData;
 
         if (nodeTypeText != null)
         {
-            nodeTypeText.text = nodeData.nodeType.ToString(); // Enum 이름을 그대로 사용
+            nodeTypeText.text = nodeData.roomType.ToString();
         }
 
         if (fanGainText != null)
@@ -44,7 +44,7 @@ public class NodeButtonUI : MonoBehaviour
     {
         if (currentNodeData == null) return;
 
-        Debug.Log($"노드 선택: {currentNodeData.name}");
+        Debug.Log($"노드 선택: {currentNodeData.roomName}");
 
         // 1. 갈림길 선택 화면을 닫습니다.
         Core.Instance.UIManager.HideNodeSelectionScreen();

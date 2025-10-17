@@ -17,5 +17,5 @@ MonoBehaviour:
   allUnits:
   - {fileID: 11400000, guid: 8139dccf9c56f47e28300aac92025046, type: 2}
   - {fileID: 11400000, guid: 37a987c9b83b7475dbbb5c74c1c30dd8, type: 2}
-  allStages:
-  - {fileID: 11400000, guid: 16cf8390e8fc64e55897bdc85c04166b, type: 2}
+  allRooms:
+  - {fileID: 11400000, guid: 036eca66de65645d792e2e90946b0a8b, type: 2}
