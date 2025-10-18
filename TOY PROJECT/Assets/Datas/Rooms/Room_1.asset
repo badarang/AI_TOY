@@ -19,8 +19,10 @@ MonoBehaviour:
   - waveName: Wave 1
     enemySpawns:
     - enemyType: 3
-      spawnPos: {x: 1, y: 1}
+      spawnPos: {x: 5, y: 1}
     - enemyType: 3
       spawnPos: {x: 5, y: 5}
+    - enemyType: 3
+      spawnPos: {x: 1, y: 5}
   obstacleSpawns: []
-  difficulty: 2
+  difficulty: 3

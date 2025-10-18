@@ -41,23 +41,29 @@ public class UnitManager : MonoBehaviour, IManager
 
     public async UniTask SpawnPlayers()
     {
-        if (!_networkManager.IsHost)
+        if (!_networkManager.IsHost || _session == null)
             return;
 
+        Debug.Log($"[UnitManager] Spawning players based on GameSession. Connected players: {_session.ConnectedPlayerCount}");
+
+        var spawnTasks = new List<UniTask>();
         int playerIndex = 0;
-        foreach (PlayerRef player in _networkManager.Runner.ActivePlayers)
+        for (int i = 0; i < GameSession.MAX_PLAYERS; i++)
         {
-            int slotIndex = _session.GetPlayerSlotIndex(player);
-            if (slotIndex == -1)
-                continue;
+            var slot = _session.PlayerSlots[i];
+            if (slot.IsConnected)
+            {
+                PlayerRef player = slot.PlayerRef;
+                UnitType unitType = slot.SelectedUnit;
+                Vector2Int spawnPos = GetPlayerSpawnPosition(playerIndex);
 
-            var slot = _session.PlayerSlots[slotIndex];
-            UnitType unitType = slot.SelectedUnit;
-            Vector2Int spawnPos = GetPlayerSpawnPosition(playerIndex);
-
-            await SpawnPlayer(player, unitType, spawnPos);
-            playerIndex++;
+                Debug.Log($"[UnitManager] Spawning player {player} (Slot {i}) of type {unitType} at {spawnPos}");
+                spawnTasks.Add(SpawnPlayer(player, unitType, spawnPos));
+                playerIndex++;
+            }
         }
+        await UniTask.WhenAll(spawnTasks);
+        Debug.Log($"[UnitManager] Finished spawning {playerIndex} players.");
     }
 
     public async UniTask SpawnPlayer(
@@ -103,8 +109,14 @@ public class UnitManager : MonoBehaviour, IManager
         var playerUnit = playerNO.GetComponent<PlayerUnit>();
         if (playerUnit != null)
         {
+            Debug.Log($"[UnitManager] Initializing PlayerUnit for {playerRef}");
             playerUnit.Initialize(spawnPosition, playerRef);
             gridManager.RegisterUnit(playerUnit, spawnPosition);
+            Debug.Log($"[UnitManager] PlayerUnit registered at {spawnPosition}");
+        }
+        else
+        {
+            Debug.LogError($"[UnitManager] PlayerUnit component not found on spawned object!");
         }
     }
 

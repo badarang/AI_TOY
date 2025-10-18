@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 using Cysharp.Threading.Tasks;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -77,7 +78,7 @@ public class StageManager : MonoBehaviour, IManager
         _session.LoadStageRpc(stageName);
     }
 
-private async void LoadStageLocal(string stageName)
+    private async void LoadStageLocal(string stageName)
     {
         var stageData = gameDatabase.GetRoomByName(stageName);
         if (stageData == null)
@@ -102,15 +103,35 @@ private async void LoadStageLocal(string stageName)
                     Debug.LogError("[StageManager] UnitManager is not assigned!");
                     return;
                 }
+
+                Debug.Log("[StageManager] Starting player spawn...");
                 await unitManager.SpawnPlayers();
-                
-                // Spawn first wave enemies
+
+                // Wait until all players registered in the session are spawned
+                if (_session != null && _session.ConnectedPlayerCount > 0)
+                {
+                    Debug.Log($"[StageManager] Waiting for {_session.ConnectedPlayerCount} players to be spawned...");
+                    await UniTask.WaitUntil(() => unitManager.GetAllPlayers().Count >= _session.ConnectedPlayerCount);
+                    Debug.Log($"[StageManager] All {unitManager.GetAllPlayers().Count} players spawned.");
+                }
+
+                Debug.Log("[StageManager] Starting enemy spawn...");
                 if (stageData.waves != null && stageData.waves.Length > 0)
                 {
                     await unitManager.SpawnEnemiesImmediate(stageData.waves[0].enemySpawns);
                 }
 
-                // 모든 유닛 생성이 끝난 후, 전투 시작을 알립니다.
+                // This delay might not be necessary, but can be kept for safety.
+                await UniTask.Delay(100);
+
+                var allPlayers = unitManager.GetAllPlayers();
+                Debug.Log($"[StageManager] Found {allPlayers.Count} players before StartCombat");
+                foreach (var player in allPlayers)
+                {
+                    Debug.Log($"[StageManager] Player: {player.name} at {player.position}");
+                }
+
+                Debug.Log("[StageManager] Starting combat...");
                 Core.Instance.TurnManager.StartCombat();
             }
         }
