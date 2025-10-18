@@ -42,6 +42,7 @@ public class EnemyAIManager : MonoBehaviour, IManager
     private async UniTask DecideAndExecuteAction(EnemyUnit enemy, PlayerUnit player)
     {
         var decision = EnemyDecisionLogic.DecideAction(enemy, player.position);
+
         if (Core.Instance?.PreviewManager != null)
         {
             Core.Instance.PreviewManager.ClearPreviewForEnemy(enemy);
@@ -50,16 +51,12 @@ public class EnemyAIManager : MonoBehaviour, IManager
         switch (decision.actionType)
         {
             case EnemyDecision.ActionType.Attack:
-                Debug.Log(
-                    $"[AI ACTION] {enemy.name} is in range. Attempting to attack {player.name}."
-                );
+                Debug.Log($"[AI ACTION] {enemy.name} is in range. Attempting to attack {player.name}.");
                 await enemy.UseSkillAsync(decision.skillIndex, decision.targetPosition);
                 break;
 
             case EnemyDecision.ActionType.Move:
-                Debug.Log(
-                    $"[AI ACTION] {enemy.name} moving to {decision.targetPosition} using skill index {decision.skillIndex}"
-                );
+                Debug.Log($"[AI ACTION] {enemy.name} moving to {decision.targetPosition} using skill index {decision.skillIndex}");
                 await enemy.UseSkillAsync(decision.skillIndex, decision.targetPosition);
                 break;
 
@@ -68,5 +65,4 @@ public class EnemyAIManager : MonoBehaviour, IManager
                 Debug.Log($"[AI DECISION] {enemy.name} will wait.");
                 break;
         }
-    }
-}
+    }}

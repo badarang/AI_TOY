@@ -18,12 +18,15 @@ public struct EnemyDecision
 
 public static class EnemyDecisionLogic
 {
-    public static EnemyDecision DecideAction(UnitBase enemy, Vector2Int playerPosition)
+    public static EnemyDecision DecideAction(UnitBase enemy, Vector2Int playerPosition, bool isPreview = false)
     {
         if (enemy.unitData == null || enemy.unitData.skills == null)
         {
             return CreateWaitDecision(enemy.position);
         }
+
+        // Preview 모드일 때 "다음 턴 시작 직후" 상태로 판단
+        int effectiveAP = isPreview ? enemy.unitData.maxAp : enemy.ap;
 
         for (int i = 0; i < enemy.unitData.skills.Length; i++)
         {
@@ -32,8 +35,9 @@ public static class EnemyDecisionLogic
             if (skill.skillType == SkillType.Attack)
             {
                 int distance = GridUtils.ChebyshevDistance(enemy.position, playerPosition);
+                int effectiveCooldown = isPreview ? Mathf.Max(0, enemy.GetSkillCooldown(i) - 1) : enemy.GetSkillCooldown(i);
 
-                if (distance <= skill.range && enemy.GetSkillCooldown(i) == 0 && enemy.ap >= skill.apCost)
+                if (distance <= skill.range && effectiveCooldown == 0 && effectiveAP >= skill.apCost)
                 {
                     var decision = new EnemyDecision
                     {
@@ -53,8 +57,9 @@ public static class EnemyDecisionLogic
         if (moveSkillIndex >= 0)
         {
             var moveSkill = enemy.unitData.skills[moveSkillIndex];
+            int effectiveMoveCooldown = isPreview ? Mathf.Max(0, enemy.GetSkillCooldown(moveSkillIndex) - 1) : enemy.GetSkillCooldown(moveSkillIndex);
 
-            if (enemy.GetSkillCooldown(moveSkillIndex) == 0 && enemy.ap >= moveSkill.apCost)
+            if (effectiveMoveCooldown == 0 && effectiveAP >= moveSkill.apCost)
             {
                 var movableTiles = Core.Instance.GridManager.GetWalkableTilesInRange(enemy.position, moveSkill.range);
 
@@ -66,9 +71,9 @@ public static class EnemyDecisionLogic
                 {
                     int chebyshevDist = GridUtils.ChebyshevDistance(tile, playerPosition);
                     int manhattanDist = GridUtils.ManhattanDistance(tile, playerPosition);
-                    
+
                     bool isBetter = false;
-                    
+
                     if (chebyshevDist < closestChebyshevDistance)
                     {
                         isBetter = true;
@@ -77,7 +82,7 @@ public static class EnemyDecisionLogic
                     {
                         isBetter = true;
                     }
-                    
+
                     if (isBetter)
                     {
                         closestChebyshevDistance = chebyshevDist;

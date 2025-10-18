@@ -87,7 +87,7 @@ public class PreviewManager : MonoBehaviour, IManager
 
     private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPosition)
     {
-        var decision = EnemyDecisionLogic.DecideAction(unit, playerPosition);
+        var decision = EnemyDecisionLogic.DecideAction(unit, playerPosition, isPreview: true);
 
         var preview = new UnitActionPreview
         {
