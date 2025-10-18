@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using DG.Tweening;
 
@@ -34,7 +35,7 @@ public class MoveBehavior : SkillBehavior
         return isWithinPattern;
     }
 
-    public override float Execute(UnitBase caster, Vector2Int targetPos, Skill skill)
+    public override UniTask ExecuteAsync(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
         Vector2Int startPos = caster.position;
 
@@ -45,6 +46,6 @@ public class MoveBehavior : SkillBehavior
 
         DebugPrinter.LogColor(LogType.Unit, $"{caster.name} moved to {targetPos}");
 
-        return animationDuration;
+        return UniTask.CompletedTask;
     }
 }

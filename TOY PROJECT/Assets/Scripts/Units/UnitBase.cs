@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Cysharp.Threading.Tasks;
 using DG.Tweening;
 using Fusion;
 using UnityEngine;
@@ -10,18 +11,40 @@ public class UnitBase : NetworkBehaviour
 {
     public UnitData unitData;
     public FactionData factionData;
-    [Networked] public int HP { get; set; }
-    [Networked] public int AP { get; set; }
-    [Networked] public Vector2Int Position { get; set; }
-    [Networked] public PlayerRef Owner { get; set; }
-    [Networked] public NetworkBool HasActedThisTurn { get; set; }
+
+    [Networked]
+    public int HP { get; set; }
+
+    [Networked]
+    public int AP { get; set; }
+
+    [Networked]
+    public Vector2Int Position { get; set; }
+
+    [Networked]
+    public PlayerRef Owner { get; set; }
+
+    [Networked]
+    public NetworkBool HasActedThisTurn { get; set; }
 
     [Networked, Capacity(10)]
     private NetworkArray<int> SkillCooldowns => default;
 
-    public Vector2Int position { get => Position; set => Position = value; }
-    public int hp { get => HP; set => HP = value; }
-    public int ap { get => AP; set => AP = value; }
+    public Vector2Int position
+    {
+        get => Position;
+        set => Position = value;
+    }
+    public int hp
+    {
+        get => HP;
+        set => HP = value;
+    }
+    public int ap
+    {
+        get => AP;
+        set => AP = value;
+    }
     private Action OnSelected;
     private Action OnDeselected;
     private List<Skill> _skills = new List<Skill>();
@@ -30,7 +53,8 @@ public class UnitBase : NetworkBehaviour
     private MaterialPropertyBlock _propertyBlock;
 
     [Header("스킬 / 업그레이드")]
-    [SerializeField] private UnitBuildData buildData;
+    [SerializeField]
+    private UnitBuildData buildData;
     public UnitBuildData BuildData
     {
         get
@@ -43,7 +67,6 @@ public class UnitBase : NetworkBehaviour
 
     protected GameAssetDatabase Database => Core.Instance?.GameDatabase;
 
-
     public override void Spawned()
     {
         // Initialize networked properties on the StateAuthority (server).
@@ -51,7 +74,7 @@ public class UnitBase : NetworkBehaviour
         if (HasStateAuthority)
         {
             if (unitData != null)
-            { 
+            {
                 HP = unitData.maxHp;
                 AP = unitData.maxAp;
             }
@@ -78,7 +101,7 @@ public class UnitBase : NetworkBehaviour
         }
     }
 
-public void Initialize(Vector2Int spawnPos, PlayerRef owner)
+    public void Initialize(Vector2Int spawnPos, PlayerRef owner)
     {
         Position = spawnPos;
         Owner = owner;
@@ -90,32 +113,29 @@ public void Initialize(Vector2Int spawnPos, PlayerRef owner)
         return HasInputAuthority;
     }
 
-
-    public virtual float UseSkill(int skillIndex, Vector2Int targetPos)
+    public virtual async UniTask UseSkillAsync(int skillIndex, Vector2Int targetPos)
     {
         if (skillIndex < 0 || skillIndex >= _skills.Count)
         {
             Debug.LogError("Invalid skill index.");
-            return 0f;
+            return;
         }
 
         var skill = _skills[skillIndex];
 
-        // 쿨다운 체크
         if (skill.currentCooldown > 0)
         {
             Debug.LogWarning(
                 $"Skill {skill.data.skillMeta.nameKey} is on cooldown for {skill.currentCooldown} more turns."
             );
-            return 0f;
+            return;
         }
 
-        // AP 체크
         int apCost = skill.GetAPCost();
         if (ap < apCost)
         {
             Debug.LogWarning("Not enough AP to use this skill.");
-            return 0f;
+            return;
         }
 
         DebugPrinter.LogColor(
@@ -123,10 +143,8 @@ public void Initialize(Vector2Int spawnPos, PlayerRef owner)
             $"Using skill '{skill.data.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {apCost}"
         );
 
-        // AP 소모
         ap -= apCost;
 
-        // 쿨다운 설정
         if (skill.data.cooldown > 0)
             skill.currentCooldown = skill.data.cooldown;
 
@@ -135,19 +153,19 @@ public void Initialize(Vector2Int spawnPos, PlayerRef owner)
             $"{name} used {skill.data.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}"
         );
 
-        // 스킬 실행
-        return skill.Execute(this, targetPos);
+        await skill.ExecuteAsync(this, targetPos);
     }
 
-public void RequestSkillUse(int skillIndex, Vector2Int targetPos)
+    public void RequestSkillUse(int skillIndex, Vector2Int targetPos)
     {
-        if (!HasInputAuthority && !(this is EnemyUnit)) return;
+        if (!HasInputAuthority && !(this is EnemyUnit))
+            return;
 
         UseSkillRpc(skillIndex, targetPos);
     }
 
     [Rpc(RpcSources.InputAuthority | RpcSources.StateAuthority, RpcTargets.StateAuthority)]
-    private void UseSkillRpc(int skillIndex, Vector2Int targetPos)
+    private async void UseSkillRpc(int skillIndex, Vector2Int targetPos)
     {
         if (skillIndex < 0 || skillIndex >= _skills.Count)
         {
@@ -170,16 +188,18 @@ public void RequestSkillUse(int skillIndex, Vector2Int targetPos)
             return;
         }
 
-        
-        // 스킬 실행 가능 여부 체크 (사거리, 이동 패턴, behavior 검증 등)
         if (!skill.CanExecute(this, targetPos))
         {
-            Debug.LogWarning($"Cannot execute skill '{skill.data.skillMeta.nameKey}' at {targetPos}. Invalid target or out of range.");
+            Debug.LogWarning(
+                $"Cannot execute skill '{skill.data.skillMeta.nameKey}' at {targetPos}. Invalid target or out of range."
+            );
             return;
         }
 
-        
-DebugPrinter.LogColor(LogType.Unit, $"Using skill '{skill.data.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {apCost}");
+        DebugPrinter.LogColor(
+            LogType.Unit,
+            $"Using skill '{skill.data.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {apCost}"
+        );
 
         ap -= apCost;
 
@@ -189,20 +209,22 @@ DebugPrinter.LogColor(LogType.Unit, $"Using skill '{skill.data.skillMeta.nameKey
             skill.currentCooldown = skill.data.cooldown;
         }
 
-        DebugPrinter.LogColor(LogType.Unit, $"{name} used {skill.data.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}");
+        DebugPrinter.LogColor(
+            LogType.Unit,
+            $"{name} used {skill.data.skillMeta.nameKey} on target at {targetPos}. AP left: {ap}"
+        );
 
-        float animDuration = skill.Execute(this, targetPos);
-        RPC_PlaySkillVisuals(skillIndex, targetPos, animDuration);
+        await skill.ExecuteAsync(this, targetPos);
+        RPC_PlaySkillVisuals(skillIndex, targetPos);
 
         HasActedThisTurn = true;
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_PlaySkillVisuals(int skillIndex, Vector2Int targetPos, float duration)
+    private void RPC_PlaySkillVisuals(int skillIndex, Vector2Int targetPos)
     {
         Debug.Log($"Playing skill visuals for skill {skillIndex} on {targetPos}");
     }
-
 
     public int GetMoveSkillIndex()
     {
@@ -217,7 +239,7 @@ DebugPrinter.LogColor(LogType.Unit, $"Using skill '{skill.data.skillMeta.nameKey
         return -1;
     }
 
-public virtual void TakeDamage(int amount)
+    public virtual void TakeDamage(int amount)
     {
         if (HasStateAuthority)
         {
@@ -238,10 +260,10 @@ public virtual void TakeDamage(int amount)
         }
     }
 
-protected virtual void Die()
+    protected virtual void Die()
     {
         DebugPrinter.LogColor(LogType.Unit, $"{name} has died.");
-        
+
         if (Core.Instance?.GridManager != null)
         {
             Core.Instance.GridManager.UnregisterUnit(position);
@@ -269,7 +291,7 @@ protected virtual void Die()
         ReduceSkillCooldowns();
     }
 
-public virtual void ReduceSkillCooldowns()
+    public virtual void ReduceSkillCooldowns()
     {
         if (HasStateAuthority)
         {
@@ -607,7 +629,9 @@ public virtual void ReduceSkillCooldowns()
         // 빌드 데이터에 기록
         BuildData.AddSkillUpgrade(skillIndex, skill.data.skillMeta.nameKey, upgradeData);
 
-        Debug.Log($"[BuildData] Skill upgraded: {skill.data.skillMeta.nameKey} with {upgradeData.upgradeName}");
+        Debug.Log(
+            $"[BuildData] Skill upgraded: {skill.data.skillMeta.nameKey} with {upgradeData.upgradeName}"
+        );
     }
 
     /// <summary>
@@ -667,5 +691,4 @@ public virtual void ReduceSkillCooldowns()
     }
 
     #endregion
-
 }

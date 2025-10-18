@@ -48,33 +48,23 @@ public class Skill
     /// <summary>
     /// 스킬 실행 로직
     /// </summary>
-    public float Execute(UnitBase caster, Vector2Int targetPos)
+/// <summary>
+    /// 스킬 실행 로직 (비동기)
+    /// </summary>
+    public async Cysharp.Threading.Tasks.UniTask ExecuteAsync(UnitBase caster, Vector2Int targetPos)
     {
-        float totalDuration = 0f;
-
-        // 블랙보드 초기화 (Behavior 간 데이터 공유를 위해)
         blackboard.Clear();
 
-        // Initial Behaviors 실행
         if (data.initialBehaviors != null)
         {
             foreach (var behavior in data.initialBehaviors)
             {
                 if (behavior != null)
                 {
-                    totalDuration += behavior.Execute(caster, targetPos, this);
+                    await behavior.ExecuteAsync(caster, targetPos, this);
                 }
             }
         }
-
-        // Sub-Targeting 로직 처리
-        // Sub-Targeting 로직 처리 (현재 비활성화)
-        // if (data.subTargetBehaviors != null && data.subTargetBehaviors.Length > 0)
-        // {
-        //     Debug.Log("Sub-targeting skill used.");
-        // }
-
-        return totalDuration;
     }
 
     /// <summary>

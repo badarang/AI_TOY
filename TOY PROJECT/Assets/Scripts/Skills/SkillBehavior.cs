@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 // 스킬을 구성하는 개별 동작(이동, 데미지, 버프 등)의 기반이 될 추상 클래스
@@ -8,18 +9,20 @@ public abstract class SkillBehavior : ScriptableObject
     // context 객체를 통해 스킬 시전자, 타겟, 게임 매니저 등 필요한 모든 정보에 접근
     // 행동에 애니메이션 등 시간이 소요되는 경우, 해당 시간을 float으로 반환해야 합니다.
 
-public virtual bool CanExecute(UnitBase caster, Vector2Int targetPos, Skill skill)
+    public virtual bool CanExecute(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
-        if (caster.ap < skill.GetAPCost()) return false;
-        if (skill.currentCooldown > 0) return false;
+        if (caster.ap < skill.GetAPCost())
+            return false;
+        if (skill.currentCooldown > 0)
+            return false;
 
         int distance = GridUtils.ChebyshevDistance(caster.position, targetPos);
         return distance <= skill.GetRange();
     }
 
-public virtual float Execute(UnitBase caster, Vector2Int targetPos, Skill skill)
+    public virtual async UniTask ExecuteAsync(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
-        Core.Instance.TurnManager.TriggerUnitActionEnd();
-        return 0f;
+        Core.Instance.TurnManager.TriggerUnitSkillEnd();
+        await UniTask.CompletedTask;
     }
 }

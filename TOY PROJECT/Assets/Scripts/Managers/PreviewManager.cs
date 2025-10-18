@@ -1,12 +1,12 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 
 public enum PreviewActionType
 {
     Attack,
     Move,
     Skill,
-    Wait
+    Wait,
 }
 
 public class UnitActionPreview
@@ -20,8 +20,7 @@ public class UnitActionPreview
 
 public class PreviewManager : MonoBehaviour, IManager
 {
-
-public void BeforeInit()
+    public void BeforeInit()
     {
         if (previewVisuals == null)
             previewVisuals = new List<GameObject>();
@@ -32,16 +31,16 @@ public void BeforeInit()
         stageManager = Core.Instance.StageManager;
         gridManager = Core.Instance.GridManager;
         turnManager = Core.Instance.TurnManager;
-        
+
         if (turnManager != null)
         {
-            turnManager.OnPlayerTurnStart += UpdateAllPreviews;
-            turnManager.OnPlayerActionEnd += UpdateAllPreviews;
-            turnManager.OnEnemyTurnStart += ClearAllPreviews;
+            turnManager.OnPlayerSkillEnd += UpdateAllPreviews;
         }
     }
 
-    private Dictionary<UnitBase, UnitActionPreview> currentPreviews = new Dictionary<UnitBase, UnitActionPreview>();
+    private int _lastUpdatedTurn = -1;
+    private Dictionary<UnitBase, UnitActionPreview> currentPreviews =
+        new Dictionary<UnitBase, UnitActionPreview>();
     private StageManager stageManager;
     private GridManager gridManager;
     private TurnManager turnManager;
@@ -49,33 +48,32 @@ public void BeforeInit()
     public string previewArrowTag;
     public List<GameObject> previewVisuals;
 
-
-
     void OnDestroy()
     {
         if (turnManager != null)
         {
-            turnManager.OnPlayerTurnStart -= UpdateAllPreviews;
-            turnManager.OnPlayerActionEnd -= UpdateAllPreviews;
-            turnManager.OnEnemyTurnStart -= ClearAllPreviews;
+            turnManager.OnPlayerSkillEnd -= UpdateAllPreviews;
         }
     }
 
     public void UpdateAllPreviews()
     {
         ClearAllPreviews();
-        
+
         var players = Core.Instance.UnitManager.GetAllPlayers();
-        if (players == null || players.Count == 0) return;
+        if (players == null || players.Count == 0)
+            return;
         var targetPlayer = players[0]; // Simple AI: always target the first player for previews
-        
+
         var enemies = Core.Instance.UnitManager.GetEnemies();
-        if (enemies == null || enemies.Count == 0) return;
-        
+        if (enemies == null || enemies.Count == 0)
+            return;
+
         foreach (var enemy in enemies)
         {
-            if (enemy == null) continue;
-            
+            if (enemy == null)
+                continue;
+
             var preview = SimulateEnemyAction(enemy, targetPlayer.position);
             if (preview != null)
             {
@@ -85,12 +83,7 @@ public void BeforeInit()
         }
     }
 
-    public void UpdatePreviewsAfterPlayerAction()
-    {
-        UpdateAllPreviews();
-    }
-
-private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPosition)
+    private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPosition)
     {
         var decision = EnemyDecisionLogic.DecideAction(unit, playerPosition);
 
@@ -100,7 +93,7 @@ private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPo
             actionType = ConvertToPreviewActionType(decision.actionType),
             targetPosition = decision.targetPosition,
             skillIndex = decision.skillIndex,
-            affectedTiles = decision.affectedTiles ?? new List<Vector2Int>()
+            affectedTiles = decision.affectedTiles ?? new List<Vector2Int>(),
         };
 
         return preview;
@@ -122,24 +115,31 @@ private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPo
 
     private void ShowPreviewVisual(UnitActionPreview preview)
     {
-        if (preview.actionType == PreviewActionType.Wait) return;
+        if (preview.actionType == PreviewActionType.Wait)
+            return;
 
         if (string.IsNullOrEmpty(previewArrowTag))
         {
             Debug.LogError("[PreviewManager] previewArrowTag is not set!");
             return;
         }
-        
-        GameObject visualObj = Core.Instance.PoolManager.SpawnFromPool(previewArrowTag, null, false);
+
+        GameObject visualObj = Core.Instance.PoolManager.SpawnFromPool(
+            previewArrowTag,
+            null,
+            false
+        );
         if (visualObj == null)
         {
-            Debug.LogWarning($"[PreviewManager] Failed to spawn preview visual from pool: {previewArrowTag}");
+            Debug.LogWarning(
+                $"[PreviewManager] Failed to spawn preview visual from pool: {previewArrowTag}"
+            );
             return;
         }
-        
+
         Vector3 startPos = GridToWorld(preview.unit.position);
         Vector3 endPos = GridToWorld(preview.targetPosition);
-        
+
         var previewPrefab = visualObj.GetComponent<PreviewPrefab>();
         if (previewPrefab == null)
         {
@@ -148,30 +148,31 @@ private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPo
             return;
         }
 
-        Color arrowColor = preview.actionType == PreviewActionType.Attack
-            ? GameColors.Gameplay.AttackPreview
-            : GameColors.Gameplay.MovePreview;
-        
+        Color arrowColor =
+            preview.actionType == PreviewActionType.Attack
+                ? GameColors.Gameplay.AttackPreview
+                : GameColors.Gameplay.MovePreview;
+
         previewPrefab.Init(startPos, endPos, preview.actionType, arrowColor);
-        
+
         previewVisuals.Add(visualObj);
-        
+
         if (preview.actionType == PreviewActionType.Attack)
         {
             gridManager.HighlightDangerTiles(preview.affectedTiles);
         }
     }
 
-private void ClearAllPreviews()
+    private void ClearAllPreviews()
     {
         if (previewVisuals == null)
         {
             previewVisuals = new List<GameObject>();
             return;
         }
-        
+
         currentPreviews.Clear();
-        
+
         foreach (var visual in previewVisuals)
         {
             if (visual != null)

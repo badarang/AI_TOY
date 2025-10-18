@@ -10,7 +10,7 @@ public class UIManager : MonoBehaviour, IManager
     {
         if (Core.Instance != null && Core.Instance.TurnManager != null)
         {
-            Core.Instance.TurnManager.OnPlayerActionEnd -= RefreshUnitInfoIfVisible;
+            Core.Instance.TurnManager.OnPlayerSkillEnd -= RefreshUnitInfoIfVisible;
         }
     }
 
@@ -27,7 +27,7 @@ public void AfterInit()
     {
         if (Core.Instance.TurnManager != null)
         {
-            Core.Instance.TurnManager.OnPlayerActionEnd += RefreshUnitInfoIfVisible;
+            Core.Instance.TurnManager.OnPlayerSkillEnd += RefreshUnitInfoIfVisible;
         }
     }
 

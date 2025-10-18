@@ -39,7 +39,7 @@ public class TurnManager : NetworkBehaviour, IManager
     // --- EVENTS ---
     public event Action OnPlayerTurnStart;
     public event Action OnEnemyTurnStart;
-    public event Action OnPlayerActionEnd;
+    public event Action OnPlayerSkillEnd;
 
     // --- MANAGER REFS ---
     private UIManager uiManager;
@@ -122,7 +122,8 @@ public class TurnManager : NetworkBehaviour, IManager
 
     public void StartCombat()
     {
-        if (!HasStateAuthority) return;
+        if (!HasStateAuthority)
+            return;
 
         TurnNumber = 1; // Start from turn 1
 
@@ -137,7 +138,7 @@ public class TurnManager : NetworkBehaviour, IManager
         var sortedPlayers = allPlayers.OrderBy(p => p.Owner.PlayerId).ToList();
         foreach (var player in sortedPlayers)
         {
-            if(!_playerTurnOrder.Contains(player.Owner))
+            if (!_playerTurnOrder.Contains(player.Owner))
                 _playerTurnOrder.Add(player.Owner);
         }
 
@@ -146,9 +147,10 @@ public class TurnManager : NetworkBehaviour, IManager
         StartNextTurn();
     }
 
-private async void StartNextTurn()
+    private async void StartNextTurn()
     {
-        if (!HasStateAuthority) return;
+        if (!HasStateAuthority)
+            return;
 
         _turnIndex++;
 
@@ -156,7 +158,9 @@ private async void StartNextTurn()
         {
             IsPlayerTurn = true;
             CurrentTurnPlayer = _playerTurnOrder[_turnIndex];
-            Debug.Log($"[SERVER] Starting turn for Player {CurrentTurnPlayer}. Index: {_turnIndex}");
+            Debug.Log(
+                $"[SERVER] Starting turn for Player {CurrentTurnPlayer}. Index: {_turnIndex}"
+            );
             UpdateTurnOrderDisplay();
         }
         else
@@ -169,7 +173,7 @@ private async void StartNextTurn()
 
             _turnIndex = -1;
             TurnNumber++;
-            
+
             Core.Instance.StageManager.IncrementTurn();
 
             StartNextTurn();
@@ -187,8 +191,8 @@ private async void StartNextTurn()
                 enemy.OnTurnStart();
         }
 
-        if(Core.Instance.EnemyAIManager != null)
-            await Core.Instance.EnemyAIManager.ExecuteEnemyTurns().ToUniTask(this);
+        if (Core.Instance.EnemyAIManager != null)
+            await Core.Instance.EnemyAIManager.ExecuteEnemyTurns();
 
         await CheckForWaveClearAsync();
     }
@@ -196,11 +200,11 @@ private async void StartNextTurn()
     private async UniTask CheckForWaveClearAsync()
     {
         await UniTask.Delay(500);
-        
+
         if ((unitManager != null ? unitManager.GetEnemies().Count : 0) == 0)
         {
             Debug.Log("[TurnManager] All enemies cleared! Wave complete!");
-            
+
             if (HasStateAuthority)
             {
                 Core.Instance.StageManager.OnWaveComplete();
@@ -224,7 +228,7 @@ private async void StartNextTurn()
         }
     }
 
-public void HandleCellClick(Vector2Int cell)
+    public void HandleCellClick(Vector2Int cell)
     {
         // 그리드 범위 체크 - 범위 밖이면 선택 해제
         if (!gridManager.IsValidTile(cell))
@@ -276,7 +280,10 @@ public void HandleCellClick(Vector2Int cell)
                 {
                     TryMoveUnit(_localSelectedUnit, cell);
                 }
-                else if (unitAtCell is PlayerUnit friendlyUnit && friendlyUnit.Owner == Runner.LocalPlayer)
+                else if (
+                    unitAtCell is PlayerUnit friendlyUnit
+                    && friendlyUnit.Owner == Runner.LocalPlayer
+                )
                 {
                     SelectPlayerUnit(friendlyUnit);
                 }
@@ -288,7 +295,7 @@ public void HandleCellClick(Vector2Int cell)
         }
     }
 
-private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
+    private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         int moveSkillIndex = unit.GetMoveSkillIndex();
         if (moveSkillIndex < 0)
@@ -308,7 +315,9 @@ private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
         var moveSkill = skills[moveSkillIndex];
         if (!moveSkill.CanExecute(unit, targetCell))
         {
-            Debug.LogWarning($"[TurnManager] Cannot move to {targetCell}. Out of range or invalid tile.");
+            Debug.LogWarning(
+                $"[TurnManager] Cannot move to {targetCell}. Out of range or invalid tile."
+            );
             return;
         }
 
@@ -318,11 +327,11 @@ private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
         SetPlayerState(PlayerTurnState.PerformingAction);
     }
 
-private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
+    private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         int attackSkillIndex = -1;
         var skills = unit.GetSkills();
-        
+
         for (int i = 0; i < skills.Count; i++)
         {
             if (skills[i].data.skillType == SkillType.Attack)
@@ -342,7 +351,9 @@ private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
         var attackSkill = skills[attackSkillIndex];
         if (!attackSkill.CanExecute(unit, targetCell))
         {
-            Debug.LogWarning($"[TurnManager] Cannot attack {targetCell}. Out of range or invalid target.");
+            Debug.LogWarning(
+                $"[TurnManager] Cannot attack {targetCell}. Out of range or invalid target."
+            );
             return;
         }
 
@@ -354,9 +365,11 @@ private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
 
     public void SelectPlayerUnit(PlayerUnit unit)
     {
-        if (unit.Owner != Runner.LocalPlayer) return;
+        if (unit.Owner != Runner.LocalPlayer)
+            return;
 
-        if (_localSelectedUnit != null) _localSelectedUnit.Deselect();
+        if (_localSelectedUnit != null)
+            _localSelectedUnit.Deselect();
 
         _localSelectedUnit = unit;
         _localSelectedUnit.Select();
@@ -366,23 +379,34 @@ private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
         uiManager.skillPanelUI?.UpdateSkillDisplay(unit);
     }
 
-public void ClearSelection()
+    public void ClearSelection()
     {
-        if (_localSelectedUnit != null) _localSelectedUnit.Deselect();
+        if (_localSelectedUnit != null)
+            _localSelectedUnit.Deselect();
         _localSelectedUnit = null;
-        
+
         if (gridManager != null)
         {
             gridManager.ClearSelection();
         }
-        
+
         if (uiManager != null)
         {
             uiManager.HideUnitInfo();
             uiManager.HideSkillPanel();
         }
 
-        if (CurrentTurnPlayer == Runner.LocalPlayer && CurrentPlayerState != PlayerTurnState.AwaitingTurn)
+        // Networked properties can only be accessed after Spawned().
+        // Add a guard to prevent errors if called before initialization.
+        if (Object == null || !Object.IsValid)
+        {
+            return;
+        }
+
+        if (
+            CurrentTurnPlayer == Runner.LocalPlayer
+            && CurrentPlayerState != PlayerTurnState.AwaitingTurn
+        )
         {
             SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
         }
@@ -399,7 +423,7 @@ public void ClearSelection()
 
     public void ClearTurn()
     {
-        if(HasStateAuthority)
+        if (HasStateAuthority)
         {
             CurrentTurnPlayer = PlayerRef.None;
             TurnNumber = 0;
@@ -419,8 +443,10 @@ public void ClearSelection()
 
             if (IsPlayerTurn)
             {
-                if (_isMyTurn) turnInfo += "<color=green>Your Turn</color>";
-                else turnInfo += $"<color=yellow>Player {CurrentTurnPlayer.PlayerId}'s Turn</color>";
+                if (_isMyTurn)
+                    turnInfo += "<color=green>Your Turn</color>";
+                else
+                    turnInfo += $"<color=yellow>Player {CurrentTurnPlayer.PlayerId}'s Turn</color>";
             }
             else
             {
@@ -429,13 +455,13 @@ public void ClearSelection()
         }
     }
 
-    public void TriggerUnitActionEnd()
+    public void TriggerUnitSkillEnd()
     {
         if (CurrentPlayerState == PlayerTurnState.PerformingAction)
         {
             SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
         }
-        OnPlayerActionEnd?.Invoke();
+        OnPlayerSkillEnd?.Invoke();
     }
     #endregion
 }
