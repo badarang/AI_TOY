@@ -20,9 +20,8 @@ public abstract class SkillBehavior : ScriptableObject
         return distance <= skill.GetRange();
     }
 
-    public virtual async UniTask ExecuteAsync(UnitBase caster, Vector2Int targetPos, Skill skill)
+public virtual async UniTask ExecuteAsync(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
-        Core.Instance.TurnManager.TriggerUnitSkillEnd();
         await UniTask.CompletedTask;
     }
 }

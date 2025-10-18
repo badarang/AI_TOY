@@ -79,7 +79,7 @@ public class TurnManager : NetworkBehaviour, IManager
         bool wasMyTurn = _isMyTurn;
         _isMyTurn = (CurrentTurnPlayer == Runner.LocalPlayer);
 
-        if (_isMyTurn && CurrentPlayerState == PlayerTurnState.AwaitingTurn)
+        if (_isMyTurn && !wasMyTurn)
         {
             Debug.Log("It is now my turn!");
             SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
@@ -162,6 +162,8 @@ public class TurnManager : NetworkBehaviour, IManager
                 $"[SERVER] Starting turn for Player {CurrentTurnPlayer}. Index: {_turnIndex}"
             );
             UpdateTurnOrderDisplay();
+
+            await UniTask.NextFrame();
         }
         else
         {
@@ -185,6 +187,12 @@ public class TurnManager : NetworkBehaviour, IManager
         OnEnemyTurnStart?.Invoke();
 
         var enemies = unitManager != null ? unitManager.GetEnemies() : new List<EnemyUnit>();
+        foreach (var enemy in enemies)
+        {
+            if (enemy != null)
+                enemy.OnTurnStart();
+        }
+
         foreach (var enemy in enemies)
         {
             if (enemy != null)

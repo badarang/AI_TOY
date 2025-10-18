@@ -215,13 +215,18 @@ public class UnitBase : NetworkBehaviour
         );
 
         await skill.ExecuteAsync(this, targetPos);
-        RPC_PlaySkillVisuals(skillIndex, targetPos);
+        PlaySkillVisualsRpc(skillIndex, targetPos);
 
         HasActedThisTurn = true;
+
+        if (Core.Instance?.TurnManager != null)
+        {
+            Core.Instance.TurnManager.TriggerUnitSkillEnd();
+        }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_PlaySkillVisuals(int skillIndex, Vector2Int targetPos)
+    private void PlaySkillVisualsRpc(int skillIndex, Vector2Int targetPos)
     {
         Debug.Log($"Playing skill visuals for skill {skillIndex} on {targetPos}");
     }
@@ -243,12 +248,12 @@ public class UnitBase : NetworkBehaviour
     {
         if (HasStateAuthority)
         {
-            RPC_TakeDamage(amount);
+            TakeDamageRpc(amount);
         }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_TakeDamage(int amount)
+    private void TakeDamageRpc(int amount)
     {
         hp -= amount;
         DebugPrinter.LogColor(LogType.Unit, $"{name} took {amount} damage, remaining HP: {hp}");

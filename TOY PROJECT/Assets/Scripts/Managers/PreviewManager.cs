@@ -34,11 +34,12 @@ public class PreviewManager : MonoBehaviour, IManager
 
         if (turnManager != null)
         {
+            turnManager.OnPlayerTurnStart += UpdateAllPreviews;
             turnManager.OnPlayerSkillEnd += UpdateAllPreviews;
+            turnManager.OnEnemyTurnStart += ClearAllPreviews;
         }
     }
 
-    private int _lastUpdatedTurn = -1;
     private Dictionary<UnitBase, UnitActionPreview> currentPreviews =
         new Dictionary<UnitBase, UnitActionPreview>();
     private StageManager stageManager;
@@ -52,7 +53,9 @@ public class PreviewManager : MonoBehaviour, IManager
     {
         if (turnManager != null)
         {
+            turnManager.OnPlayerTurnStart -= UpdateAllPreviews;
             turnManager.OnPlayerSkillEnd -= UpdateAllPreviews;
+            turnManager.OnEnemyTurnStart -= ClearAllPreviews;
         }
     }
 
@@ -63,7 +66,7 @@ public class PreviewManager : MonoBehaviour, IManager
         var players = Core.Instance.UnitManager.GetAllPlayers();
         if (players == null || players.Count == 0)
             return;
-        var targetPlayer = players[0]; // Simple AI: always target the first player for previews
+        var targetPlayer = players[0];
 
         var enemies = Core.Instance.UnitManager.GetEnemies();
         if (enemies == null || enemies.Count == 0)
@@ -83,7 +86,7 @@ public class PreviewManager : MonoBehaviour, IManager
         }
     }
 
-    private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPosition)
+private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPosition)
     {
         var decision = EnemyDecisionLogic.DecideAction(unit, playerPosition);
 
@@ -163,7 +166,7 @@ public class PreviewManager : MonoBehaviour, IManager
         }
     }
 
-    private void ClearAllPreviews()
+    public void ClearAllPreviews()
     {
         if (previewVisuals == null)
         {

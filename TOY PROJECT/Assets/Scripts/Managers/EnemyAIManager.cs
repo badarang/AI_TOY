@@ -42,6 +42,10 @@ public class EnemyAIManager : MonoBehaviour, IManager
     private async UniTask DecideAndExecuteAction(EnemyUnit enemy, PlayerUnit player)
     {
         var decision = EnemyDecisionLogic.DecideAction(enemy, player.position);
+        if (Core.Instance?.PreviewManager != null)
+        {
+            Core.Instance.PreviewManager.ClearAllPreviews();
+        }
 
         switch (decision.actionType)
         {
