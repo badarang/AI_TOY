@@ -16,6 +16,7 @@ public class UnitActionPreview
     public Vector2Int targetPosition;
     public List<Vector2Int> affectedTiles = new List<Vector2Int>();
     public int skillIndex = -1;
+    public GameObject visualObject;
 }
 
 public class PreviewManager : MonoBehaviour, IManager
@@ -28,7 +29,6 @@ public class PreviewManager : MonoBehaviour, IManager
 
     public void AfterInit()
     {
-        stageManager = Core.Instance.StageManager;
         gridManager = Core.Instance.GridManager;
         turnManager = Core.Instance.TurnManager;
 
@@ -36,13 +36,12 @@ public class PreviewManager : MonoBehaviour, IManager
         {
             turnManager.OnPlayerTurnStart += UpdateAllPreviews;
             turnManager.OnPlayerSkillEnd += UpdateAllPreviews;
-            turnManager.OnEnemyTurnStart += ClearAllPreviews;
+            turnManager.OnEnemyTurnStart += UpdateAllPreviews;
         }
     }
 
-    private Dictionary<UnitBase, UnitActionPreview> currentPreviews =
-        new Dictionary<UnitBase, UnitActionPreview>();
-    private StageManager stageManager;
+    private Dictionary<UnitBase, UnitActionPreview> currentPreviews = new();
+
     private GridManager gridManager;
     private TurnManager turnManager;
 
@@ -55,7 +54,7 @@ public class PreviewManager : MonoBehaviour, IManager
         {
             turnManager.OnPlayerTurnStart -= UpdateAllPreviews;
             turnManager.OnPlayerSkillEnd -= UpdateAllPreviews;
-            turnManager.OnEnemyTurnStart -= ClearAllPreviews;
+            turnManager.OnEnemyTurnStart -= UpdateAllPreviews;
         }
     }
 
@@ -86,7 +85,7 @@ public class PreviewManager : MonoBehaviour, IManager
         }
     }
 
-private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPosition)
+    private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPosition)
     {
         var decision = EnemyDecisionLogic.DecideAction(unit, playerPosition);
 
@@ -157,6 +156,7 @@ private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPo
                 : GameColors.Gameplay.MovePreview;
 
         previewPrefab.Init(startPos, endPos, preview.actionType, arrowColor);
+        preview.visualObject = visualObj;
 
         previewVisuals.Add(visualObj);
 
@@ -182,6 +182,27 @@ private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPo
                 Core.Instance.PoolManager.ReturnToPool(visual);
         }
         previewVisuals.Clear();
+    }
+
+    public void ClearPreviewForEnemy(EnemyUnit enemy)
+    {
+        if (!currentPreviews.ContainsKey(enemy))
+            return;
+
+        var preview = currentPreviews[enemy];
+
+        if (preview.visualObject != null)
+        {
+            previewVisuals.Remove(preview.visualObject);
+            Core.Instance.PoolManager.ReturnToPool(preview.visualObject);
+        }
+
+        // if (preview.actionType == PreviewActionType.Attack)
+        // {
+        //     gridManager.ClearAllDangerHighlights();
+        // }
+
+        currentPreviews.Remove(enemy);
     }
 
     private Vector3 GridToWorld(Vector2Int gridPos)

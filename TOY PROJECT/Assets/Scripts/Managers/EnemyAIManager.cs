@@ -44,7 +44,7 @@ public class EnemyAIManager : MonoBehaviour, IManager
         var decision = EnemyDecisionLogic.DecideAction(enemy, player.position);
         if (Core.Instance?.PreviewManager != null)
         {
-            Core.Instance.PreviewManager.ClearAllPreviews();
+            Core.Instance.PreviewManager.ClearPreviewForEnemy(enemy);
         }
 
         switch (decision.actionType)

@@ -184,8 +184,6 @@ public class TurnManager : NetworkBehaviour, IManager
 
     private async UniTask StartEnemyTurn()
     {
-        OnEnemyTurnStart?.Invoke();
-
         var enemies = unitManager != null ? unitManager.GetEnemies() : new List<EnemyUnit>();
         foreach (var enemy in enemies)
         {
@@ -193,11 +191,7 @@ public class TurnManager : NetworkBehaviour, IManager
                 enemy.OnTurnStart();
         }
 
-        foreach (var enemy in enemies)
-        {
-            if (enemy != null)
-                enemy.OnTurnStart();
-        }
+        OnEnemyTurnStart?.Invoke();
 
         if (Core.Instance.EnemyAIManager != null)
             await Core.Instance.EnemyAIManager.ExecuteEnemyTurns();

@@ -1,21 +1,17 @@
 using System;
 using System;
-using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using Cysharp.Threading.Tasks;
+using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
-using Cysharp.Threading.Tasks;
+
 public class GridManager : MonoBehaviour, IManager
 {
+    public void BeforeInit() { }
 
-public void BeforeInit()
-    {
-    }
-
-    public void AfterInit()
-    {
-    }
+    public void AfterInit() { }
 
     private const float GRID_CELL_OFFSET = 0.5f;
     private const float GRID_LINE_HEIGHT = 0.01f;
@@ -37,6 +33,7 @@ public void BeforeInit()
             Instance = this;
         }
     }
+
     [Header("Grid Settings")]
     private int width { get; set; }
     private int height { get; set; }
@@ -57,17 +54,17 @@ public void BeforeInit()
         UpdateCellHover();
     }
 
-public async void GenerateGrid(Room room)
+    public async void GenerateGrid(Room room)
     {
         width = room.width;
         height = room.height;
-        
+
         ClearGrid();
 
         await CreateGridPlane();
     }
 
-private async UniTask CreateGridPlane()
+    private async UniTask CreateGridPlane()
     {
         if (gridPlaneAsset == null)
         {
@@ -82,10 +79,10 @@ private async UniTask CreateGridPlane()
         {
             gridPlane = Instantiate(handle.Result);
             gridPlane.name = "GridPlane";
-            
+
             gridPlane.transform.position = new Vector3(width * 0.5f, 0f, height * 0.5f);
             gridPlane.transform.localScale = new Vector3(width * 0.1f, 1f, height * 0.1f);
-            
+
             var collider = gridPlane.GetComponent<Collider>();
             if (collider != null)
             {
@@ -98,13 +95,12 @@ private async UniTask CreateGridPlane()
         }
     }
 
-
-public void ClearGrid()
+    public void ClearGrid()
     {
         unitPositions.Clear();
         hoveredCell = null;
         ClearGridPlane();
-        ClearAllHighlights(); 
+        ClearAllHighlights();
         if (highlightQuad != null)
         {
             Destroy(highlightQuad);
@@ -112,7 +108,7 @@ public void ClearGrid()
         }
     }
 
-private void ClearGridPlane()
+    private void ClearGridPlane()
     {
         if (gridPlane != null)
         {
@@ -121,11 +117,11 @@ private void ClearGridPlane()
         }
     }
 
-
-private void UpdateCellHover()
+    private void UpdateCellHover()
     {
         Vector2 inputPosition = GetInputPosition();
-        if (inputPosition == Vector2.zero) return;
+        if (inputPosition == Vector2.zero)
+            return;
 
         Ray ray = Camera.main.ScreenPointToRay(inputPosition);
         Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
@@ -140,7 +136,10 @@ private void UpdateCellHover()
             {
                 Vector2Int cellPos = new Vector2Int(x, z);
 
-                if ((unitPositions.ContainsKey(cellPos) && unitPositions[cellPos] != null) || IsMovableHighlightedTile(cellPos))
+                if (
+                    (unitPositions.ContainsKey(cellPos) && unitPositions[cellPos] != null)
+                    || IsMovableHighlightedTile(cellPos)
+                )
                 {
                     if (hoveredCell != cellPos)
                     {
@@ -177,7 +176,7 @@ private void UpdateCellHover()
         return Vector2.zero;
     }
 
-void ShowHighlight(int x, int z)
+    void ShowHighlight(int x, int z)
     {
         if (highlightQuad == null)
         {
@@ -187,7 +186,11 @@ void ShowHighlight(int x, int z)
             highlightQuad.GetComponent<Collider>().enabled = false;
         }
 
-        highlightQuad.transform.position = new Vector3(x + GRID_CELL_OFFSET, HOVER_HIGHLIGHT_HEIGHT, z + GRID_CELL_OFFSET);
+        highlightQuad.transform.position = new Vector3(
+            x + GRID_CELL_OFFSET,
+            HOVER_HIGHLIGHT_HEIGHT,
+            z + GRID_CELL_OFFSET
+        );
         highlightQuad.SetActive(true);
 
         var rend = highlightQuad.GetComponent<Renderer>();
@@ -217,18 +220,14 @@ void ShowHighlight(int x, int z)
             }
             else
             {
-                 Core.Instance.TurnManager.ClearSelection();
+                Core.Instance.TurnManager.ClearSelection();
             }
         }
         else
         {
-             Core.Instance.TurnManager.ClearSelection();
+            Core.Instance.TurnManager.ClearSelection();
         }
     }
-
-
-
-
 
     public void RegisterUnit(UnitBase unit, Vector2Int gridPos)
     {
@@ -285,14 +284,18 @@ void ShowHighlight(int x, int z)
     public Material executableTargetMaterial;
     private List<GameObject> targetHighlights = new List<GameObject>();
 
-public void HighlightMovableTiles(List<Vector2Int> tilesToHighlight)
+    public void HighlightMovableTiles(List<Vector2Int> tilesToHighlight)
     {
         ClearMovableHighlights();
         foreach (var tile in tilesToHighlight)
         {
             GameObject highlight = GameObject.CreatePrimitive(PrimitiveType.Quad);
             highlight.name = $"MovableHighlight_{tile.x}_{tile.y}";
-            highlight.transform.position = new Vector3(tile.x + GRID_CELL_OFFSET, MOVABLE_HIGHLIGHT_HEIGHT, tile.y + GRID_CELL_OFFSET);
+            highlight.transform.position = new Vector3(
+                tile.x + GRID_CELL_OFFSET,
+                MOVABLE_HIGHLIGHT_HEIGHT,
+                tile.y + GRID_CELL_OFFSET
+            );
             highlight.transform.rotation = Quaternion.Euler(90, 0, 0);
             highlight.GetComponent<Collider>().enabled = false;
             var rend = highlight.GetComponent<Renderer>();
@@ -303,18 +306,26 @@ public void HighlightMovableTiles(List<Vector2Int> tilesToHighlight)
 
     public void ClearMovableHighlights()
     {
-        foreach (var highlight in movableTileHighlights) { if(highlight != null) Destroy(highlight); }
+        foreach (var highlight in movableTileHighlights)
+        {
+            if (highlight != null)
+                Destroy(highlight);
+        }
         movableTileHighlights.Clear();
     }
 
-public void HighlightAttackableTiles(List<Vector2Int> tiles)
+    public void HighlightAttackableTiles(List<Vector2Int> tiles)
     {
         ClearTargetHighlights();
         foreach (var tile in tiles)
         {
             GameObject highlight = GameObject.CreatePrimitive(PrimitiveType.Quad);
             highlight.name = $"AttackHighlight_{tile.x}_{tile.y}";
-            highlight.transform.position = new Vector3(tile.x + GRID_CELL_OFFSET, ATTACK_HIGHLIGHT_HEIGHT, tile.y + GRID_CELL_OFFSET);
+            highlight.transform.position = new Vector3(
+                tile.x + GRID_CELL_OFFSET,
+                ATTACK_HIGHLIGHT_HEIGHT,
+                tile.y + GRID_CELL_OFFSET
+            );
             highlight.transform.rotation = Quaternion.Euler(90, 0, 0);
             highlight.GetComponent<Collider>().enabled = false;
             var rend = highlight.GetComponent<Renderer>();
@@ -323,25 +334,28 @@ public void HighlightAttackableTiles(List<Vector2Int> tiles)
         }
     }
 
-public void HighlightDangerTiles(List<Vector2Int> tiles)
+    public void HighlightDangerTiles(List<Vector2Int> tiles)
     {
         foreach (var tile in tiles)
         {
             GameObject highlight = GameObject.CreatePrimitive(PrimitiveType.Quad);
             highlight.name = $"DangerHighlight_{tile.x}_{tile.y}";
-            highlight.transform.position = new Vector3(tile.x + GRID_CELL_OFFSET, ATTACK_HIGHLIGHT_HEIGHT + 0.01f, tile.y + GRID_CELL_OFFSET);
+            highlight.transform.position = new Vector3(
+                tile.x + GRID_CELL_OFFSET,
+                ATTACK_HIGHLIGHT_HEIGHT + 0.01f,
+                tile.y + GRID_CELL_OFFSET
+            );
             highlight.transform.rotation = Quaternion.Euler(90, 0, 0);
             highlight.GetComponent<Collider>().enabled = false;
             var rend = highlight.GetComponent<Renderer>();
-            
+
             Material dangerMat = new Material(Shader.Find("Unlit/Color"));
             dangerMat.color = GameColors.Grid.Danger;
             rend.material = dangerMat;
-            
+
             targetHighlights.Add(highlight);
         }
     }
-
 
     public void HighlightTargets(List<UnitBase> targets)
     {
@@ -351,7 +365,11 @@ public void HighlightDangerTiles(List<Vector2Int> tiles)
 
     public void ClearTargetHighlights()
     {
-        foreach (var highlight in targetHighlights) { if(highlight != null) Destroy(highlight); }
+        foreach (var highlight in targetHighlights)
+        {
+            if (highlight != null)
+                Destroy(highlight);
+        }
         targetHighlights.Clear();
     }
 
@@ -359,8 +377,8 @@ public void HighlightDangerTiles(List<Vector2Int> tiles)
     {
         return tile.x >= 0 && tile.x < width && tile.y >= 0 && tile.y < height;
     }
-    
-    public void ClearSelection() 
+
+    public void ClearSelection()
     {
         ClearAllHighlights();
     }
@@ -477,7 +495,13 @@ public void HighlightDangerTiles(List<Vector2Int> tiles)
         PathNode lowestFCostNode = pathNodeList[0];
         for (int i = 1; i < pathNodeList.Count; i++)
         {
-            if (pathNodeList[i].fCost < lowestFCostNode.fCost || (pathNodeList[i].fCost == lowestFCostNode.fCost && pathNodeList[i].hCost < lowestFCostNode.hCost))
+            if (
+                pathNodeList[i].fCost < lowestFCostNode.fCost
+                || (
+                    pathNodeList[i].fCost == lowestFCostNode.fCost
+                    && pathNodeList[i].hCost < lowestFCostNode.hCost
+                )
+            )
             {
                 lowestFCostNode = pathNodeList[i];
             }
@@ -492,7 +516,8 @@ public void HighlightDangerTiles(List<Vector2Int> tiles)
         {
             for (int y = -1; y <= 1; y++)
             {
-                if (x == 0 && y == 0) continue;
+                if (x == 0 && y == 0)
+                    continue;
                 neighbours.Add(new Vector2Int(currentPos.x + x, currentPos.y + y));
             }
         }
@@ -510,7 +535,7 @@ public void HighlightDangerTiles(List<Vector2Int> tiles)
         HighlightMovableTiles(walkableTiles);
     }
 
-public List<Vector2Int> GetWalkableTilesInRange(Vector2Int start, int range)
+    public List<Vector2Int> GetWalkableTilesInRange(Vector2Int start, int range)
     {
         List<Vector2Int> reachableTiles = new List<Vector2Int>();
         Queue<Tuple<Vector2Int, int>> queue = new Queue<Tuple<Vector2Int, int>>();
@@ -532,7 +557,11 @@ public List<Vector2Int> GetWalkableTilesInRange(Vector2Int start, int range)
             {
                 foreach (var neighbour in GetNeighbourPositions(currentPos))
                 {
-                    if (IsValidTile(neighbour) && !HasUnitAt(neighbour) && !visited.Contains(neighbour))
+                    if (
+                        IsValidTile(neighbour)
+                        && !HasUnitAt(neighbour)
+                        && !visited.Contains(neighbour)
+                    )
                     {
                         visited.Add(neighbour);
                         queue.Enqueue(new Tuple<Vector2Int, int>(neighbour, currentCost + 1));
@@ -540,13 +569,14 @@ public List<Vector2Int> GetWalkableTilesInRange(Vector2Int start, int range)
                 }
             }
         }
-        
+
         return reachableTiles;
     }
 
-
-private bool IsMovableHighlightedTile(Vector2Int pos)
+    private bool IsMovableHighlightedTile(Vector2Int pos)
     {
-        return movableTileHighlights.Any(h => h != null && h.name == $"MovableHighlight_{pos.x}_{pos.y}");
+        return movableTileHighlights.Any(h =>
+            h != null && h.name == $"MovableHighlight_{pos.x}_{pos.y}"
+        );
     }
 }
