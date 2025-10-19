@@ -117,10 +117,10 @@ public class TurnManager : NetworkBehaviour, IManager
     public void EndTurnRpc()
     {
         Debug.Log($"Server received EndTurn RPC from {CurrentTurnPlayer}.");
-        StartNextTurn();
+        StartNextTurn().Forget();
     }
 
-    public void StartCombat()
+    public async UniTask StartCombat()
     {
         if (!HasStateAuthority)
             return;
@@ -144,10 +144,10 @@ public class TurnManager : NetworkBehaviour, IManager
 
         Debug.Log($"[TurnManager] Starting combat with {_playerTurnOrder.Count} players.");
         _turnIndex = -1;
-        StartNextTurn();
+        StartNextTurn().Forget();
     }
 
-    private async void StartNextTurn()
+    private async UniTask StartNextTurn()
     {
         if (!HasStateAuthority)
             return;
@@ -176,9 +176,9 @@ public class TurnManager : NetworkBehaviour, IManager
             _turnIndex = -1;
             TurnNumber++;
 
-            Core.Instance.StageManager.IncrementTurn();
+            await Core.Instance.StageManager.IncrementTurn();
 
-            StartNextTurn();
+            StartNextTurn().Forget();
         }
     }
 

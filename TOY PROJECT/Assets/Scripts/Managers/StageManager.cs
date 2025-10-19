@@ -1,22 +1,33 @@
-using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
-using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
 using Fusion;
 using Network;
+using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class StageManager : MonoBehaviour, IManager
 {
     [Header("Dependencies")]
-    [SerializeField] private GridManager gridManager;
-    [SerializeField] private UnitManager unitManager;
-    [SerializeField] private GameObject portalPrefab;
-    [SerializeField] private GameAssetDatabase gameDatabase;
+    [SerializeField]
+    private GridManager gridManager;
+
+    [SerializeField]
+    private UnitManager unitManager;
+
+    [SerializeField]
+    private GameObject portalPrefab;
+
+    [SerializeField]
+    private GameAssetDatabase gameDatabase;
 
     [Header("Settings")]
-    [SerializeField] private string firstStageName = "Room_1";
+    [SerializeField]
+    private string firstStageName = "Room_1";
+
+    private int _currentWaveIndex = -1;
+    private HashSet<int> _spawnedWaves = new HashSet<int>();
 
     private NetworkManager _networkManager;
     private GameSession _session;
@@ -28,43 +39,50 @@ public class StageManager : MonoBehaviour, IManager
     public bool IsStageLoaded => _session != null && _session.IsStageLoaded;
 
     public void BeforeInit()
+    {
+        if (PersistentCore.Instance != null)
         {
-            if (PersistentCore.Instance != null)
-            {
-                _networkManager = PersistentCore.Instance.NetworkManager;
-            }
-            else
-            {
-                Debug.LogWarning("[StageManager] PersistentCore not available during BeforeInit. Will retry in AfterInit.");
-            }
+            _networkManager = PersistentCore.Instance.NetworkManager;
         }
+        else
+        {
+            Debug.LogWarning(
+                "[StageManager] PersistentCore not available during BeforeInit. Will retry in AfterInit."
+            );
+        }
+    }
 
     public void AfterInit()
+    {
+        if (_networkManager == null && PersistentCore.Instance != null)
         {
-            if (_networkManager == null && PersistentCore.Instance != null)
-            {
-                _networkManager = PersistentCore.Instance.NetworkManager;
-            }
-
-            if (GameSession.Instance == null)
-            {
-                Debug.LogWarning("[StageManager] GameSession.Instance is null in AfterInit.");
-                return;
-            }
-
-            _session = GameSession.Instance;
-            _session.OnStageChanged += OnStageChanged;
-
-            if (_networkManager != null && _networkManager.IsHost && string.IsNullOrEmpty(_session.CurrentStageName.Value))
-            {
-                RequestLoadStage(firstStageName);
-            }
+            _networkManager = PersistentCore.Instance.NetworkManager;
         }
+
+        if (GameSession.Instance == null)
+        {
+            Debug.LogWarning("[StageManager] GameSession.Instance is null in AfterInit.");
+            return;
+        }
+
+        _session = GameSession.Instance;
+        _session.OnStageChanged += OnStageChanged;
+
+        if (
+            _networkManager != null
+            && _networkManager.IsHost
+            && string.IsNullOrEmpty(_session.CurrentStageName.Value)
+        )
+        {
+            RequestLoadStage(firstStageName);
+        }
+    }
 
     private void OnStageChanged(string stageName)
     {
-        if (_currentRoom != null && _currentRoom.name == stageName) return;
-        
+        if (_currentRoom != null && _currentRoom.name == stageName)
+            return;
+
         LoadStageLocal(stageName);
     }
 
@@ -110,15 +128,23 @@ public class StageManager : MonoBehaviour, IManager
                 // Wait until all players registered in the session are spawned
                 if (_session != null && _session.ConnectedPlayerCount > 0)
                 {
-                    Debug.Log($"[StageManager] Waiting for {_session.ConnectedPlayerCount} players to be spawned...");
-                    await UniTask.WaitUntil(() => unitManager.GetAllPlayers().Count >= _session.ConnectedPlayerCount);
-                    Debug.Log($"[StageManager] All {unitManager.GetAllPlayers().Count} players spawned.");
+                    Debug.Log(
+                        $"[StageManager] Waiting for {_session.ConnectedPlayerCount} players to be spawned..."
+                    );
+                    await UniTask.WaitUntil(() =>
+                        unitManager.GetAllPlayers().Count >= _session.ConnectedPlayerCount
+                    );
+                    Debug.Log(
+                        $"[StageManager] All {unitManager.GetAllPlayers().Count} players spawned."
+                    );
                 }
 
                 Debug.Log("[StageManager] Starting enemy spawn...");
                 if (stageData.waves != null && stageData.waves.Length > 0)
                 {
                     await unitManager.SpawnEnemiesImmediate(stageData.waves[0].enemySpawns);
+                    _spawnedWaves.Add(stageData.waves[0].GetHashCode());
+                    _currentWaveIndex = 0;
                 }
 
                 // This delay might not be necessary, but can be kept for safety.
@@ -151,6 +177,7 @@ public class StageManager : MonoBehaviour, IManager
             if (obstacle != null)
                 Destroy(obstacle);
         }
+
         _spawnedObstacles.Clear();
 
         foreach (var portal in _spawnedPortals)
@@ -158,7 +185,10 @@ public class StageManager : MonoBehaviour, IManager
             if (portal != null)
                 Destroy(portal);
         }
+
         _spawnedPortals.Clear();
+        _spawnedWaves.Clear();
+        _currentWaveIndex = -1;
 
         gridManager.ClearGrid();
     }
@@ -196,7 +226,7 @@ public class StageManager : MonoBehaviour, IManager
         }
     }
 
-public void CreatePortals(List<RoomType> portalTypes)
+    public void CreatePortals(List<RoomType> portalTypes)
     {
         if (portalPrefab == null)
         {
@@ -204,24 +234,31 @@ public void CreatePortals(List<RoomType> portalTypes)
             return;
         }
 
-        Vector3[] spawnPositions = {
+        Vector3[] spawnPositions =
+        {
             new Vector3(_currentRoom.width / 2f, 0.5f, _currentRoom.height + 1),
             new Vector3(-1, 0.5f, _currentRoom.height / 2f),
-            new Vector3(_currentRoom.width + 1, 0.5f, _currentRoom.height / 2f)
+            new Vector3(_currentRoom.width + 1, 0.5f, _currentRoom.height / 2f),
         };
 
         for (int i = 0; i < portalTypes.Count && i < spawnPositions.Length; i++)
         {
-            GameObject portalObj = Instantiate(portalPrefab, spawnPositions[i], Quaternion.identity);
+            GameObject portalObj = Instantiate(
+                portalPrefab,
+                spawnPositions[i],
+                Quaternion.identity
+            );
             Portal portal = portalObj.GetComponent<Portal>();
-            
+
             // TODO: Create PortalData based on RoomType and set up proper callback
             // For now, this is a placeholder - implement proper portal setup
             if (portal != null)
             {
-                Debug.LogWarning($"[StageManager] Portal setup not fully implemented for type {portalTypes[i]}");
+                Debug.LogWarning(
+                    $"[StageManager] Portal setup not fully implemented for type {portalTypes[i]}"
+                );
             }
-            
+
             _spawnedPortals.Add(portalObj);
         }
     }
@@ -256,11 +293,9 @@ public void CreatePortals(List<RoomType> portalTypes)
         controller.orthographicSize = maxDim * 0.75f;
     }
 
-private bool IsBattleStage(RoomType type)
+    private bool IsBattleStage(RoomType type)
     {
-        return type == RoomType.Battle ||
-               type == RoomType.EliteBattle ||
-               type == RoomType.Boss;
+        return type == RoomType.Battle || type == RoomType.EliteBattle || type == RoomType.Boss;
     }
 
     private Vector3 GridToWorld(Vector2Int gridPos)
@@ -276,19 +311,63 @@ private bool IsBattleStage(RoomType type)
         }
     }
 
-
-public void OnWaveComplete()
+    public async void OnWaveComplete()
     {
         Debug.Log("[StageManager] Wave complete!");
-        // TODO: Implement wave completion logic
-        // Example: Display rewards, trigger next wave, or move to next room
+
+        _currentWaveIndex++;
+
+        if (_currentRoom?.waves != null && _currentWaveIndex < _currentRoom.waves.Length)
+        {
+            var nextWave = _currentRoom.waves[_currentWaveIndex];
+            Debug.Log(
+                $"[StageManager] Next wave available at turn {nextWave.spawnTurn}. Waiting..."
+            );
+            await UniTask.Delay(1000);
+        }
+        else
+        {
+            Debug.Log("[StageManager] No more waves! Battle complete!");
+            CreatePortals(new List<RoomType> { RoomType.Battle });
+        }
     }
 
-
-public void IncrementTurn()
+    public async UniTask IncrementTurn()
     {
-        Debug.Log("[StageManager] Incrementing turn - this could trigger next wave or stage progression");
-        // TODO: Implement wave progression logic here
-        // Example: Spawn next wave enemies if available
+        if (_currentRoom?.waves == null)
+            return;
+
+        int currentTurn = Core.Instance.TurnManager.TurnNumber;
+
+        foreach (var wave in _currentRoom.waves)
+        {
+            if (!_spawnedWaves.Contains(wave.GetHashCode()) && wave.spawnTurn == currentTurn)
+            {
+                await SpawnWaveAtTurn(wave);
+            }
+        }
+    }
+
+    private async UniTask SpawnWaveAtTurn(EnemyWave wave)
+    {
+        if (wave?.enemySpawns == null || wave.enemySpawns.Length == 0)
+        {
+            Debug.LogWarning("[StageManager] Wave has no enemy spawns!");
+            return;
+        }
+
+        int waveHash = wave.GetHashCode();
+        if (_spawnedWaves.Contains(waveHash))
+        {
+            Debug.LogWarning($"[StageManager] Wave already spawned: {wave.waveName}");
+            return;
+        }
+
+        Debug.Log($"[StageManager] Spawning wave: {wave.waveName} at turn {wave.spawnTurn}");
+        _spawnedWaves.Add(waveHash);
+
+        await unitManager.SpawnEnemiesImmediate(wave.enemySpawns);
+
+        Debug.Log($"[StageManager] Wave {wave.waveName} spawned successfully!");
     }
 }

@@ -24,6 +24,7 @@ public class Room : ScriptableObject
 public class EnemyWave
 {
     public string waveName;
+    public int spawnTurn;
     
     [Tooltip("이 웨이브에 즉시 스폰될 적들")]
     public EnemySpawnData[] enemySpawns;
