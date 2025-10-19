@@ -60,12 +60,25 @@ public class StageDataEditor : OdinEditor
     {
         var data = (Room)target;
         EditorGUILayout.BeginVertical(CreateBoxStyle());
-        
+
         if (data.waves == null) data.waves = new EnemyWave[0];
         if (_selectedWaveIndex >= data.waves.Length) _selectedWaveIndex = Mathf.Max(0, data.waves.Length - 1);
 
-        string[] waveLabels = data.waves.Select((w, i) => string.IsNullOrEmpty(w.waveName) ? $"Wave {i + 1}" : w.waveName).ToArray();
-        _selectedWaveIndex = GUILayout.Toolbar(_selectedWaveIndex, waveLabels);
+        var wavesProp = serializedObject.FindProperty("waves");
+        EditorGUILayout.PropertyField(wavesProp, new GUIContent("Waves"), true);
+
+        serializedObject.ApplyModifiedProperties();
+
+        for (int i = 0; i < data.waves.Length; i++)
+        {
+            data.waves[i].spawnTurn = i + 1;
+        }
+
+        string[] waveLabels = data.waves.Select((w, i) => $"Wave {i + 1}").ToArray();
+        if (waveLabels.Length > 0)
+        {
+            _selectedWaveIndex = GUILayout.Toolbar(_selectedWaveIndex, waveLabels);
+        }
 
         EditorGUILayout.EndVertical();
     }
@@ -125,7 +138,6 @@ public class StageDataEditor : OdinEditor
         GenericMenu menu = new GenericMenu();
         var data = (Room)target;
         bool isWaveValid = data.waves != null && data.waves.Length > 0 && _selectedWaveIndex < data.waves.Length;
-
         if (enemy == null && obstacle == null)
         {
             if (!isWaveValid) { menu.AddDisabledItem(new GUIContent("👹 Add Enemy (No Wave)")); }

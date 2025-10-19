@@ -23,7 +23,6 @@ public class Room : ScriptableObject
 [System.Serializable]
 public class EnemyWave
 {
-    public string waveName;
     public int spawnTurn;
     
     [Tooltip("이 웨이브에 즉시 스폰될 적들")]
@@ -33,7 +32,7 @@ public class EnemyWave
 [System.Serializable]
 public class EnemySpawnData
 {
-    public UnitType enemyType;
+    public UnitType enemyType = UnitType.Enemy_Goose;
     public Vector2Int spawnPos;
 }
 

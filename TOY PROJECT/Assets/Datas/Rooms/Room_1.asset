@@ -16,7 +16,7 @@ MonoBehaviour:
   width: 7
   height: 7
   waves:
-  - waveName: Wave 1
+  - spawnTurn: 1
     enemySpawns:
     - enemyType: 3
       spawnPos: {x: 5, y: 1}
@@ -24,5 +24,9 @@ MonoBehaviour:
       spawnPos: {x: 5, y: 5}
     - enemyType: 3
       spawnPos: {x: 1, y: 5}
+  - spawnTurn: 2
+    enemySpawns:
+    - enemyType: 0
+      spawnPos: {x: 0, y: 0}
   obstacleSpawns: []
   difficulty: 3

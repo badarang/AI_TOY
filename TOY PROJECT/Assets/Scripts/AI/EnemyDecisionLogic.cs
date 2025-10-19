@@ -18,8 +18,7 @@ public struct EnemyDecision
 
 public static class EnemyDecisionLogic
 {
-    public static EnemyDecision DecideAction(UnitBase enemy, Vector2Int playerPosition, bool isPreview = false)
-    {
+    public static EnemyDecision DecideAction(UnitBase enemy, Vector2Int playerPosition, bool isPreview = false, HashSet<Vector2Int> occupiedTiles = null)    {
         if (enemy.unitData == null || enemy.unitData.skills == null)
         {
             return CreateWaitDecision(enemy.position);
@@ -69,6 +68,12 @@ public static class EnemyDecisionLogic
 
                 foreach (var tile in movableTiles)
                 {
+                    if (Core.Instance.GridManager.GetUnitAt(tile) != null)
+                        continue;
+
+                    if (occupiedTiles != null && occupiedTiles.Contains(tile))
+                        continue;
+
                     int chebyshevDist = GridUtils.ChebyshevDistance(tile, playerPosition);
                     int manhattanDist = GridUtils.ManhattanDistance(tile, playerPosition);
 

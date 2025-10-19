@@ -359,15 +359,33 @@ public class StageManager : MonoBehaviour, IManager
         int waveHash = wave.GetHashCode();
         if (_spawnedWaves.Contains(waveHash))
         {
-            Debug.LogWarning($"[StageManager] Wave already spawned: {wave.waveName}");
+            Debug.LogWarning($"[StageManager] Wave {wave.spawnTurn} already spawned!");
             return;
         }
 
-        Debug.Log($"[StageManager] Spawning wave: {wave.waveName} at turn {wave.spawnTurn}");
+        Debug.Log($"[StageManager] Spawning wave: Wave {wave.spawnTurn}");
         _spawnedWaves.Add(waveHash);
 
-        await unitManager.SpawnEnemiesImmediate(wave.enemySpawns);
+        var playerPos = GetClosestPlayerPos();
+        var sortedEnemies = wave.enemySpawns
+            .OrderBy(e => Vector2Int.Distance(e.spawnPos, playerPos))
+            .ThenBy(e => e.spawnPos.x)
+            .ThenBy(e => e.spawnPos.y)
+            .ToArray();
 
-        Debug.Log($"[StageManager] Wave {wave.waveName} spawned successfully!");
+        await unitManager.SpawnEnemiesImmediate(sortedEnemies);
+
+        Debug.Log($"[StageManager] Wave {wave.spawnTurn} spawned successfully!");
+    }
+
+    private Vector2Int GetClosestPlayerPos()
+    {
+        var players = unitManager.GetAllPlayers();
+        if (players.Count == 0) return Vector2Int.zero;
+
+        return players
+            .OrderBy(p => (p.transform.position - new Vector3(0, 0, 0)).sqrMagnitude)
+            .First()
+            .Position;
     }
 }

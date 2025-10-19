@@ -21,6 +21,8 @@ public class UnitActionPreview
 
 public class PreviewManager : MonoBehaviour, IManager
 {
+    private HashSet<Vector2Int> _previewOccupiedTiles = new HashSet<Vector2Int>();
+
     public void BeforeInit()
     {
         if (previewVisuals == null)
@@ -71,18 +73,51 @@ public class PreviewManager : MonoBehaviour, IManager
         if (enemies == null || enemies.Count == 0)
             return;
 
-        foreach (var enemy in enemies)
+        var sortedEnemies = new List<EnemyUnit>(enemies);
+        sortedEnemies.Sort((a, b) =>
+        {
+            int xCompare = a.position.x.CompareTo(b.position.x);
+            if (xCompare != 0) return xCompare;
+            return a.position.y.CompareTo(b.position.y);
+        });
+
+        _previewOccupiedTiles.Clear();
+        foreach (var enemy in sortedEnemies)
+        {
+            _previewOccupiedTiles.Add(enemy.position);
+        }
+
+        foreach (var enemy in sortedEnemies)
         {
             if (enemy == null)
                 continue;
 
-            var preview = SimulateEnemyAction(enemy, targetPlayer.position);
+            var preview = SimulateEnemyAction(enemy, targetPlayer.position, _previewOccupiedTiles);
             if (preview != null)
             {
                 currentPreviews[enemy] = preview;
                 ShowPreviewVisual(preview);
+
+                _previewOccupiedTiles.Remove(enemy.position);
+                _previewOccupiedTiles.Add(preview.targetPosition);
             }
         }
+    }
+
+    private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPosition, HashSet<Vector2Int> occupiedTiles)
+    {
+        var decision = EnemyDecisionLogic.DecideAction(unit, playerPosition, isPreview: true, occupiedTiles: occupiedTiles);
+
+        var preview = new UnitActionPreview
+        {
+            unit = unit,
+            actionType = ConvertToPreviewActionType(decision.actionType),
+            targetPosition = decision.targetPosition,
+            skillIndex = decision.skillIndex,
+            affectedTiles = decision.affectedTiles ?? new List<Vector2Int>(),
+        };
+
+        return preview;
     }
 
     private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPosition)
