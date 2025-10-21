@@ -23,8 +23,13 @@ public class EnemyAIManager : MonoBehaviour, IManager
             return;
         }
 
-        // Simple AI: Always target the first player (usually the host).
         var targetPlayer = players[0];
+
+        if (targetPlayer == null || targetPlayer.hp <= 0)
+        {
+            Debug.Log("Target player is dead, ending enemy turn.");
+            return;
+        }
 
         foreach (var enemy in enemies)
         {
@@ -41,6 +46,12 @@ public class EnemyAIManager : MonoBehaviour, IManager
 
     private async UniTask DecideAndExecuteAction(EnemyUnit enemy, PlayerUnit player)
     {
+        if (player == null || player.hp <= 0)
+        {
+            Debug.Log("Target player died, skipping remaining enemy actions.");
+            return;
+        }
+
         var decision = EnemyDecisionLogic.DecideAction(enemy, player.position);
 
         if (Core.Instance?.PreviewManager != null)

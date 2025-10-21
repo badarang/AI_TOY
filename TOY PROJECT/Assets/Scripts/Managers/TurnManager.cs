@@ -184,6 +184,13 @@ public class TurnManager : NetworkBehaviour, IManager
 
     private async UniTask StartEnemyTurn()
     {
+        var players = unitManager != null ? unitManager.GetAllPlayers() : new List<PlayerUnit>();
+        if (players.Count == 0 || players[0].hp <= 0)
+        {
+            Debug.Log("[TurnManager] All players dead, ending battle.");
+            return;
+        }
+
         var enemies = unitManager != null ? unitManager.GetEnemies() : new List<EnemyUnit>();
         foreach (var enemy in enemies)
         {
