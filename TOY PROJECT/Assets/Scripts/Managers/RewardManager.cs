@@ -6,13 +6,17 @@ using UnityEngine;
 public class RewardManager : MonoBehaviour, IManager
 {
     public void BeforeInit() { }
+
     public void AfterInit() { }
+
+    public void Dispose() { }
 
     [Header("데이터베이스 연결")]
     public GameAssetDatabase database;
 
     [Header("팬 시스템")]
-    [SerializeField] private int currentFans = 0;
+    [SerializeField]
+    private int currentFans = 0;
     public int CurrentFans => currentFans;
 
     private UnitBase playerUnit;
@@ -89,10 +93,10 @@ public class RewardManager : MonoBehaviour, IManager
     private List<ScriptableObject> SelectRewardsWithWeight(List<ScriptableObject> candidates)
     {
         List<ScriptableObject> selectedRewards = new List<ScriptableObject>();
-        
+
         // 간단한 랜덤 선택 (추후 가중치 로직으로 개선)
         var shuffled = candidates.OrderBy(x => Random.value).ToList();
-        
+
         for (int i = 0; i < Mathf.Min(3, shuffled.Count); i++)
         {
             selectedRewards.Add(shuffled[i]);
@@ -106,7 +110,8 @@ public class RewardManager : MonoBehaviour, IManager
     /// </summary>
     public void ApplyReward(ScriptableObject reward)
     {
-        if (playerUnit == null) return;
+        if (playerUnit == null)
+            return;
 
         if (reward is SkillData skillData)
         {

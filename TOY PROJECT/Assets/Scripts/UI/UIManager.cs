@@ -5,7 +5,6 @@ using UnityEngine.Events;
 
 public class UIManager : MonoBehaviour, IManager
 {
-    
     private void OnDestroy()
     {
         if (Core.Instance != null && Core.Instance.TurnManager != null)
@@ -21,15 +20,18 @@ public class UIManager : MonoBehaviour, IManager
             unitInfoUI.UpdateDisplay();
         }
     }
-public void BeforeInit() { }
 
-public void AfterInit()
+    public void BeforeInit() { }
+
+    public void AfterInit()
     {
         if (Core.Instance.TurnManager != null)
         {
             Core.Instance.TurnManager.OnPlayerSkillEnd += RefreshUnitInfoIfVisible;
         }
     }
+
+    public void Dispose() { }
 
     [Header("Component References")]
     public TurnOrderUI turnOrderUI;
@@ -44,7 +46,6 @@ public void AfterInit()
 
     [SerializeField]
     private UnityEngine.UI.Button endTurnButton;
-
 
     [Header("Reward Screen")]
     [SerializeField]
@@ -168,7 +169,7 @@ public void AfterInit()
             nodeSelectionScreenPanel.SetActive(false);
     }
 
-public void ShowEndTurnConfirmPopup(UnityAction onConfirm)
+    public void ShowEndTurnConfirmPopup(UnityAction onConfirm)
     {
         if (popupUI != null)
         {
@@ -181,8 +182,7 @@ public void ShowEndTurnConfirmPopup(UnityAction onConfirm)
         }
     }
 
-
-public void SetEndTurnButtonActive(bool active)
+    public void SetEndTurnButtonActive(bool active)
     {
         if (endTurnButton != null)
         {

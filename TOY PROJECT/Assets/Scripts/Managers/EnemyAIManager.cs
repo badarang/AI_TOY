@@ -10,6 +10,8 @@ public class EnemyAIManager : MonoBehaviour, IManager
 
     public void AfterInit() { }
 
+    public void Dispose() { }
+
     // 적 턴 시작 시 TurnManager에 의해 호출됨
     public async UniTask ExecuteEnemyTurns()
     {
@@ -62,12 +64,16 @@ public class EnemyAIManager : MonoBehaviour, IManager
         switch (decision.actionType)
         {
             case EnemyDecision.ActionType.Attack:
-                Debug.Log($"[AI ACTION] {enemy.name} is in range. Attempting to attack {player.name}.");
+                Debug.Log(
+                    $"[AI ACTION] {enemy.name} is in range. Attempting to attack {player.name}."
+                );
                 await enemy.UseSkillAsync(decision.skillIndex, decision.targetPosition);
                 break;
 
             case EnemyDecision.ActionType.Move:
-                Debug.Log($"[AI ACTION] {enemy.name} moving to {decision.targetPosition} using skill index {decision.skillIndex}");
+                Debug.Log(
+                    $"[AI ACTION] {enemy.name} moving to {decision.targetPosition} using skill index {decision.skillIndex}"
+                );
                 await enemy.UseSkillAsync(decision.skillIndex, decision.targetPosition);
                 break;
 
@@ -76,4 +82,5 @@ public class EnemyAIManager : MonoBehaviour, IManager
                 Debug.Log($"[AI DECISION] {enemy.name} will wait.");
                 break;
         }
-    }}
+    }
+}

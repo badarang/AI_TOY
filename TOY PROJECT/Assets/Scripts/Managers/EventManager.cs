@@ -35,14 +35,22 @@ public class EventManager : MonoBehaviour, IManager
     /// </summary>
     public void TriggerUnitDied(UnitBase unit)
     {
-        if (unit == null)
-        {
-            Debug.LogWarning("[EventManager] TriggerUnitDied called with null unit!");
-            return;
-        }
-
-        DebugPrinter.LogColor(LogType.Event, $"[EventManager] Unit {unit.name} died event triggered.");
+        DebugPrinter.LogColor(LogType.Event, $"Unit {unit.name} died event triggered.");
         OnUnitDied?.Invoke(unit);
+    }
+
+    public void Dispose()
+    {
+        DebugPrinter.LogColor(LogType.System, "[EventManager] Disposing...");
+
+        // 모든 이벤트의 구독자 제거
+        OnUnitDied = null;
+
+        // Singleton 참조 제거
+        if (Instance == this)
+        {
+            Instance = null;
+        }
     }
 
     void OnDestroy()

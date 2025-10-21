@@ -33,4 +33,11 @@ public void StartNewStage(int stageIndex = 0)
         
         _stageManager.RequestLoadStage(room.name);
     }
+
+public void Dispose()
+    {
+        DebugPrinter.LogColor(LogType.System, "[GameManager] Disposing...");
+        _stageManager = null;
+    }
+
 }

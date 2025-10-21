@@ -40,6 +40,12 @@ public class PreviewManager : MonoBehaviour, IManager
             turnManager.OnPlayerSkillEnd += UpdateAllPreviews;
             turnManager.OnEnemyTurnStart += UpdateAllPreviews;
         }
+
+        // EventManager의 유닛 죽음 이벤트 구독
+        if (Core.Instance?.EventManager != null)
+        {
+            Core.Instance.EventManager.OnUnitDied += HandleUnitDied;
+        }
     }
 
     private Dictionary<UnitBase, UnitActionPreview> currentPreviews = new();
@@ -50,14 +56,34 @@ public class PreviewManager : MonoBehaviour, IManager
     public string previewArrowTag;
     public List<GameObject> previewVisuals;
 
-    void OnDestroy()
+    private void HandleUnitDied(UnitBase unit)
     {
+        if (unit is EnemyUnit enemyUnit)
+        {
+            DebugPrinter.LogColor(LogType.Unit, $"Enemy died, clearing preview: {unit.name}");
+            ClearPreviewForEnemy(enemyUnit);
+        }
+    }
+
+    public void Dispose()
+    {
+        DebugPrinter.LogColor(LogType.System, "Disposing...");
+
+        ClearAllPreviews();
+
         if (turnManager != null)
         {
             turnManager.OnPlayerTurnStart -= UpdateAllPreviews;
             turnManager.OnPlayerSkillEnd -= UpdateAllPreviews;
             turnManager.OnEnemyTurnStart -= UpdateAllPreviews;
         }
+
+        Core.Instance.EventManager.OnUnitDied -= HandleUnitDied;
+
+        currentPreviews.Clear();
+
+        gridManager = null;
+        turnManager = null;
     }
 
     public void UpdateAllPreviews()
@@ -74,12 +100,15 @@ public class PreviewManager : MonoBehaviour, IManager
             return;
 
         var sortedEnemies = new List<EnemyUnit>(enemies);
-        sortedEnemies.Sort((a, b) =>
-        {
-            int xCompare = a.position.x.CompareTo(b.position.x);
-            if (xCompare != 0) return xCompare;
-            return a.position.y.CompareTo(b.position.y);
-        });
+        sortedEnemies.Sort(
+            (a, b) =>
+            {
+                int xCompare = a.position.x.CompareTo(b.position.x);
+                if (xCompare != 0)
+                    return xCompare;
+                return a.position.y.CompareTo(b.position.y);
+            }
+        );
 
         _previewOccupiedTiles.Clear();
         foreach (var enemy in sortedEnemies)
@@ -104,9 +133,18 @@ public class PreviewManager : MonoBehaviour, IManager
         }
     }
 
-    private UnitActionPreview SimulateEnemyAction(UnitBase unit, Vector2Int playerPosition, HashSet<Vector2Int> occupiedTiles)
+    private UnitActionPreview SimulateEnemyAction(
+        UnitBase unit,
+        Vector2Int playerPosition,
+        HashSet<Vector2Int> occupiedTiles
+    )
     {
-        var decision = EnemyDecisionLogic.DecideAction(unit, playerPosition, isPreview: true, occupiedTiles: occupiedTiles);
+        var decision = EnemyDecisionLogic.DecideAction(
+            unit,
+            playerPosition,
+            isPreview: true,
+            occupiedTiles: occupiedTiles
+        );
 
         var preview = new UnitActionPreview
         {

@@ -37,6 +37,8 @@ public class AudioManager : MonoBehaviour, IManager
     {
     }
 
+    public void Dispose() { }
+
     private void InitializeDictionaries()
     {
         sfxDictionary.Clear();

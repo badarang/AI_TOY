@@ -39,6 +39,8 @@ public class UnitManager : MonoBehaviour, IManager
         _session = GameSession.Instance;
     }
 
+    public void Dispose() { }
+
     public async UniTask SpawnPlayers()
     {
         if (!_networkManager.IsHost || _session == null)

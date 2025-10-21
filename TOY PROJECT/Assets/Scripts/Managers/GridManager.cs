@@ -575,8 +575,21 @@ public class GridManager : MonoBehaviour, IManager
 
     private bool IsMovableHighlightedTile(Vector2Int pos)
     {
-        return movableTileHighlights.Any(h =>
-            h != null && h.name == $"MovableHighlight_{pos.x}_{pos.y}"
-        );
+        return movableTileHighlights.Any(h => h != null && h.name == $"MovableHighlight_{pos.x}_{pos.y}");
+    }
+
+    public void Dispose()
+    {
+        DebugPrinter.LogColor(LogType.System, "[GridManager] Disposing...");
+        
+        unitPositions.Clear();
+        
+        ClearGrid();
+        
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+;
     }
 }

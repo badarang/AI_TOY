@@ -269,12 +269,10 @@ public class UnitBase : NetworkBehaviour
     {
         DebugPrinter.LogColor(LogType.Unit, $"{name} has died.");
 
-        if (Core.Instance?.GridManager != null)
-        {
-            Core.Instance.GridManager.UnregisterUnit(position);
-        }
+        Core.Instance.GridManager.UnregisterUnit(position);
+        Core.Instance.EventManager.TriggerUnitDied(this);
 
-        if (this is EnemyUnit enemyUnit && Core.Instance?.UnitManager != null)
+        if (this is EnemyUnit enemyUnit)
         {
             Core.Instance.UnitManager.UnregisterEnemy(enemyUnit);
         }

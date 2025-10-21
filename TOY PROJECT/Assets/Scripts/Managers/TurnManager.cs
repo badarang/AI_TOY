@@ -66,6 +66,9 @@ public class TurnManager : NetworkBehaviour, IManager
         unitManager = Core.Instance.UnitManager;
     }
 
+    public void Dispose() { }
+
+
     public override void Spawned()
     {
         if (Core.Instance != null)

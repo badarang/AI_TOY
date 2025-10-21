@@ -44,6 +44,9 @@ public class Core : MonoBehaviour
     private UnitManager unitManager;
 
     [SerializeField]
+    private EventManager eventManager;
+
+    [SerializeField]
     private AudioManager audioManager;
     public GameManager GameManager => gameManager;
     public PoolManager PoolManager => poolManager;
@@ -57,6 +60,8 @@ public class Core : MonoBehaviour
     public InputManager InputManager => inputManager;
 
     public UnitManager UnitManager => unitManager;
+
+    public EventManager EventManager => eventManager;
 
     void Awake()
     {
@@ -148,10 +153,50 @@ public class Core : MonoBehaviour
             Debug.LogError("[Core] InputManager is not assigned!");
     }
 
+    private void Shutdown()
+    {
+        Debug.Log("[Core] === Phase 3: Dispose ===");
+
+        var managerArray = new MonoBehaviour[]
+        {
+            gameManager,
+            turnManager,
+            inputManager,
+            previewManager,
+            rewardManager,
+            enemyAIManager,
+            uiManager,
+            stageManager,
+            unitManager,
+            gridManager,
+            eventManager,
+            poolManager,
+            audioManager
+        };
+        
+        for (int i = managerArray.Length - 1; i >= 0; i--)
+        {
+            if (managerArray[i] is IManager iManager)
+            {
+                try
+                {
+                    iManager.Dispose();
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError($"[Core] Error disposing {managerArray[i].name}: {ex.Message}");
+                }
+            }
+        }
+        
+        Debug.Log("[Core] All managers disposed successfully.");
+    }
+
     void OnDestroy()
     {
         if (Instance == this)
         {
+            Shutdown();
             Instance = null;
             Debug.Log("[InGameCore] InGame managers cleaned up.");
         }

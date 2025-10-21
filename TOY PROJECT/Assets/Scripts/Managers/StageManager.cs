@@ -78,6 +78,8 @@ public class StageManager : MonoBehaviour, IManager
         }
     }
 
+    public void Dispose() { }
+
     private void OnStageChanged(string stageName)
     {
         if (_currentRoom != null && _currentRoom.name == stageName)
@@ -367,8 +369,8 @@ public class StageManager : MonoBehaviour, IManager
         _spawnedWaves.Add(waveHash);
 
         var playerPos = GetClosestPlayerPos();
-        var sortedEnemies = wave.enemySpawns
-            .OrderBy(e => Vector2Int.Distance(e.spawnPos, playerPos))
+        var sortedEnemies = wave
+            .enemySpawns.OrderBy(e => Vector2Int.Distance(e.spawnPos, playerPos))
             .ThenBy(e => e.spawnPos.x)
             .ThenBy(e => e.spawnPos.y)
             .ToArray();
@@ -381,7 +383,8 @@ public class StageManager : MonoBehaviour, IManager
     private Vector2Int GetClosestPlayerPos()
     {
         var players = unitManager.GetAllPlayers();
-        if (players.Count == 0) return Vector2Int.zero;
+        if (players.Count == 0)
+            return Vector2Int.zero;
 
         return players
             .OrderBy(p => (p.transform.position - new Vector3(0, 0, 0)).sqrMagnitude)

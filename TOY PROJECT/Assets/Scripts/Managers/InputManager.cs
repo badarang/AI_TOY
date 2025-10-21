@@ -4,17 +4,15 @@ using UnityEngine.InputSystem;
 
 public class InputManager : MonoBehaviour, IManager
 {
+    public void BeforeInit() { }
 
-    public void BeforeInit()
-    {
-    }
+    public void AfterInit() { }
 
-    public void AfterInit()
-    {
-    }
+    public void Dispose() { }
 
     [Header("Input Settings")]
-    [SerializeField] private float clickDragThreshold = 5f;
+    [SerializeField]
+    private float clickDragThreshold = 5f;
     public float dragSensitivity = 1f;
 
     public event Action<Vector2> OnDragStart;
@@ -28,7 +26,7 @@ public class InputManager : MonoBehaviour, IManager
     public float TotalDragDistance { get; private set; }
 
     private PlayerInputActions inputActions;
-    
+
     private TurnManager turnManager;
 
     void Awake()
@@ -36,7 +34,6 @@ public class InputManager : MonoBehaviour, IManager
         inputActions = new PlayerInputActions();
     }
 
-    
     private void UpdateTurnManagerReference()
     {
         if (Core.Instance != null)
@@ -44,7 +41,8 @@ public class InputManager : MonoBehaviour, IManager
             turnManager = Core.Instance.TurnManager;
         }
     }
-void Start()
+
+    void Start()
     {
         UpdateTurnManagerReference();
         SetupInputEvents();
@@ -86,7 +84,7 @@ void Start()
         }
     }
 
-void Update()
+    void Update()
     {
         if (turnManager == null)
         {
@@ -142,9 +140,10 @@ void Update()
         }
     }
 
-private void ProcessTurnClick()
+    private void ProcessTurnClick()
     {
-        if (turnManager == null) return;
+        if (turnManager == null)
+            return;
 
         if (IsPointerOverUI())
         {
@@ -157,8 +156,11 @@ private void ProcessTurnClick()
         if (groundPlane.Raycast(ray, out float distance))
         {
             Vector3 hitPoint = ray.GetPoint(distance);
-            Vector2Int cell = new Vector2Int(Mathf.FloorToInt(hitPoint.x), Mathf.FloorToInt(hitPoint.z));
-            
+            Vector2Int cell = new Vector2Int(
+                Mathf.FloorToInt(hitPoint.x),
+                Mathf.FloorToInt(hitPoint.z)
+            );
+
             turnManager.HandleCellClick(cell);
         }
         else
@@ -169,17 +171,19 @@ private void ProcessTurnClick()
 
     private bool IsPointerOverUI()
     {
-        if (UnityEngine.EventSystems.EventSystem.current == null) return false;
-        
-        var eventData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current)
+        if (UnityEngine.EventSystems.EventSystem.current == null)
+            return false;
+
+        var eventData = new UnityEngine.EventSystems.PointerEventData(
+            UnityEngine.EventSystems.EventSystem.current
+        )
         {
-            position = CurrentInputPosition
+            position = CurrentInputPosition,
         };
-        
+
         var results = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();
         UnityEngine.EventSystems.EventSystem.current.RaycastAll(eventData, results);
-        
+
         return results.Count > 0;
     }
-
 }

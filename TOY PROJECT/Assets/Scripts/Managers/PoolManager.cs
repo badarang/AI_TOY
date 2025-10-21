@@ -90,4 +90,27 @@ public GameObject SpawnFromPool(string tag, Transform parent, bool worldPosition
     {
         obj.SetActive(false);
     }
+
+public void Dispose()
+    {
+        DebugPrinter.LogColor(LogType.System, "[PoolManager] Disposing...");
+        
+        if (poolDictionary == null)
+            return;
+        
+        foreach (var poolQueue in poolDictionary.Values)
+        {
+            while (poolQueue.Count > 0)
+            {
+                GameObject obj = poolQueue.Dequeue();
+                if (obj != null)
+                {
+                    Destroy(obj);
+                }
+            }
+        }
+        
+        poolDictionary.Clear();
+    }
+
 }
