@@ -9,15 +9,29 @@ public abstract class SkillBehavior : ScriptableObject
     // context 객체를 통해 스킬 시전자, 타겟, 게임 매니저 등 필요한 모든 정보에 접근
     // 행동에 애니메이션 등 시간이 소요되는 경우, 해당 시간을 float으로 반환해야 합니다.
 
-    public virtual bool CanExecute(UnitBase caster, Vector2Int targetPos, Skill skill)
+public virtual bool CanExecute(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
         if (caster.ap < skill.GetAPCost())
+        {
+            Debug.Log($"[SkillBehavior] Not enough AP: {caster.ap} < {skill.GetAPCost()}");
             return false;
+        }
         if (skill.currentCooldown > 0)
+        {
+            Debug.Log($"[SkillBehavior] Skill on cooldown: {skill.currentCooldown}");
             return false;
+        }
 
         int distance = GridUtils.ChebyshevDistance(caster.position, targetPos);
-        return distance <= skill.GetRange();
+        int range = skill.GetRange();
+        if (distance > range)
+        {
+            Debug.Log($"[SkillBehavior] Out of range: distance {distance} > range {range}, from {caster.position} to {targetPos}");
+            return false;
+        }
+        
+        Debug.Log($"[SkillBehavior] Base checks passed: distance={distance}, range={range}");
+        return true;
     }
 
 public virtual async UniTask ExecuteAsync(UnitBase caster, Vector2Int targetPos, Skill skill)

@@ -240,7 +240,7 @@ public class TurnManager : NetworkBehaviour, IManager
         }
     }
 
-    public void HandleCellClick(Vector2Int cell)
+public void HandleCellClick(Vector2Int cell)
     {
         // 그리드 범위 체크 - 범위 밖이면 선택 해제
         if (!gridManager.IsValidTile(cell))
@@ -297,22 +297,26 @@ public class TurnManager : NetworkBehaviour, IManager
                     && friendlyUnit.Owner == Runner.LocalPlayer
                 )
                 {
+                    // 다른 아군 유닛 선택 - 이전 선택 완전히 해제 후 새로 선택
                     SelectPlayerUnit(friendlyUnit);
                 }
                 else if (unitAtCell is EnemyUnit)
                 {
+                    // 적 클릭 - 공격 시도
                     TryAttackUnit(_localSelectedUnit, cell);
+                    // 적 Info는 위에서 이미 표시됨 - 선택 해제하지 않음
                 }
                 break;
         }
     }
 
-    private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
+private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         int moveSkillIndex = unit.GetMoveSkillIndex();
         if (moveSkillIndex < 0)
         {
             Debug.LogWarning("[TurnManager] No move skill found");
+            ClearSelection();
             return;
         }
 
@@ -321,6 +325,7 @@ public class TurnManager : NetworkBehaviour, IManager
         if (moveSkillIndex >= skills.Count)
         {
             Debug.LogWarning("[TurnManager] Invalid move skill index");
+            ClearSelection();
             return;
         }
 
@@ -330,6 +335,8 @@ public class TurnManager : NetworkBehaviour, IManager
             Debug.LogWarning(
                 $"[TurnManager] Cannot move to {targetCell}. Out of range or invalid tile."
             );
+            // 빈 격자를 클릭했는데 이동 실패 시 선택 해제
+            ClearSelection();
             return;
         }
 
@@ -339,7 +346,7 @@ public class TurnManager : NetworkBehaviour, IManager
         SetPlayerState(PlayerTurnState.PerformingAction);
     }
 
-    private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
+private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         int attackSkillIndex = -1;
         var skills = unit.GetSkills();
@@ -356,6 +363,7 @@ public class TurnManager : NetworkBehaviour, IManager
         if (attackSkillIndex < 0)
         {
             Debug.LogWarning("[TurnManager] No attack skill found");
+            ClearSelection();
             return;
         }
 
@@ -366,6 +374,13 @@ public class TurnManager : NetworkBehaviour, IManager
             Debug.LogWarning(
                 $"[TurnManager] Cannot attack {targetCell}. Out of range or invalid target."
             );
+            // 적이 사거리 밖일 때: 선택 해제 후 적 Info 다시 표시
+            var target = gridManager.GetUnitAt(targetCell);
+            ClearSelection();
+            if (target != null)
+            {
+                uiManager.ShowUnitInfo(target);
+            }
             return;
         }
 
@@ -375,13 +390,20 @@ public class TurnManager : NetworkBehaviour, IManager
         SetPlayerState(PlayerTurnState.PerformingAction);
     }
 
-    public void SelectPlayerUnit(PlayerUnit unit)
+public void SelectPlayerUnit(PlayerUnit unit)
     {
         if (unit.Owner != Runner.LocalPlayer)
             return;
 
+        // 이전 선택 완전히 해제
         if (_localSelectedUnit != null)
+        {
             _localSelectedUnit.Deselect();
+            if (gridManager != null)
+            {
+                gridManager.ClearMovableHighlights();
+            }
+        }
 
         _localSelectedUnit = unit;
         _localSelectedUnit.Select();
@@ -391,7 +413,7 @@ public class TurnManager : NetworkBehaviour, IManager
         uiManager.skillPanelUI?.UpdateSkillDisplay(unit);
     }
 
-    public void ClearSelection()
+public void ClearSelection()
     {
         if (_localSelectedUnit != null)
             _localSelectedUnit.Deselect();

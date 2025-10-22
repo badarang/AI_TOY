@@ -20,13 +20,5 @@ MonoBehaviour:
     enemySpawns:
     - enemyType: 3
       spawnPos: {x: 5, y: 1}
-    - enemyType: 3
-      spawnPos: {x: 5, y: 5}
-    - enemyType: 3
-      spawnPos: {x: 1, y: 5}
-  - spawnTurn: 2
-    enemySpawns:
-    - enemyType: 0
-      spawnPos: {x: 0, y: 0}
   obstacleSpawns: []
-  difficulty: 3
+  difficulty: 1

@@ -8,16 +8,30 @@ public class DamageBehavior : SkillBehavior
 {
     public int damage = 10;
 
-    public override bool CanExecute(UnitBase caster, Vector2Int targetPos, Skill skill)
+public override bool CanExecute(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
         if (!base.CanExecute(caster, targetPos, skill))
+        {
+            Debug.Log($"[DamageBehavior] Base check failed for {caster.name} attacking {targetPos}");
             return false;
+        }
 
         var target = Core.Instance.GridManager.GetUnitAt(targetPos);
         if (target == null)
+        {
+            Debug.Log($"[DamageBehavior] No target at {targetPos}");
             return false;
+        }
 
-        return target.factionData != caster.factionData;
+        bool isFaction = target.factionData != caster.factionData;
+        if (!isFaction)
+        {
+            Debug.Log($"[DamageBehavior] Target at {targetPos} is same faction as caster");
+            return false;
+        }
+
+        Debug.Log($"[DamageBehavior] Can attack {targetPos}, target: {target.name}");
+        return true;
     }
 
     public override UniTask ExecuteAsync(UnitBase caster, Vector2Int targetPos, Skill skill)
