@@ -395,6 +395,14 @@ public class UnitBase : NetworkBehaviour
         gridManager.ClearMovableHighlights();
         gridManager.ClearTargetHighlights();
 
+        if (Core.Instance?.TurnManager != null &&
+            Core.Instance.TurnManager.BattleEnded)  // 여기서 사용
+        {
+            var allWalkableTiles = gridManager.GetWalkableTilesInRange(position, 999);
+            gridManager.HighlightMovableTiles(allWalkableTiles);
+            return;
+        }
+
         if (ap <= 0)
             return;
 

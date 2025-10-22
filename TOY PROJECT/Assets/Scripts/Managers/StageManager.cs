@@ -68,6 +68,12 @@ public class StageManager : MonoBehaviour, IManager
         _session = GameSession.Instance;
         _session.OnStageChanged += OnStageChanged;
 
+        // 모든 적이 죽었을 때 이벤트 구독
+        if (Core.Instance?.EventManager != null)
+        {
+            Core.Instance.EventManager.OnAllEnemiesDied += () => OnAllEnemiesDiedAsync().Forget();
+        }
+
         if (
             _networkManager != null
             && _networkManager.IsHost
@@ -86,6 +92,63 @@ public class StageManager : MonoBehaviour, IManager
             return;
 
         LoadStageLocal(stageName);
+    }
+
+    private async UniTask OnAllEnemiesDied()
+    {
+        Debug.Log("[StageManager] All enemies defeated!");
+        await OnAllEnemiesDiedAsync();
+    }
+
+    private async UniTask OnAllEnemiesDiedAsync()
+    {
+        await UniTask.Delay(500);
+
+        await CreatePortalsAsync();
+        Core.Instance.TurnManager.SetBattleEnded();
+        await UniTask.WaitUntil(() => AllPlayersAtPortal());
+
+        int nextRoomIndex = GetNextRoomIndex();
+        if (nextRoomIndex >= 0)
+        {
+            RequestLoadStage(GetRoomNameByIndex(nextRoomIndex));
+        }
+    }
+
+    private bool AllPlayersAtPortal()
+    {
+        var allPlayers = Core.Instance.UnitManager.GetAllPlayers();
+
+        if (allPlayers.Count == 0)
+            return false;
+
+        // 모든 플레이어가 포탈 영역(그리드 밖)에 있는지 확인
+        // displayWidth/displayHeight 범위 밖에 있으면 포탈 영역
+        foreach (var player in allPlayers)
+        {
+            // 포탈 영역: displayWidth/displayHeight 범위 밖
+            bool isInPortalArea = player.position.x < 0 ||
+                                  player.position.x >= _currentRoom.width ||
+                                  player.position.y < 0 ||
+                                  player.position.y >= _currentRoom.height;
+
+            if (!isInPortalArea)
+                return false;  // 아직 포탈에 도달하지 않은 플레이어 있음
+        }
+
+        return true;  // 모든 플레이어가 포탈 영역에 있음
+    }
+
+    private int GetNextRoomIndex()
+    {
+        // TODO: 방당 렌드 로직 추가
+        return 0;
+    }
+
+    private string GetRoomNameByIndex(int index)
+    {
+        // TODO: 뢬 리스트에서 리단 이름 가져오기
+        return "Room_1";
     }
 
     public void RequestLoadStage(string stageName)
@@ -228,7 +291,7 @@ public class StageManager : MonoBehaviour, IManager
         }
     }
 
-    public void CreatePortals(List<RoomType> portalTypes)
+    private async UniTask CreatePortalsAsync()
     {
         if (portalPrefab == null)
         {
@@ -236,33 +299,54 @@ public class StageManager : MonoBehaviour, IManager
             return;
         }
 
+        if (_currentRoom == null)
+        {
+            Debug.LogError("[StageManager] Current room is null");
+            return;
+        }
+
+        // 포탈 위치 (displayWidth/displayHeight 기준으로 바깥쪽 1칸)
         Vector3[] spawnPositions =
         {
-            new Vector3(_currentRoom.width / 2f, 0.5f, _currentRoom.height + 1),
-            new Vector3(-1, 0.5f, _currentRoom.height / 2f),
-            new Vector3(_currentRoom.width + 1, 0.5f, _currentRoom.height / 2f),
+            new Vector3(_currentRoom.width / 2f, 0.5f, _currentRoom.height + 1), // 상단
+            new Vector3(-1, 0.5f, _currentRoom.height / 2f), // 좌측
+            new Vector3(_currentRoom.width + 1, 0.5f, _currentRoom.height / 2f), // 우측
         };
 
-        for (int i = 0; i < portalTypes.Count && i < spawnPositions.Length; i++)
+        for (int i = 0; i < spawnPositions.Length; i++)
         {
             GameObject portalObj = Instantiate(
                 portalPrefab,
                 spawnPositions[i],
                 Quaternion.identity
             );
-            Portal portal = portalObj.GetComponent<Portal>();
 
-            // TODO: Create PortalData based on RoomType and set up proper callback
-            // For now, this is a placeholder - implement proper portal setup
+            Portal portal = portalObj.GetComponent<Portal>();
             if (portal != null)
             {
-                Debug.LogWarning(
-                    $"[StageManager] Portal setup not fully implemented for type {portalTypes[i]}"
+                // PortalData 생성 (임시)
+                var portalData = new PortalData
+                {
+                    displayText = $"Portal {i}",
+                    targetRoomIndex = i,
+                    icon = null, // 필요시 설정
+                };
+
+                portal.Setup(
+                    portalData,
+                    (roomIndex) =>
+                    {
+                        Debug.Log($"[StageManager] Player entered portal to room {roomIndex}");
+                        // 포탈 진입 처리
+                    }
                 );
             }
 
             _spawnedPortals.Add(portalObj);
         }
+
+        await UniTask.NextFrame();
+        Debug.Log("[StageManager] Portals created");
     }
 
     private void SetupCamera(int width, int height)
@@ -330,7 +414,7 @@ public class StageManager : MonoBehaviour, IManager
         else
         {
             Debug.Log("[StageManager] No more waves! Battle complete!");
-            CreatePortals(new List<RoomType> { RoomType.Battle });
+            CreatePortalsAsync().Forget();
         }
     }
 

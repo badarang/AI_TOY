@@ -54,6 +54,10 @@ public class TurnManager : NetworkBehaviour, IManager
     private PlayerUnit _localSelectedUnit;
     public PlayerUnit SelectedUnit => _localSelectedUnit;
 
+    private bool _battleEnded = false;
+
+    public bool BattleEnded => _battleEnded;
+
     #region IManager & Lifecycle
 
     public void BeforeInit() { }
@@ -67,7 +71,6 @@ public class TurnManager : NetworkBehaviour, IManager
     }
 
     public void Dispose() { }
-
 
     public override void Spawned()
     {
@@ -240,7 +243,7 @@ public class TurnManager : NetworkBehaviour, IManager
         }
     }
 
-public void HandleCellClick(Vector2Int cell)
+    public void HandleCellClick(Vector2Int cell)
     {
         // 그리드 범위 체크 - 범위 밖이면 선택 해제
         if (!gridManager.IsValidTile(cell))
@@ -261,6 +264,8 @@ public void HandleCellClick(Vector2Int cell)
         {
             uiManager.HideUnitInfo();
         }
+
+
 
         // 내 턴이 아니면 여기서 종료 (정보 표시만 하고 다른 행동 불가)
         if (CurrentTurnPlayer != Runner.LocalPlayer)
@@ -310,7 +315,7 @@ public void HandleCellClick(Vector2Int cell)
         }
     }
 
-private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
+    private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         int moveSkillIndex = unit.GetMoveSkillIndex();
         if (moveSkillIndex < 0)
@@ -346,7 +351,7 @@ private void TryMoveUnit(PlayerUnit unit, Vector2Int targetCell)
         SetPlayerState(PlayerTurnState.PerformingAction);
     }
 
-private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
+    private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
     {
         int attackSkillIndex = -1;
         var skills = unit.GetSkills();
@@ -390,7 +395,7 @@ private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
         SetPlayerState(PlayerTurnState.PerformingAction);
     }
 
-public void SelectPlayerUnit(PlayerUnit unit)
+    public void SelectPlayerUnit(PlayerUnit unit)
     {
         if (unit.Owner != Runner.LocalPlayer)
             return;
@@ -413,7 +418,7 @@ public void SelectPlayerUnit(PlayerUnit unit)
         uiManager.skillPanelUI?.UpdateSkillDisplay(unit);
     }
 
-public void ClearSelection()
+    public void ClearSelection()
     {
         if (_localSelectedUnit != null)
             _localSelectedUnit.Deselect();
@@ -444,6 +449,26 @@ public void ClearSelection()
         {
             SetPlayerState(PlayerTurnState.AwaitingUnitSelection);
         }
+    }
+
+    public void SetBattleEnded()
+    {
+        Debug.Log("[TurnManager] Battle ended - disabling turn system");
+
+        if (HasStateAuthority)
+        {
+            IsPlayerTurn = false;
+            CurrentTurnPlayer = PlayerRef.None;
+        }
+
+        SetPlayerState(PlayerTurnState.StageClear);
+
+        if (Core.Instance?.UIManager != null)
+        {
+            Core.Instance.UIManager.SetEndTurnButtonActive(false);
+        }
+
+        _battleEnded = true;
     }
 
     #endregion

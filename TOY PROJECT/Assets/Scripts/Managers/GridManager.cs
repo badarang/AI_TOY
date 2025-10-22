@@ -35,8 +35,10 @@ public class GridManager : MonoBehaviour, IManager
     }
 
     [Header("Grid Settings")]
-    private int width { get; set; }
-    private int height { get; set; }
+    private int displayWidth { get; set; }
+    private int displayHeight { get; set; }
+    private int actualWidth { get; set; }
+    private int actualHeight { get; set; }
     public LayerMask unitLayer;
     public AssetReference gridPlaneAsset;
 
@@ -54,10 +56,13 @@ public class GridManager : MonoBehaviour, IManager
         UpdateCellHover();
     }
 
-    public async void GenerateGrid(Room room)
+public async void GenerateGrid(Room room)
     {
-        width = room.width;
-        height = room.height;
+        displayWidth = room.width;
+        displayHeight = room.height;
+        // 격자를 2씩 더 크게 생성 (포탈 공간용)
+        actualWidth = displayWidth + 2;
+        actualHeight = displayHeight + 2;
 
         ClearGrid();
 
@@ -80,8 +85,8 @@ public class GridManager : MonoBehaviour, IManager
             gridPlane = Instantiate(handle.Result);
             gridPlane.name = "GridPlane";
 
-            gridPlane.transform.position = new Vector3(width * 0.5f, 0f, height * 0.5f);
-            gridPlane.transform.localScale = new Vector3(width * 0.1f, 1f, height * 0.1f);
+            gridPlane.transform.position = new Vector3(displayWidth * 0.5f, 0f, displayHeight * 0.5f);
+            gridPlane.transform.localScale = new Vector3(displayWidth * 0.1f, 1f, displayHeight * 0.1f);
 
             var collider = gridPlane.GetComponent<Collider>();
             if (collider != null)
@@ -132,7 +137,7 @@ public class GridManager : MonoBehaviour, IManager
             int x = Mathf.FloorToInt(hitPoint.x);
             int z = Mathf.FloorToInt(hitPoint.z);
 
-            if (x >= 0 && x < width && z >= 0 && z < height)
+            if (x >= 0 && x < actualWidth && z >= 0 && z < actualHeight)
             {
                 Vector2Int cellPos = new Vector2Int(x, z);
 
@@ -375,7 +380,15 @@ public class GridManager : MonoBehaviour, IManager
 
     public bool IsValidTile(Vector2Int tile)
     {
-        return tile.x >= 0 && tile.x < width && tile.y >= 0 && tile.y < height;
+        return tile.x >= 0 && tile.x < displayWidth &&
+               tile.y >= 0 && tile.y < displayHeight;
+    }
+
+// 포탈 위치 포함 (확장된 9x9)
+    public bool IsValidTileWithPortal(Vector2Int tile)
+    {
+        return tile.x >= 0 && tile.x < actualWidth &&
+               tile.y >= 0 && tile.y < actualHeight;
     }
 
     public void ClearSelection()

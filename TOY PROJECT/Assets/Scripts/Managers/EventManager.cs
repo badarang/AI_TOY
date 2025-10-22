@@ -6,7 +6,10 @@ public class EventManager : MonoBehaviour, IManager
     public static EventManager Instance { get; private set; }
 
     // 유닛이 죽을 때 발생하는 이벤트
-    public event Action<UnitBase> OnUnitDied;
+    
+    // 모든 적이 죽었을 때 발생하는 이벤트
+    public event Action OnAllEnemiesDied;
+public event Action<UnitBase> OnUnitDied;
 
     void Awake()
     {
@@ -39,12 +42,20 @@ public class EventManager : MonoBehaviour, IManager
         OnUnitDied?.Invoke(unit);
     }
 
-    public void Dispose()
+public void TriggerAllEnemiesDied()
+    {
+        DebugPrinter.LogColor(LogType.Event, "All enemies died event triggered.");
+        OnAllEnemiesDied?.Invoke();
+    }
+
+
+public void Dispose()
     {
         DebugPrinter.LogColor(LogType.System, "[EventManager] Disposing...");
 
         // 모든 이벤트의 구독자 제거
         OnUnitDied = null;
+        OnAllEnemiesDied = null;
 
         // Singleton 참조 제거
         if (Instance == this)
