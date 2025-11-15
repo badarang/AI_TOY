@@ -1,11 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
-using Fusion;
 using UnityEngine;
 
 // 모든 적 유닛의 행동을 총괄하는 AI 관리자
-public class EnemyAIManager : NetworkBehaviour, IManager
+public class EnemyAIManager : MonoBehaviour, IManager
 {
     public void BeforeInit() { }
 
@@ -14,17 +13,9 @@ public class EnemyAIManager : NetworkBehaviour, IManager
     public void Dispose() { }
 
     // 적 턴 시작 시 TurnManager에 의해 호출됨
-    // 서버에서만 실행되어야 함
     public async UniTask ExecuteEnemyTurns()
     {
-        // 서버 권한 체크 - 클라이언트에서는 실행하지 않음
-        if (!HasStateAuthority)
-        {
-            Debug.LogWarning("[EnemyAIManager] ExecuteEnemyTurns called on client, ignoring.");
-            return;
-        }
-
-        Debug.Log("--- Enemy Turn Start (Server) ---");
+        Debug.Log("--- Enemy Turn Start ---");
         var enemies = Core.Instance.UnitManager.GetEnemies();
         var players = Core.Instance.UnitManager.GetAllPlayers();
 

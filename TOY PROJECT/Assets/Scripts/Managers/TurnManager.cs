@@ -345,10 +345,12 @@ public class TurnManager : NetworkBehaviour, IManager
             return;
         }
 
-        // 스킬 사용 가능하면 요청 및 상태 변경
+        // 스킬 사용 가능하면 요청
         unit.RequestSkillUse(moveSkillIndex, targetCell);
-        ClearSelection();
+        // 이동 후에는 선택을 해제하지만 상태는 PerformingAction으로 변경
+        // TriggerUnitSkillEnd()에서 다시 AwaitingUnitSelection으로 돌아옴
         SetPlayerState(PlayerTurnState.PerformingAction);
+        ClearSelection();
     }
 
     private void TryAttackUnit(PlayerUnit unit, Vector2Int targetCell)
@@ -389,10 +391,12 @@ public class TurnManager : NetworkBehaviour, IManager
             return;
         }
 
-        // 스킬 사용 가능하면 요청 및 상태 변경
+        // 스킬 사용 가능하면 요청
         unit.RequestSkillUse(attackSkillIndex, targetCell);
-        ClearSelection();
+        // 공격 후에는 선택을 해제하지만 상태는 PerformingAction으로 변경
+        // TriggerUnitSkillEnd()에서 다시 AwaitingUnitSelection으로 돌아옴
         SetPlayerState(PlayerTurnState.PerformingAction);
+        ClearSelection();
     }
 
     public void SelectPlayerUnit(PlayerUnit unit)
