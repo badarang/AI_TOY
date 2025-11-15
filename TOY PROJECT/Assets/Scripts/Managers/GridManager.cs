@@ -1,13 +1,13 @@
 using System;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
+using Fusion;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
-public class GridManager : MonoBehaviour, IManager
+public class GridManager : NetworkBehaviour, IManager
 {
     public void BeforeInit() { }
 

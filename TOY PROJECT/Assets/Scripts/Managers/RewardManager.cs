@@ -1,9 +1,10 @@
 // Assets/Scripts/Managers/RewardManager.cs 개선 버전
 using System.Collections.Generic;
 using System.Linq;
+using Fusion;
 using UnityEngine;
 
-public class RewardManager : MonoBehaviour, IManager
+public class RewardManager : NetworkBehaviour, IManager
 {
     public void BeforeInit() { }
 
@@ -15,22 +16,27 @@ public class RewardManager : MonoBehaviour, IManager
     public GameAssetDatabase database;
 
     [Header("팬 시스템")]
-    [SerializeField]
-    private int currentFans = 0;
-    public int CurrentFans => currentFans;
+    [Networked]
+    public int CurrentFans { get; set; }
 
     private UnitBase playerUnit;
 
     public void AddFans(int amount)
     {
-        currentFans += amount;
-        Debug.Log($"{amount}명의 팬이 추가되었습니다! 현재 팬: {currentFans}");
+        if (HasStateAuthority)
+        {
+            CurrentFans += amount;
+            Debug.Log($"{amount}명의 팬이 추가되었습니다! 현재 팬: {CurrentFans}");
+        }
     }
 
     public void RemoveFans(int amount)
     {
-        currentFans = Mathf.Max(0, currentFans - amount);
-        Debug.Log($"{amount}명의 팬이 떠났습니다... 현재 팬: {currentFans}");
+        if (HasStateAuthority)
+        {
+            CurrentFans = Mathf.Max(0, CurrentFans - amount);
+            Debug.Log($"{amount}명의 팬이 떠났습니다... 현재 팬: {CurrentFans}");
+        }
     }
 
     public void SetPlayerUnit(UnitBase unit)
@@ -107,12 +113,32 @@ public class RewardManager : MonoBehaviour, IManager
 
     /// <summary>
     /// 플레이어가 보상을 선택했을 때 호출됩니다.
+    /// 클라이언트에서 호출하면 서버로 RPC 전송
     /// </summary>
     public void ApplyReward(ScriptableObject reward)
     {
         if (playerUnit == null)
             return;
 
+        // 보상 적용은 서버에서만 수행
+        if (HasStateAuthority)
+        {
+            ApplyRewardInternal(reward);
+        }
+        else
+        {
+            // 클라이언트는 서버에 요청
+            // TODO: ScriptableObject를 직접 RPC로 전송할 수 없으므로
+            // 보상의 ID나 이름을 전송하도록 수정 필요
+            Debug.LogWarning("[RewardManager] Client cannot apply reward directly. Need to implement RPC.");
+        }
+    }
+
+    /// <summary>
+    /// 서버에서 실제 보상을 적용하는 내부 메서드
+    /// </summary>
+    private void ApplyRewardInternal(ScriptableObject reward)
+    {
         if (reward is SkillData skillData)
         {
             playerUnit.LearnSkill(skillData);
@@ -124,6 +150,36 @@ public class RewardManager : MonoBehaviour, IManager
             // TODO: UpgradeData에 targetSkillName 필드가 있다면 해당 스킬에 적용
             playerUnit.ApplyGeneralUpgrade(upgradeData);
             Debug.Log($"[RewardManager] Player applied upgrade: {upgradeData.upgradeName}");
+        }
+    }
+
+    /// <summary>
+    /// RPC를 통해 보상을 적용합니다 (향후 구현)
+    /// </summary>
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    public void ApplyRewardByNameRpc(string rewardName, bool isSkill, RpcInfo info = default)
+    {
+        if (!HasStateAuthority)
+            return;
+
+        ScriptableObject reward = null;
+
+        if (isSkill)
+        {
+            reward = database.allSkills.FirstOrDefault(s => s.skillMeta.nameKey == rewardName);
+        }
+        else
+        {
+            reward = database.allUpgrades.FirstOrDefault(u => u.upgradeName == rewardName);
+        }
+
+        if (reward != null)
+        {
+            ApplyRewardInternal(reward);
+        }
+        else
+        {
+            Debug.LogError($"[RewardManager] Reward not found: {rewardName}");
         }
     }
 
