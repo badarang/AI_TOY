@@ -245,6 +245,42 @@ public class TurnManager : NetworkBehaviour, IManager
 
     public void HandleCellClick(Vector2Int cell)
     {
+        var unitAtCell = gridManager.GetUnitAt(cell);
+        // 전투가 끝났을 때 (포탈 생성 후) 특별 처리
+        if (_battleEnded)
+        {
+            // 그리드 범위 체크 (확장된 범위 포함)
+            if (!gridManager.IsValidTile(cell))
+            {
+                Debug.Log($"[TurnManager] Clicked outside grid bounds: {cell}");
+                ClearSelection();
+                return;
+            }
+
+
+            // 유닛 정보 표시
+            if (unitAtCell != null)
+            {
+                uiManager.ShowUnitInfo(unitAtCell);
+            }
+            else
+            {
+                uiManager.HideUnitInfo();
+            }
+
+            // 플레이어 유닛 선택 및 이동 처리
+            if (unitAtCell is PlayerUnit playerUnit && playerUnit.Owner == Runner.LocalPlayer)
+            {
+                SelectPlayerUnit(playerUnit);
+            }
+            else if (_localSelectedUnit != null && unitAtCell == null)
+            {
+                // 선택된 유닛이 있고 빈 칸을 클릭하면 이동
+                TryMoveUnit(_localSelectedUnit, cell);
+            }
+            return;
+        }
+
         // 그리드 범위 체크 - 범위 밖이면 선택 해제
         if (!gridManager.IsValidTile(cell))
         {
@@ -252,8 +288,6 @@ public class TurnManager : NetworkBehaviour, IManager
             ClearSelection();
             return;
         }
-
-        var unitAtCell = gridManager.GetUnitAt(cell);
 
         // 항상 유닛을 클릭하면 정보를 표시 (클라이언트 단 처리)
         if (unitAtCell != null)
@@ -335,7 +369,9 @@ public class TurnManager : NetworkBehaviour, IManager
         }
 
         var moveSkill = skills[moveSkillIndex];
-        if (!moveSkill.CanExecute(unit, targetCell))
+        
+        // 전투가 끝났으면 CanExecute 체크를 건너뛰고 바로 이동
+        if (!_battleEnded && !moveSkill.CanExecute(unit, targetCell))
         {
             Debug.LogWarning(
                 $"[TurnManager] Cannot move to {targetCell}. Out of range or invalid tile."

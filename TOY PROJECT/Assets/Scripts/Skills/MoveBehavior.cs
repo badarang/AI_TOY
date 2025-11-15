@@ -18,7 +18,13 @@ public class MoveBehavior : SkillBehavior
         var targetUnit = Core.Instance.GridManager.GetUnitAt(targetPos);
         if (targetUnit != null) return false;
 
-        // 3. 스킬의 이동 패턴(사거리) 안에 목표 타일이 있는지 확인
+        // 3. 전투가 끝났으면 거리 제한 없이 이동 가능
+        if (Core.Instance?.TurnManager != null && Core.Instance.TurnManager.BattleEnded)
+        {
+            return true;
+        }
+
+        // 4. 일반 전투 중에는 스킬의 이동 패턴(사거리) 안에 목표 타일이 있는지 확인
         bool isWithinPattern = false;
         if (skill.data.movementPattern != null)
         {

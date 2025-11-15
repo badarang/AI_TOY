@@ -175,20 +175,27 @@ public class UnitBase : NetworkBehaviour
 
         var skill = _skills[skillIndex];
 
-        if (SkillCooldowns[skillIndex] > 0)
+        // 전투가 끝났는지 체크
+        bool battleEnded = Core.Instance?.TurnManager != null && Core.Instance.TurnManager.BattleEnded;
+
+        // 전투가 끝나지 않았을 때만 쿨타임 체크
+        if (!battleEnded && SkillCooldowns[skillIndex] > 0)
         {
             Debug.LogWarning($"Skill on cooldown: {SkillCooldowns[skillIndex]} turns left");
             return;
         }
 
         int apCost = skill.GetAPCost();
-        if (ap < apCost)
+        
+        // 전투가 끝나지 않았을 때만 AP 체크
+        if (!battleEnded && ap < apCost)
         {
             Debug.LogWarning("Not enough AP to use this skill.");
             return;
         }
 
-        if (!skill.CanExecute(this, targetPos))
+        // 전투가 끝나지 않았을 때만 CanExecute 체크
+        if (!battleEnded && !skill.CanExecute(this, targetPos))
         {
             Debug.LogWarning(
                 $"Cannot execute skill '{skill.data.skillMeta.nameKey}' at {targetPos}. Invalid target or out of range."
@@ -201,9 +208,14 @@ public class UnitBase : NetworkBehaviour
             $"Using skill '{skill.data.skillMeta.nameKey}' on {targetPos}. AP before: {ap}, Cost: {apCost}"
         );
 
-        ap -= apCost;
+        // 전투가 끝나지 않았을 때만 AP 소모
+        if (!battleEnded)
+        {
+            ap -= apCost;
+        }
 
-        if (skill.data.cooldown > 0)
+        // 전투가 끝나지 않았을 때만 쿨타임 설정
+        if (!battleEnded && skill.data.cooldown > 0)
         {
             SkillCooldowns.Set(skillIndex, skill.data.cooldown);
             skill.currentCooldown = skill.data.cooldown;
@@ -395,9 +407,11 @@ public class UnitBase : NetworkBehaviour
         gridManager.ClearMovableHighlights();
         gridManager.ClearTargetHighlights();
 
+        // 전투가 끝났을 때 (포탈 생성 후) 무한 이동 가능
         if (Core.Instance?.TurnManager != null &&
-            Core.Instance.TurnManager.BattleEnded)  // 여기서 사용
+            Core.Instance.TurnManager.BattleEnded)
         {
+            // 포탈이 있는 위치까지 포함하여 이동 가능한 모든 타일 표시
             var allWalkableTiles = gridManager.GetWalkableTilesInRange(position, 999);
             gridManager.HighlightMovableTiles(allWalkableTiles);
             return;

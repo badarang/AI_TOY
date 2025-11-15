@@ -215,6 +215,16 @@ public class UnitManager : MonoBehaviour, IManager
             _spawnedEnemies.Remove(enemy);
         }
         gridManager.UnregisterUnit(enemy.position);
+
+        // 모든 적이 죽었는지 확인
+        if (_spawnedEnemies.Count == 0)
+        {
+            Debug.Log("[UnitManager] All enemies have been defeated!");
+            if (Core.Instance?.EventManager != null)
+            {
+                Core.Instance.EventManager.TriggerAllEnemiesDied();
+            }
+        }
     }
 
     public List<PlayerUnit> GetAllPlayers()

@@ -104,6 +104,23 @@ public class StageManager : MonoBehaviour, IManager
     {
         await UniTask.Delay(500);
 
+        // 모든 플레이어의 AP와 스킬 쿨타임 완전 회복
+        var allPlayers = unitManager.GetAllPlayers();
+        foreach (var player in allPlayers)
+        {
+            if (player != null && player.unitData != null)
+            {
+                player.ap = player.unitData.maxAp;
+                
+                // 모든 스킬 쿨타임 초기화
+                var skills = player.GetSkills();
+                for (int i = 0; i < skills.Count; i++)
+                {
+                    skills[i].currentCooldown = 0;
+                }
+            }
+        }
+
         await CreatePortalsAsync();
         Core.Instance.TurnManager.SetBattleEnded();
         await UniTask.WaitUntil(() => AllPlayersAtPortal());
@@ -305,31 +322,57 @@ public class StageManager : MonoBehaviour, IManager
             return;
         }
 
-        // 포탈 위치 (displayWidth/displayHeight 기준으로 바깥쪽 1칸)
-        Vector3[] spawnPositions =
+        // 플레이어 위치 가져오기
+        var players = unitManager.GetAllPlayers();
+        if (players.Count == 0)
         {
-            new Vector3(_currentRoom.width / 2f, 0.5f, _currentRoom.height + 1), // 상단
-            new Vector3(-1, 0.5f, _currentRoom.height / 2f), // 좌측
-            new Vector3(_currentRoom.width + 1, 0.5f, _currentRoom.height / 2f), // 우측
+            Debug.LogWarning("[StageManager] No players found for portal placement");
+            return;
+        }
+
+        // 첫 번째 플레이어 위치 기준 (여러 플레이어면 평균 위치 계산 가능)
+        Vector2Int playerPos = players[0].position;
+
+        // 마름모 격자의 4개 가능한 포탈 위치 (7x7 기준: 3,0 / 0,3 / 3,6 / 6,3)
+        int midX = _currentRoom.width / 2;
+        int midY = _currentRoom.height / 2;
+        
+        Vector2Int[] possiblePortalPositions = new Vector2Int[]
+        {
+            new Vector2Int(midX, 0),                    // 북쪽
+            new Vector2Int(0, midY),                    // 서쪽
+            new Vector2Int(midX, _currentRoom.height - 1), // 남쪽
+            new Vector2Int(_currentRoom.width - 1, midY)   // 동쪽
         };
 
-        for (int i = 0; i < spawnPositions.Length; i++)
+        // 플레이어 위치에서 가장 가까운 2개 위치 찾기
+        var sortedPositions = possiblePortalPositions
+            .OrderBy(pos => Vector2Int.Distance(pos, playerPos))
+            .Take(2)
+            .ToList();
+
+        Debug.Log($"[StageManager] Creating 2 portals closest to player at {playerPos}");
+
+        for (int i = 0; i < sortedPositions.Count; i++)
         {
+            Vector2Int gridPos = sortedPositions[i];
+            Vector3 worldPos = new Vector3(gridPos.x + 0.5f, 0.5f, gridPos.y + 0.5f);
+
             GameObject portalObj = Instantiate(
                 portalPrefab,
-                spawnPositions[i],
+                worldPos,
                 Quaternion.identity
             );
 
             Portal portal = portalObj.GetComponent<Portal>();
             if (portal != null)
             {
-                // PortalData 생성 (임시)
+                // PortalData 생성
                 var portalData = new PortalData
                 {
-                    displayText = $"Portal {i}",
+                    displayText = $"Next Stage {i + 1}",
                     targetRoomIndex = i,
-                    icon = null, // 필요시 설정
+                    icon = null,
                 };
 
                 portal.Setup(
@@ -343,10 +386,11 @@ public class StageManager : MonoBehaviour, IManager
             }
 
             _spawnedPortals.Add(portalObj);
+            Debug.Log($"[StageManager] Portal {i} created at grid position {gridPos} (world: {worldPos})");
         }
 
         await UniTask.NextFrame();
-        Debug.Log("[StageManager] Portals created");
+        Debug.Log("[StageManager] 2 portals created successfully");
     }
 
     private void SetupCamera(int width, int height)
