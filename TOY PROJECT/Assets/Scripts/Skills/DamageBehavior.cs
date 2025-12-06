@@ -1,5 +1,3 @@
-// /Assets/Scripts/Skills/DamageBehavior.cs
-
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
@@ -8,56 +6,64 @@ public class DamageBehavior : SkillBehavior
 {
     public int damage = 10;
 
-public override bool CanExecute(UnitBase caster, Vector2Int targetPos, Skill skill)
+    public override bool CanExecute(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
         if (!base.CanExecute(caster, targetPos, skill))
         {
-            Debug.Log($"[DamageBehavior] Base check failed for {caster.name} attacking {targetPos}");
             return false;
         }
 
-        var target = Core.Instance.GridManager.GetUnitAt(targetPos);
-        if (target == null)
+        var attackable = Core.Instance.GridManager.GetAttackableAt(targetPos);
+        if (attackable == null)
         {
-            Debug.Log($"[DamageBehavior] No target at {targetPos}");
             return false;
         }
 
-        bool isFaction = target.factionData != caster.factionData;
-        if (!isFaction)
+        // 유닛인 경우, 적대적인지 확인
+        if (attackable is UnitBase targetUnit)
         {
-            Debug.Log($"[DamageBehavior] Target at {targetPos} is same faction as caster");
-            return false;
+            return targetUnit.factionData != caster.factionData;
         }
 
-        Debug.Log($"[DamageBehavior] Can attack {targetPos}, target: {target.name}");
-        return true;
+        // 포탈인 경우, 전투가 끝났는지 확인
+        if (attackable is Portal)
+        {
+            return Core.Instance.TurnManager.BattleEnded;
+        }
+        
+        return false;
     }
 
     public override UniTask ExecuteAsync(UnitBase caster, Vector2Int targetPos, Skill skill)
     {
-        int finalDamage = skill.GetModifiedValue("damage", damage);
-        UnitBase target = Core.Instance.GridManager.GetUnitAt(targetPos);
-
-        if (target != null)
+        var attackable = Core.Instance.GridManager.GetAttackableAt(targetPos);
+        if (attackable == null)
         {
-            caster.PerformAttackMotion(
-                targetPos,
-                () =>
-                {
-                    DebugPrinter.LogColor(
-                        LogType.Action,
-                        $"{target.name}에게 {finalDamage}의 피해를 입혔습니다!"
-                    );
-                    target.TakeDamage(finalDamage);
-
-                    float speedMultiplier =
-                        target.unitData != null ? target.unitData.animationSpeedMultiplier : 1.0f;
-                    float flashDuration = UnitAnimationConfig.GetFlashDuration(speedMultiplier);
-                    target.PlayFlashEffect(UnitAnimationConfig.FLASH_COLOR, flashDuration);
-                }
-            );
+            return UniTask.CompletedTask;
         }
+
+        caster.PerformAttackMotion(
+            targetPos,
+            () =>
+            {
+                if (attackable is UnitBase targetUnit)
+                {
+                    // 유닛 공격
+                    int finalDamage = skill.GetModifiedValue("damage", damage);
+                    targetUnit.TakeDamage(finalDamage);
+                    
+                    float speedMultiplier = targetUnit.unitData != null ? targetUnit.unitData.animationSpeedMultiplier : 1.0f;
+                    float flashDuration = UnitAnimationConfig.GetFlashDuration(speedMultiplier);
+                    targetUnit.PlayFlashEffect(UnitAnimationConfig.FLASH_COLOR, flashDuration);
+                }
+                else if (attackable is Portal targetPortal)
+                {
+                    // 포탈 공격
+                    targetPortal.TakeDamage(1);
+                }
+            }
+        );
+
         return UniTask.CompletedTask;
     }
 }

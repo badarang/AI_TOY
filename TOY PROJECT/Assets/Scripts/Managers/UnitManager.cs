@@ -206,6 +206,19 @@ public class UnitManager : MonoBehaviour, IManager
         _spawnedEnemies.Clear();
     }
 
+    public void KillAllEnemies()
+    {
+        // To avoid modifying the list while iterating, create a copy.
+        var enemiesToKill = new List<EnemyUnit>(_spawnedEnemies);
+        foreach (var enemy in enemiesToKill)
+        {
+            if (enemy != null)
+            {
+                enemy.TakeDamage(enemy.hp); // 유닛의 현재 체력만큼 데미지를 주어 즉시 처치
+            }
+        }
+    }
+
     public void UnregisterEnemy(EnemyUnit enemy)
     {
         if (enemy == null) return;

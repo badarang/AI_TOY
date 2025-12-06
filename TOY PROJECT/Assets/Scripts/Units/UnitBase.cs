@@ -7,7 +7,7 @@ using Fusion;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class UnitBase : NetworkBehaviour
+public class UnitBase : NetworkBehaviour, IAttackable
 {
     public UnitData unitData;
     public FactionData factionData;

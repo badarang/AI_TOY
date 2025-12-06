@@ -93,13 +93,7 @@ public class StageManager : MonoBehaviour, IManager
 
         LoadStageLocal(stageName);
     }
-
-    private async UniTask OnAllEnemiesDied()
-    {
-        Debug.Log("[StageManager] All enemies defeated!");
-        await OnAllEnemiesDiedAsync();
-    }
-
+    
     private async UniTask OnAllEnemiesDiedAsync()
     {
         await UniTask.Delay(500);
@@ -123,48 +117,17 @@ public class StageManager : MonoBehaviour, IManager
 
         await CreatePortalsAsync();
         Core.Instance.TurnManager.SetBattleEnded();
-        await UniTask.WaitUntil(() => AllPlayersAtPortal());
-
-        int nextRoomIndex = GetNextRoomIndex();
-        if (nextRoomIndex >= 0)
-        {
-            RequestLoadStage(GetRoomNameByIndex(nextRoomIndex));
-        }
-    }
-
-    private bool AllPlayersAtPortal()
-    {
-        var allPlayers = Core.Instance.UnitManager.GetAllPlayers();
-
-        if (allPlayers.Count == 0)
-            return false;
-
-        // 모든 플레이어가 포탈 영역(그리드 밖)에 있는지 확인
-        // displayWidth/displayHeight 범위 밖에 있으면 포탈 영역
-        foreach (var player in allPlayers)
-        {
-            // 포탈 영역: displayWidth/displayHeight 범위 밖
-            bool isInPortalArea = player.position.x < 0 ||
-                                  player.position.x >= _currentRoom.width ||
-                                  player.position.y < 0 ||
-                                  player.position.y >= _currentRoom.height;
-
-            if (!isInPortalArea)
-                return false;  // 아직 포탈에 도달하지 않은 플레이어 있음
-        }
-
-        return true;  // 모든 플레이어가 포탈 영역에 있음
     }
 
     private int GetNextRoomIndex()
     {
-        // TODO: 방당 렌드 로직 추가
+        // TODO: 방 선택 로직 추가
         return 0;
     }
 
     private string GetRoomNameByIndex(int index)
     {
-        // TODO: 뢬 리스트에서 리단 이름 가져오기
+        // TODO: 룸 리스트에서 룸 이름 가져오기
         return "Room_1";
     }
 
@@ -204,42 +167,24 @@ public class StageManager : MonoBehaviour, IManager
                     return;
                 }
 
-                Debug.Log("[StageManager] Starting player spawn...");
                 await unitManager.SpawnPlayers();
-
-                // Wait until all players registered in the session are spawned
+                
                 if (_session != null && _session.ConnectedPlayerCount > 0)
                 {
-                    Debug.Log(
-                        $"[StageManager] Waiting for {_session.ConnectedPlayerCount} players to be spawned..."
-                    );
                     await UniTask.WaitUntil(() =>
                         unitManager.GetAllPlayers().Count >= _session.ConnectedPlayerCount
                     );
-                    Debug.Log(
-                        $"[StageManager] All {unitManager.GetAllPlayers().Count} players spawned."
-                    );
                 }
 
-                Debug.Log("[StageManager] Starting enemy spawn...");
                 if (stageData.waves != null && stageData.waves.Length > 0)
                 {
                     await unitManager.SpawnEnemiesImmediate(stageData.waves[0].enemySpawns);
                     _spawnedWaves.Add(stageData.waves[0].GetHashCode());
                     _currentWaveIndex = 0;
                 }
-
-                // This delay might not be necessary, but can be kept for safety.
+                
                 await UniTask.Delay(100);
-
-                var allPlayers = unitManager.GetAllPlayers();
-                Debug.Log($"[StageManager] Found {allPlayers.Count} players before StartCombat");
-                foreach (var player in allPlayers)
-                {
-                    Debug.Log($"[StageManager] Player: {player.name} at {player.position}");
-                }
-
-                Debug.Log("[StageManager] Starting combat...");
+                
                 Core.Instance.TurnManager.StartCombat();
             }
         }
@@ -259,7 +204,6 @@ public class StageManager : MonoBehaviour, IManager
             if (obstacle != null)
                 Destroy(obstacle);
         }
-
         _spawnedObstacles.Clear();
 
         foreach (var portal in _spawnedPortals)
@@ -267,43 +211,27 @@ public class StageManager : MonoBehaviour, IManager
             if (portal != null)
                 Destroy(portal);
         }
-
         _spawnedPortals.Clear();
+        
         _spawnedWaves.Clear();
         _currentWaveIndex = -1;
-
         gridManager.ClearGrid();
     }
 
     private async UniTask SpawnObstacles(Room room)
     {
-        if (room.obstacleSpawns == null)
-            return;
+        if (room.obstacleSpawns == null) return;
 
         foreach (var obsData in room.obstacleSpawns)
         {
-            if (obsData.obstacleData == null)
-                continue;
-
-            var handle = Addressables.LoadAssetAsync<GameObject>(
-                $"Prefabs/Obstacles/{obsData.obstacleData.unitMeta.nameKey}.prefab"
-            );
-
+            if (obsData.obstacleData == null) continue;
+            var handle = Addressables.LoadAssetAsync<GameObject>($"Prefabs/Obstacles/{obsData.obstacleData.unitMeta.nameKey}.prefab");
             await handle.Task;
+            if (handle.Status != AsyncOperationStatus.Succeeded) continue;
 
-            if (handle.Status != AsyncOperationStatus.Succeeded)
-                continue;
-
-            GameObject obj = Instantiate(
-                handle.Result,
-                GridToWorld(obsData.spawnPos),
-                Quaternion.identity
-            );
-
+            GameObject obj = Instantiate(handle.Result, GridToWorld(obsData.spawnPos), Quaternion.identity);
             Obstacle obstacle = obj.GetComponent<Obstacle>();
-            if (obstacle != null)
-                obstacle.data = obsData.obstacleData;
-
+            if (obstacle != null) obstacle.data = obsData.obstacleData;
             _spawnedObstacles.Add(obj);
         }
     }
@@ -315,59 +243,50 @@ public class StageManager : MonoBehaviour, IManager
             Debug.LogError("[StageManager] Portal prefab not assigned");
             return;
         }
-
         if (_currentRoom == null)
         {
             Debug.LogError("[StageManager] Current room is null");
             return;
         }
 
-        // 플레이어 위치 가져오기
         var players = unitManager.GetAllPlayers();
         if (players.Count == 0)
         {
             Debug.LogWarning("[StageManager] No players found for portal placement");
             return;
         }
-
-        // 첫 번째 플레이어 위치 기준 (여러 플레이어면 평균 위치 계산 가능)
+        
         Vector2Int playerPos = players[0].position;
-
-        // 마름모 격자의 4개 가능한 포탈 위치 (7x7 기준: 3,0 / 0,3 / 3,6 / 6,3)
         int midX = _currentRoom.width / 2;
         int midY = _currentRoom.height / 2;
         
         Vector2Int[] possiblePortalPositions = new Vector2Int[]
         {
-            new Vector2Int(midX, 0),                    // 북쪽
-            new Vector2Int(0, midY),                    // 서쪽
-            new Vector2Int(midX, _currentRoom.height - 1), // 남쪽
-            new Vector2Int(_currentRoom.width - 1, midY)   // 동쪽
+            new Vector2Int(midX, 0),
+            new Vector2Int(0, midY),
+            new Vector2Int(midX, _currentRoom.height - 1),
+            new Vector2Int(_currentRoom.width - 1, midY)
         };
 
-        // 플레이어 위치에서 가장 가까운 2개 위치 찾기
         var sortedPositions = possiblePortalPositions
             .OrderBy(pos => Vector2Int.Distance(pos, playerPos))
             .Take(2)
             .ToList();
-
-        Debug.Log($"[StageManager] Creating 2 portals closest to player at {playerPos}");
 
         for (int i = 0; i < sortedPositions.Count; i++)
         {
             Vector2Int gridPos = sortedPositions[i];
             Vector3 worldPos = new Vector3(gridPos.x + 0.5f, 0.5f, gridPos.y + 0.5f);
 
-            GameObject portalObj = Instantiate(
+            NetworkObject portalNO = await _networkManager.Runner.SpawnAsync(
                 portalPrefab,
                 worldPos,
                 Quaternion.identity
             );
 
-            Portal portal = portalObj.GetComponent<Portal>();
+            Portal portal = portalNO.GetComponent<Portal>();
             if (portal != null)
             {
-                // PortalData 생성
                 var portalData = new PortalData
                 {
                     displayText = $"Next Stage {i + 1}",
@@ -379,29 +298,39 @@ public class StageManager : MonoBehaviour, IManager
                     portalData,
                     (roomIndex) =>
                     {
-                        Debug.Log($"[StageManager] Player entered portal to room {roomIndex}");
-                        // 포탈 진입 처리
-                    }
+                        RequestLoadStage(GetRoomNameByIndex(GetNextRoomIndex()));
+                    },
+                    _session.ConnectedPlayerCount // 플레이어 수 전달
                 );
             }
-
-            _spawnedPortals.Add(portalObj);
-            Debug.Log($"[StageManager] Portal {i} created at grid position {gridPos} (world: {worldPos})");
+            _spawnedPortals.Add(portalNO.gameObject);
         }
-
         await UniTask.NextFrame();
-        Debug.Log("[StageManager] 2 portals created successfully");
+    }
+    
+    public Portal GetPortalAt(Vector2Int position)
+    {
+        foreach (var portalObj in _spawnedPortals)
+        {
+            if (portalObj == null) continue;
+            
+            Vector3 portalWorldPos = portalObj.transform.position;
+            Vector2Int portalGridPos = new Vector2Int(Mathf.FloorToInt(portalWorldPos.x), Mathf.FloorToInt(portalWorldPos.z));
+
+            if (portalGridPos == position)
+            {
+                return portalObj.GetComponent<Portal>();
+            }
+        }
+        return null;
     }
 
     private void SetupCamera(int width, int height)
     {
         Camera cam = Camera.main;
-        if (cam == null)
-            return;
-
+        if (cam == null) return;
         var controller = cam.GetComponent<CameraController>();
-        if (controller == null)
-            return;
+        if (controller == null) return;
 
         Vector3 center = new Vector3(width / 2f, 0, height / 2f);
         float maxDim = Mathf.Max(width, height);
@@ -432,15 +361,7 @@ public class StageManager : MonoBehaviour, IManager
     {
         return new Vector3(gridPos.x + 0.5f, 0, gridPos.y + 0.5f);
     }
-
-    private void OnDestroy()
-    {
-        if (_session != null)
-        {
-            _session.OnStageChanged -= OnStageChanged;
-        }
-    }
-
+    
     public async void OnWaveComplete()
     {
         Debug.Log("[StageManager] Wave complete!");
@@ -462,6 +383,14 @@ public class StageManager : MonoBehaviour, IManager
         }
     }
 
+    private void OnDestroy()
+    {
+        if (_session != null)
+        {
+            _session.OnStageChanged -= OnStageChanged;
+        }
+    }
+    
     public async UniTask IncrementTurn()
     {
         if (_currentRoom?.waves == null)

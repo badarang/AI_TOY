@@ -263,6 +263,26 @@ public async void GenerateGrid(Room room)
     {
         return unitPositions.ContainsKey(gridPos) ? unitPositions[gridPos] : null;
     }
+    
+    public IAttackable GetAttackableAt(Vector2Int gridPos)
+    {
+        // 1. 유닛 확인
+        UnitBase unit = GetUnitAt(gridPos);
+        if (unit != null)
+        {
+            return unit;
+        }
+
+        // 2. 포탈 확인
+        Portal portal = Core.Instance.StageManager.GetPortalAt(gridPos);
+        if (portal != null)
+        {
+            return portal;
+        }
+
+        return null;
+    }
+
 
     public List<UnitBase> GetAllUnits()
     {
